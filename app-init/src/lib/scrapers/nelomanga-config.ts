@@ -1,0 +1,3 @@
+export const NELOMANGA_COOKIE = "cf_clearance=UjvicDbrTBAMEPupcdD06B67Y9fHBQVVVImjWDHOpLo-1768330180-1.2.1.1-wdgJEiHMPFZmggpk5gIRNpWncRxkG7NXsaN5yK9RlBlusS46UIiGIcoTFWu32KW0gvugNPNC8c_fYttvtnYFaUguJ.lnnD5qhPwVD0r.VBgU2Ol2t0gu0t_HBni_WkuwYefFqasziQDGmHphHIASIwNZCkau5yB8TjhVovxi5Df9LbyuEpIJ62bc1lX40KBf3ewfub6McLTiTlm3exRitPIKGsEwq2tF3S7iyVS4bZs; _ga=GA1.1.278472747.1768329192; _ga_FQDH01C36B=GS2.1.s1768339067$o115$g0$t1768339067$j60$l0$h0";
+export const NELOMANGA_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
+export const NELOMANGA_BASE = "https://www.nelomanga.net";

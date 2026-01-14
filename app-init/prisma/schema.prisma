@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Manga {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  coverUrl    String?
+  author      String?
+  status      String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  chapters    Chapter[]
+  sources     Source[]
+}
+
+model Source {
+  id         String @id @default(uuid())
+  mangaId    String
+  sourceName String
+  sourceUrl  String
+  manga      Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  chapters   Chapter[]
+
+  @@unique([mangaId, sourceName])
+}
+
+model Chapter {
+  id            String    @id @default(uuid())
+  mangaId       String
+  sourceId      String?
+  source        Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  chapterNumber Float
+  title         String?
+  url           String
+  releaseDate   DateTime?
+  isRead        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, chapterNumber])
+  @@index([mangaId, chapterNumber])
+}

@@ -1,0 +1,17 @@
+
+Testing https://jumpg-webapi.tokyo-cdn.com/api/title_list/allV2...
+Status: 200
+Content-Type: application/x-protobuf
+First 100 bytes (hex): 0aed880bca01ab880b0afc020a0f4170706c6520746f204f72616e676512b101088d8f06120f4170706c6520746f204f72616e67651a0942656e6973686f6761228e0168747470733a2f2f6a756d70672d6173736574732e746f6b796f2d63646e2e636f
+String preview: 
+����
+�
+Apple to Orange���Apple to Orange	Benishoga"�https://jumpg-assets.tokyo-cdn.co
+
+Testing https://jumpg-webapi.tokyo-cdn.com/api/title_detailV3?title_id=100020...
+Status: 200
+Content-Type: application/x-protobuf
+First 100 bytes (hex): 0adf2342dc230aae0108b48d0612094f6e652050696563651a0c456969636869726f204f6461228e0168747470733a2f2f6a756d70672d6173736574732e746f6b796f2d63646e2e636f6d2f7365637572652f7469746c652f3130303032302f7469746c
+String preview: 
+�#B�#
+���	One PieceEiichiro Oda"�https://jumpg-assets.tokyo-cdn.com/secure/title/100020/titl
