@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules
+package-lock.json
+*.log
+.DS_Store
+dist/
+build/
+coverage/
+*-debug.txt
