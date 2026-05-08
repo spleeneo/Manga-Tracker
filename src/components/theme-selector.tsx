@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 type Theme = "light" | "dark" | "system";
 
 const storageKey = "mangateo-theme";
-const legacyStorageKey = "manga-tracker-theme";
+
+function getStoredTheme(): Theme {
+  const storedTheme = localStorage.getItem(storageKey);
+  return storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+    ? storedTheme
+    : "system";
+}
 
 function applyTheme(theme: Theme) {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -18,17 +24,13 @@ export function ThemeSelector() {
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
-    const legacyTheme = localStorage.getItem(legacyStorageKey) as Theme | null;
-    const storedTheme = (localStorage.getItem(storageKey) as Theme | null) ?? legacyTheme ?? "system";
-    if (legacyTheme && !localStorage.getItem(storageKey)) {
-      localStorage.setItem(storageKey, legacyTheme);
-    }
+    const storedTheme = getStoredTheme();
     applyTheme(storedTheme);
     window.queueMicrotask(() => setTheme(storedTheme));
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
-      if ((localStorage.getItem(storageKey) ?? "system") === "system") {
+      if (getStoredTheme() === "system") {
         applyTheme("system");
       }
     };
@@ -44,12 +46,12 @@ export function ThemeSelector() {
   };
 
   const options: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
+    { value: "system", label: "System", icon: Monitor },
     { value: "light", label: "Light", icon: Sun },
     { value: "dark", label: "Dark", icon: Moon },
-    { value: "system", label: "System", icon: Monitor },
   ];
   const currentIndex = options.findIndex((option) => option.value === theme);
-  const current = options[currentIndex >= 0 ? currentIndex : 2];
+  const current = options[currentIndex >= 0 ? currentIndex : 0];
   const next = options[(options.indexOf(current) + 1) % options.length];
   const Icon = current.icon;
 
