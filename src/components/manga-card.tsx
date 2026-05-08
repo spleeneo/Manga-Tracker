@@ -102,7 +102,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 {/* Status Badge */}
                 {manga.status && (
                     <div className="absolute left-2 top-2">
-                        <span className="status-pill border-border bg-muted text-foreground shadow-sm dark:bg-muted dark:text-foreground">
+                        <span className="status-pill border-border bg-card text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
                             {manga.status}
                         </span>
                     </div>
@@ -110,7 +110,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
 
                 {unreadChapters > 0 && (
                     <div className="absolute right-2 top-2">
-                        <span className="rounded-full border border-border bg-muted px-2 py-1 text-[11px] font-bold text-foreground shadow-sm dark:bg-muted dark:text-foreground">
+                        <span className="rounded-full border border-border bg-card px-2 py-1 text-[11px] font-bold text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
                             {unreadChapters} unread
                         </span>
                     </div>
