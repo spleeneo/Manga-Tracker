@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, CheckCircle2, Clock3, Library, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BookOpen, CheckCircle2, Clock3, Library, ListChecks, Loader2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 
@@ -20,6 +21,7 @@ function getChapterGroups(manga: MangaCardData) {
         .map((group) => ({
             chapterNumber: group[0].chapterNumber,
             isRead: group.some((chapter) => chapter.isRead),
+            candidates: group,
             best: [...group].sort((a, b) => {
                 const bTime = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
                 const aTime = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
@@ -33,6 +35,7 @@ function getMangaSummary(manga: MangaCardData) {
     const groups = getChapterGroups(manga);
     const latest = groups[0]?.best;
     const unreadGroups = groups.filter((group) => !group.isRead);
+    const nextUnreadGroup = [...unreadGroups].sort((a, b) => a.chapterNumber - b.chapterNumber)[0];
 
     return {
         latest,
@@ -40,13 +43,21 @@ function getMangaSummary(manga: MangaCardData) {
         readCount: groups.length - unreadGroups.length,
         totalCount: groups.length,
         unreadCount: unreadGroups.length,
-        nextUnread: [...unreadGroups].sort((a, b) => a.chapterNumber - b.chapterNumber)[0]?.best ?? latest,
+        nextUnread: nextUnreadGroup?.best ?? latest,
+        nextUnreadIds: nextUnreadGroup?.candidates.filter((chapter) => !chapter.isRead).map((chapter) => chapter.id) ?? [],
+        unreadChapterIds: groups.flatMap((group) => (
+            group.candidates
+                .filter((chapter) => !chapter.isRead)
+                .map((chapter) => chapter.id)
+        )),
         isCaughtUp: groups.length > 0 && unreadGroups.length === 0,
     };
 }
 
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
+    const router = useRouter();
     const [filter, setFilter] = useState<LibraryFilter>("all");
+    const [progressAction, setProgressAction] = useState<"next" | "caught-up" | null>(null);
     const summaries = useMemo(() => new Map(mangas.map((manga) => [manga.id, getMangaSummary(manga)])), [mangas]);
 
     const stats = useMemo(() => {
@@ -94,6 +105,27 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         { value: "completed", label: "Completed", count: mangas.filter((manga) => manga.status?.toUpperCase() === "COMPLETED").length },
     ];
 
+    const markChaptersRead = async (chapterIds: string[], action: "next" | "caught-up") => {
+        if (chapterIds.length === 0) return;
+
+        setProgressAction(action);
+        try {
+            await Promise.all(chapterIds.map((chapterId) => (
+                fetch(`/api/manga/chapter/${chapterId}/read`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isRead: true }),
+                })
+            )));
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to update reading progress");
+        } finally {
+            setProgressAction(null);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -125,6 +157,30 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                     <Link href={`/manga/${continueManga.slug}`} className="ui-button ui-button-secondary">
                                         View details
                                     </Link>
+                                )}
+                                {continueSummary && continueSummary.unreadCount > 0 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => void markChaptersRead(continueSummary.nextUnreadIds, "next")}
+                                            disabled={progressAction !== null}
+                                            className="ui-button ui-button-secondary"
+                                            title={`Mark chapter ${continueSummary.nextUnread?.chapterNumber} as read`}
+                                        >
+                                            {progressAction === "next" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                            Mark next read
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => void markChaptersRead(continueSummary.unreadChapterIds, "caught-up")}
+                                            disabled={progressAction !== null}
+                                            className="ui-button ui-button-primary"
+                                            title="Mark all unread chapters as read"
+                                        >
+                                            {progressAction === "caught-up" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
+                                            Mark caught up
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>

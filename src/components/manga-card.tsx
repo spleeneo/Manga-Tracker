@@ -149,34 +149,50 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                         )}
                     </div>
                     {latestChapter && (
-                        <span>VOL. {latestChapter.chapterNumber}</span>
+                        <span>Ch. {latestChapter.chapterNumber}</span>
                     )}
                 </div>
 
-                {!isCompleted && latestChapter && (
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                            type="button"
-                            onClick={markLatestRead}
-                            disabled={loadingAction !== null || latestGroup?.isRead}
-                            className="ui-button ui-button-secondary min-h-8 px-2 py-1.5 text-[11px] uppercase"
-                            title={`Mark chapter ${latestChapter.chapterNumber} as read`}
-                        >
-                            {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                            Latest
-                        </button>
-                        <button
-                            type="button"
-                            onClick={catchUp}
-                            disabled={loadingAction !== null}
-                            className="ui-button ui-button-primary min-h-8 px-2 py-1.5 text-[11px] uppercase"
-                            title="Mark all current chapters as read"
-                        >
-                            {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ListChecks className="h-3 w-3" />}
-                            Catch up
-                        </button>
+                <div className="mt-3 rounded-md border border-border bg-muted/35 p-2.5">
+                    <div className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">
+                        Set progress
                     </div>
-                )}
+                    {latestChapter ? (
+                        isCompleted ? (
+                            <div className="flex min-h-8 items-center justify-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-300">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Caught up
+                            </div>
+                        ) : (
+                            <div className="grid gap-2">
+                                <button
+                                    type="button"
+                                    onClick={markLatestRead}
+                                    disabled={loadingAction !== null || latestGroup?.isRead}
+                                    className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
+                                    title={`Mark chapter ${latestChapter.chapterNumber} as read`}
+                                >
+                                    {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                    Mark latest read
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={catchUp}
+                                    disabled={loadingAction !== null}
+                                    className="ui-button ui-button-primary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
+                                    title="Mark all current chapters as read"
+                                >
+                                    {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ListChecks className="h-3 w-3" />}
+                                    Mark caught up
+                                </button>
+                            </div>
+                        )
+                    ) : (
+                        <div className="min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
+                            No chapters yet
+                        </div>
+                    )}
+                </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
                     {latestChapter && (
