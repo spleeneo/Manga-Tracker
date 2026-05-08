@@ -43,30 +43,25 @@ export function ThemeSelector() {
     applyTheme(nextTheme);
   };
 
-  const options: Array<{ value: Theme; label: string; icon: React.ReactNode }> = [
-    { value: "light", label: "Light", icon: <Sun className="h-4 w-4" /> },
-    { value: "dark", label: "Dark", icon: <Moon className="h-4 w-4" /> },
-    { value: "system", label: "System", icon: <Monitor className="h-4 w-4" /> },
+  const options: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
   ];
+  const currentIndex = options.findIndex((option) => option.value === theme);
+  const current = options[currentIndex >= 0 ? currentIndex : 2];
+  const next = options[(options.indexOf(current) + 1) % options.length];
+  const Icon = current.icon;
 
   return (
-    <div className="flex rounded-lg border bg-card p-1 shadow-sm" aria-label="Theme selector">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => setSelectedTheme(option.value)}
-          aria-pressed={theme === option.value}
-          title={option.label}
-          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${theme === option.value
-            ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/20"
-            : "border-transparent text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-sm hover:ring-2 hover:ring-primary/20"
-            }`}
-        >
-          {option.icon}
-          <span className="hidden sm:inline">{option.label}</span>
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => setSelectedTheme(next.value)}
+      aria-label={`Theme: ${current.label}. Switch to ${next.label}.`}
+      title={`Theme: ${current.label}. Click for ${next.label}.`}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-card text-foreground shadow-sm transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-md hover:ring-2 hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Icon className="h-5 w-5" />
+    </button>
   );
 }
