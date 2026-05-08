@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
+    --background: 0 0% 94%;
     --foreground: 0 0% 5%;
-    --card: 0 0% 100%;
+    --card: 0 0% 98%;
     --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5%;
     --primary: 0 0% 6%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 94%;
+    --secondary: 0 0% 88%;
     --secondary-foreground: 0 0% 8%;
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 32%;
-    --accent: 0 0% 90%;
+    --muted: 0 0% 88%;
+    --muted-foreground: 0 0% 30%;
+    --accent: 0 0% 82%;
     --accent-foreground: 0 0% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
-    --border: 0 0% 74%;
-    --input: 0 0% 74%;
+    --border: 0 0% 64%;
+    --input: 0 0% 64%;
     --ring: 0 0% 6%;
     --radius: 0.5rem;
     --chart-1: 12 76% 61%;
@@ -32,24 +32,24 @@
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 96%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 7%;
+    --background: 0 0% 13%;
+    --foreground: 0 0% 94%;
+    --card: 0 0% 17%;
+    --card-foreground: 0 0% 94%;
+    --popover: 0 0% 17%;
     --popover-foreground: 0 0% 96%;
     --primary: 0 0% 96%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 13%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 24%;
     --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 0 0% 20%;
+    --muted: 0 0% 24%;
+    --muted-foreground: 0 0% 74%;
+    --accent: 0 0% 31%;
     --accent-foreground: 0 0% 96%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 20% 98%;
-    --border: 0 0% 32%;
-    --input: 0 0% 32%;
+    --border: 0 0% 44%;
+    --input: 0 0% 44%;
     --ring: 0 0% 96%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -67,8 +67,9 @@
   body {
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.045) 1px, transparent 0);
-    background-size: 18px 18px;
+      linear-gradient(135deg, hsl(var(--foreground) / 0.035) 1px, transparent 1px),
+      radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.07) 1px, transparent 0);
+    background-size: 22px 22px, 14px 14px;
     color: hsl(var(--foreground));
     overflow-x: hidden;
     text-rendering: optimizeLegibility;
@@ -97,8 +98,8 @@
     top: 0;
     z-index: 30;
     border-bottom: 1px solid hsl(var(--border));
-    background: hsl(var(--background) / 0.96);
-    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+    background: hsl(var(--background) / 0.97);
+    box-shadow: 0 2px 0 hsl(var(--foreground) / 0.08);
   }
 
   .page-wrap {
@@ -106,23 +107,23 @@
   }
 
   .surface {
-    border: 1px solid hsl(var(--border));
+    border: 1.5px solid hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
-    box-shadow: 0 2px 0 hsl(var(--foreground) / 0.08);
+    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.1);
   }
 
   .surface-soft {
-    border: 1px solid hsl(var(--border));
+    border: 1.5px solid hsl(var(--border));
     background: hsl(var(--muted) / 0.45);
     color: hsl(var(--card-foreground));
   }
 
   .interactive-surface {
-    border: 1px solid hsl(var(--border));
+    border: 1.5px solid hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
-    box-shadow: 0 2px 0 hsl(var(--foreground) / 0.08);
+    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.1);
     transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, color 180ms ease;
   }
 
