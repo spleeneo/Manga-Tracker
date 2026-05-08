@@ -14,27 +14,25 @@ export function BrandLink() {
           viewBox="0 0 64 64"
           role="img"
         >
-          <rect width="64" height="64" rx="16" fill="#14b8a6" />
-          <path d="M13 18c0-4.4 3.6-8 8-8h28c4.4 0 8 3.6 8 8v34H27c-7.7 0-14-6.3-14-14V18z" fill="#0f172a" />
-          <path d="M18 16h22c5.5 0 10 4.5 10 10v21H28c-5.5 0-10-4.5-10-10V16z" fill="#fff7ed" />
-          <path d="M20 25c0-8.3 6.1-14 14-14s14 5.7 14 14v5H20v-5z" fill="#2b1b12" />
-          <circle cx="22" cy="18" r="5" fill="#2b1b12" />
-          <circle cx="29" cy="14" r="5.5" fill="#2b1b12" />
-          <circle cx="37" cy="14" r="5" fill="#2b1b12" />
-          <circle cx="44" cy="18" r="5" fill="#2b1b12" />
-          <circle cx="18" cy="25" r="4" fill="#2b1b12" />
-          <circle cx="50" cy="25" r="4" fill="#2b1b12" />
-          <path d="M22 27c0-6 4.8-10 11-10s11 4 11 10v7c0 7.2-4.9 12-11 12S22 41.2 22 34v-7z" fill="#f3c6a6" />
-          <path d="M22 27c0-4.4 2.2-7.7 5.8-9.3 1.2 4.1 5.6 6.9 16.2 7.4V29c-7.7-.2-13.2-1.7-16.9-4.5-.7 1.7-2.5 3.3-5.1 4.4V27z" fill="#2b1b12" />
-          <path d="M25 32.5h6.8M34.2 32.5H41" stroke="#0f172a" strokeWidth="2.3" strokeLinecap="round" />
-          <circle cx="28.5" cy="33" r="3.8" fill="none" stroke="#0f172a" strokeWidth="2" />
+          <rect width="64" height="64" rx="16" fill="#0f172a" />
+          <path d="M15 43c5.5-3.4 11-5.1 17-5.1S43.5 39.6 49 43v9H15v-9z" fill="#14b8a6" />
+          <path d="M20 41c3.6-2.2 7.6-3.3 12-3.3s8.4 1.1 12 3.3v8H20v-8z" fill="#f8fafc" />
+          <path d="M32 12c9 0 15 6.1 15 15.2v6.6c0 8.8-6 14.8-15 14.8s-15-6-15-14.8v-6.6C17 18.1 23 12 32 12z" fill="#f3c6a6" />
+          <circle cx="20" cy="22" r="6" fill="#2b1b12" />
+          <circle cx="26" cy="15.5" r="6.5" fill="#2b1b12" />
+          <circle cx="34" cy="14" r="6.5" fill="#2b1b12" />
+          <circle cx="42" cy="17" r="6" fill="#2b1b12" />
+          <circle cx="47" cy="24" r="5.5" fill="#2b1b12" />
+          <circle cx="17" cy="29" r="4.5" fill="#2b1b12" />
+          <circle cx="47" cy="30" r="4.5" fill="#2b1b12" />
+          <path d="M20 26c2.5-3.5 6.5-5.4 12-5.4s9.5 1.8 12 5.4v5.2c-7.4-.1-13.4-1.8-18-5.2-1.1 2.2-3.1 3.9-6 5v-5z" fill="#2b1b12" />
+          <circle cx="26.5" cy="33" r="3.8" fill="none" stroke="#0f172a" strokeWidth="2" />
           <circle cx="37.5" cy="33" r="3.8" fill="none" stroke="#0f172a" strokeWidth="2" />
-          <path d="M33 35.5l-1 3h2" stroke="#9a5b3d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M29 41c2.5 2 5.5 2 8 0" stroke="#7f1d1d" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M14 40c6.6 0 12 5.4 12 12H14V40z" fill="#f8fafc" />
-          <path d="M14 40c6.6 0 12 5.4 12 12" fill="none" stroke="#0f172a" strokeWidth="2.2" />
-          <path d="M49 41v11H34c6 0 10.9-4.4 15-11z" fill="#f8fafc" />
-          <path d="M38 49h8M40 45h7" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" />
+          <path d="M30.4 33h3.2M22.5 32.4h-2.4M43.9 32.4h-2.4" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" />
+          <path d="M32 35.8l-1 3h2" stroke="#9a5b3d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M28.5 42c2.2 1.7 4.8 1.7 7 0" stroke="#7f1d1d" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M12 44c7 0 12.5 3.2 16 8H12v-8zM52 44c-7 0-12.5 3.2-16 8h16v-8z" fill="#f8fafc" />
+          <path d="M12 44c7 0 12.5 3.2 16 8M52 44c-7 0-12.5 3.2-16 8" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </span>
       <span className="whitespace-nowrap">Mangateo</span>
