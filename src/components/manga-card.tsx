@@ -102,10 +102,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 {/* Status Badge */}
                 {manga.status && (
                     <div className="absolute left-2 top-2">
-                        <span className={`status-pill shadow-sm ${manga.status === 'ONGOING' ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                            manga.status === 'COMPLETED' ? 'border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300' :
-                                'border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                            }`}>
+                        <span className="status-pill border-black bg-white/95 text-black shadow-[0_2px_0_hsl(0_0%_0%)] dark:border-white dark:bg-black/95 dark:text-white dark:shadow-[0_2px_0_hsl(0_0%_100%)]">
                             {manga.status}
                         </span>
                     </div>
@@ -113,7 +110,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
 
                 {unreadChapters > 0 && (
                     <div className="absolute right-2 top-2">
-                        <span className="rounded-full border border-primary/25 bg-primary px-2 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
+                        <span className="rounded-full border border-black bg-white/95 px-2 py-1 text-[11px] font-bold text-black shadow-[0_2px_0_hsl(0_0%_0%)] dark:border-white dark:bg-black/95 dark:text-white dark:shadow-[0_2px_0_hsl(0_0%_100%)]">
                             {unreadChapters} unread
                         </span>
                     </div>
@@ -122,7 +119,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 {/* Progress Bar */}
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
                     <div
-                        className={`h-full ${isCompleted ? 'bg-green-500' : 'bg-primary'}`}
+                        className="h-full bg-primary"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -140,7 +137,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex items-center gap-1">
                         {isCompleted ? (
-                            <span className="flex items-center gap-1 text-green-500">
+                            <span className="flex items-center gap-1 text-foreground">
                                 <CheckCircle2 className="h-3 w-3" />
                                 CAUGHT UP
                             </span>
@@ -159,7 +156,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                     </div>
                     {latestChapter ? (
                         isCompleted ? (
-                            <div className="flex min-h-8 items-center justify-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-300">
+                            <div className="flex min-h-8 items-center justify-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-bold uppercase text-foreground">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 Caught up
                             </div>

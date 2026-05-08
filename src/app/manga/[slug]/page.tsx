@@ -171,10 +171,7 @@ export default async function MangaPage({ params }: PageProps) {
                         <div>
                             <h1 className="text-4xl font-bold tracking-tight">{manga.title}</h1>
                             <div className="mt-2 flex items-center gap-4 text-muted-foreground">
-                                <span className={`status-pill ${manga.status === 'ONGOING' ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                                    manga.status === 'COMPLETED' ? 'border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300' :
-                                        'border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                                    }`}>
+                                <span className="status-pill border-foreground/40 bg-card text-foreground">
                                     {manga.status || 'Unknown Status'}
                                 </span>
                                 {manga.author && <span>by {manga.author}</span>}
