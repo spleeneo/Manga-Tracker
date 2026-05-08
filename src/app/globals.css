@@ -97,7 +97,7 @@
     position: sticky;
     top: 0;
     z-index: 30;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 2px solid hsl(var(--border));
     background: hsl(var(--background) / 0.97);
     box-shadow: 0 2px 0 hsl(var(--foreground) / 0.08);
   }
@@ -107,23 +107,23 @@
   }
 
   .surface {
-    border: 1.5px solid hsl(var(--border));
+    border: 2px solid hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
-    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.1);
+    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.12);
   }
 
   .surface-soft {
-    border: 1.5px solid hsl(var(--border));
+    border: 2px solid hsl(var(--border));
     background: hsl(var(--muted) / 0.45);
     color: hsl(var(--card-foreground));
   }
 
   .interactive-surface {
-    border: 1.5px solid hsl(var(--border));
+    border: 2px solid hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
-    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.1);
+    box-shadow: 0 3px 0 hsl(var(--foreground) / 0.12);
     transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, color 180ms ease;
   }
 
@@ -188,7 +188,7 @@
   }
 
   .ui-button-secondary {
-    border: 1px solid hsl(var(--input));
+    border: 2px solid hsl(var(--input));
     background: hsl(var(--card));
     color: hsl(var(--foreground));
     box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
@@ -215,7 +215,7 @@
     width: 2.25rem;
     align-items: center;
     justify-content: center;
-    border: 1px solid hsl(var(--input));
+    border: 2px solid hsl(var(--input));
     border-radius: var(--radius);
     background: hsl(var(--card));
     color: hsl(var(--muted-foreground));
@@ -231,7 +231,7 @@
 
   .ui-field {
     width: 100%;
-    border: 1px solid hsl(var(--input));
+    border: 2px solid hsl(var(--input));
     border-radius: var(--radius);
     background: hsl(var(--card));
     color: hsl(var(--foreground));
@@ -271,7 +271,7 @@
     min-height: 2.25rem;
     align-items: center;
     justify-content: center;
-    border: 1px solid hsl(var(--border));
+    border: 2px solid hsl(var(--border));
     border-radius: var(--radius);
     padding: 0.5rem 0.875rem;
     color: hsl(var(--muted-foreground));
@@ -300,7 +300,7 @@
   }
 
   .status-pill {
-    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase;
+    @apply inline-flex items-center rounded-full border-2 px-2.5 py-1 text-[11px] font-bold uppercase;
   }
 
   .dialog-overlay {
@@ -320,7 +320,7 @@
     max-height: 90vh;
     width: 100%;
     overflow: hidden;
-    border: 1px solid hsl(var(--border));
+    border: 2px solid hsl(var(--border));
     border-radius: var(--radius);
     background: hsl(var(--popover));
     color: hsl(var(--popover-foreground));
@@ -334,7 +334,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border: 1px dashed hsl(var(--border));
+    border: 2px dashed hsl(var(--border));
     border-radius: var(--radius);
     background: hsl(var(--card) / 0.7);
     padding: 2rem;
