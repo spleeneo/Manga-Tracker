@@ -3,6 +3,7 @@ import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { LibraryDashboard } from "@/components/library-dashboard";
 import { ThemeSelector } from "@/components/theme-selector";
+import Link from "next/link";
 import { auth } from "../../auth";
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +16,12 @@ export default async function Home() {
       <div className="min-h-screen bg-background">
         <header className="app-header">
           <div className="page-wrap flex h-16 items-center justify-between">
-            <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
+            <Link
+              href="/"
+              className="shrink-0 whitespace-nowrap rounded-sm text-2xl font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               Mangateo
-            </h1>
+            </Link>
             <div className="flex min-w-0 items-center gap-3">
               <ThemeSelector />
               <AuthButton />
@@ -79,9 +83,12 @@ export default async function Home() {
     <div className="min-h-screen bg-background">
       <header className="app-header">
         <div className="page-wrap flex h-16 items-center justify-between">
-            <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
+          <Link
+            href="/"
+            className="shrink-0 whitespace-nowrap rounded-sm text-2xl font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             Mangateo
-          </h1>
+          </Link>
           <div className="flex min-w-0 items-center gap-3">
             {session?.user && <AddMangaDialog />}
             <ThemeSelector />
