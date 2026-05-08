@@ -47,7 +47,7 @@ export function ThemeSelector() {
   ];
 
   return (
-    <div className="flex rounded-md border border-input bg-background p-1 shadow-sm" aria-label="Theme selector">
+    <div className="flex rounded-md border border-input bg-card p-1 shadow-sm" aria-label="Theme selector">
       {options.map((option) => (
         <button
           key={option.value}
@@ -55,13 +55,13 @@ export function ThemeSelector() {
           onClick={() => setSelectedTheme(option.value)}
           aria-pressed={theme === option.value}
           title={option.label}
-          className={`inline-flex h-8 w-8 items-center justify-center rounded-sm transition-colors ${theme === option.value
-            ? "bg-primary text-primary-foreground"
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-sm px-2.5 text-xs font-bold transition-colors ${theme === option.value
+            ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             }`}
         >
           {option.icon}
-          <span className="sr-only">{option.label}</span>
+          <span className="hidden sm:inline">{option.label}</span>
         </button>
       ))}
     </div>

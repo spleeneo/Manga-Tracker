@@ -132,13 +132,13 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={() => setSelectedSourceId("all")}
                         className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === "all"
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                            ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
+                            : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:bg-accent hover:text-accent-foreground"
                             }`}
                         aria-pressed={selectedSourceId === "all"}
                     >
@@ -149,8 +149,8 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                             key={source.id}
                             onClick={() => setSelectedSourceId(source.id)}
                             className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === source.id
-                                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
+                                : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:bg-accent hover:text-accent-foreground"
                                 }`}
                             aria-pressed={selectedSourceId === source.id}
                         >
@@ -159,7 +159,7 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                     ))}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                     <CheckUpdatesButton slug={slug} />
                     <RefreshMetadataButton slug={slug} />
                 </div>
