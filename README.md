@@ -16,6 +16,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 - **Database**: Neon Free Postgres
 - **ORM**: Prisma with Neon pooled runtime connections
 - **Scheduler**: Vercel Cron hitting `GET /api/cron/update` daily
+- **Auth**: Auth.js with Google OAuth and Prisma-backed sessions
 
 ## Prerequisites
 
@@ -74,11 +75,28 @@ A personal manga tracking application that aggregates chapters from multiple fre
    - `DATABASE_URL`: Neon pooled connection string.
    - `DIRECT_URL`: Neon direct connection string.
    - `CRON_SECRET`: a random string of at least 16 characters.
+   - `AUTH_SECRET`: a second random string of at least 32 characters.
+   - `AUTH_GOOGLE_ID`: Google OAuth client ID.
+   - `AUTH_GOOGLE_SECRET`: Google OAuth client secret.
+   - `ALLOWED_EMAILS`: optional comma-separated allowlist.
 3. Deploy the app from GitHub.
 4. Vercel will run `postinstall` and generate Prisma Client.
 5. Run `npm run db:migrate` locally against Neon, or use `npx prisma migrate deploy` in a trusted deployment step.
 
 `vercel.json` schedules the update cron once per day at 05:00 UTC. Increase frequency only after checking provider rate limits and Vercel/Neon free-tier usage.
+
+## Google Login Setup
+
+1. In Google Cloud Console, create an OAuth 2.0 Client ID for a web application.
+2. Add authorized redirect URIs:
+   - `http://localhost:3000/api/auth/callback/google`
+   - `https://manga-tracker-eight.vercel.app/api/auth/callback/google`
+3. Copy the client ID and client secret into local `.env` and Vercel environment variables:
+   - `AUTH_GOOGLE_ID`
+   - `AUTH_GOOGLE_SECRET`
+4. Restart local dev or redeploy Vercel.
+
+When Google OAuth is not configured, the app shows a setup badge instead of a broken sign-in button.
 
 ## Resetting the Database
 
@@ -88,7 +106,7 @@ If you need to clear all data and start fresh, run:
 npm run db:reset
 ```
 
-This will execute a script to delete all entries from the SQLite database.
+This will execute a script to delete all entries from the configured Postgres database.
 
 ## Project Structure
 
