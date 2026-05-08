@@ -102,7 +102,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                         <div className="flex-1">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-bold uppercase text-muted-foreground">
                                 <Sparkles className="h-3.5 w-3.5" />
-                                Continue reading
+                                {continueSummary?.unreadCount ? "Continue reading" : "Up to date"}
                             </div>
                             <h2 className="text-2xl font-bold tracking-tight">{continueManga?.title ?? "Your library"}</h2>
                             {continueManga && continueSummary?.nextUnread ? (
@@ -118,7 +118,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                 {continueSummary?.nextUnread?.url && (
                                     <a href={continueSummary.nextUnread.url} target="_blank" rel="noopener noreferrer" className="ui-button ui-button-primary">
                                         <BookOpen className="h-4 w-4" />
-                                        Read chapter {continueSummary.nextUnread.chapterNumber}
+                                        {continueSummary.unreadCount > 0 ? `Read chapter ${continueSummary.nextUnread.chapterNumber}` : "Open latest"}
                                     </a>
                                 )}
                                 {continueManga && (
