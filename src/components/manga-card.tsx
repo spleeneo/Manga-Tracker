@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Play, CheckCircle2, Info, Check, ListChecks, Loader2 } from "lucide-react";
+import { BookOpen, Play, CheckCircle2, Check, ListChecks, Loader2, ExternalLink } from "lucide-react";
 
-interface Manga {
+export interface MangaCardData {
     id: string;
     title: string;
     slug: string;
@@ -14,11 +14,11 @@ interface Manga {
     chapters: { id: string; chapterNumber: number; isRead: boolean; url: string; releaseDate?: Date | string | null }[];
 }
 
-export function MangaCard({ manga }: { manga: Manga }) {
+export function MangaCard({ manga }: { manga: MangaCardData }) {
     const router = useRouter();
     const [loadingAction, setLoadingAction] = useState<"latest" | "catch-up" | null>(null);
     const chapterGroups = useMemo(() => {
-        const groups = new Map<string, Manga["chapters"]>();
+        const groups = new Map<string, MangaCardData["chapters"]>();
         for (const chapter of manga.chapters) {
             const key = Number.isFinite(chapter.chapterNumber)
                 ? chapter.chapterNumber.toFixed(3)
@@ -43,6 +43,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
     const totalChapters = chapterGroups.length;
     const readChapters = chapterGroups.filter(c => c.isRead).length;
     const latestChapter = chapterGroups[0]?.best;
+    const unreadChapters = totalChapters - readChapters;
     const progress = totalChapters > 0 ? (readChapters / totalChapters) * 100 : 0;
     const isCompleted = readChapters === totalChapters && totalChapters > 0;
     const latestGroup = chapterGroups[0];
@@ -84,7 +85,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
     };
 
     return (
-        <div className="interactive-surface group relative flex flex-col overflow-hidden rounded-lg">
+        <div className="interactive-surface group flex flex-col overflow-hidden rounded-lg">
             <div className="aspect-[2/3] w-full overflow-hidden bg-muted relative">
                 {manga.coverUrl ? (
                     <img
@@ -110,28 +111,13 @@ export function MangaCard({ manga }: { manga: Manga }) {
                     </div>
                 )}
 
-                {/* Hover Action Overlay - Solid style */}
-                <div className="absolute inset-x-0 bottom-0 flex gap-2 bg-gradient-to-t from-black/85 to-transparent p-3 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
-                    {latestChapter && (
-                        <a
-                            href={latestChapter.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative z-20 flex flex-1 items-center justify-center gap-2 rounded-md bg-primary py-2 text-xs font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.98]"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <Play className="h-3 w-3 fill-current" />
-                            READ LATEST
-                        </a>
-                    )}
-                    <Link
-                        href={`/manga/${manga.slug}`}
-                        className="relative z-20 flex items-center justify-center rounded-md bg-white p-2 text-black shadow-lg transition-all hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.98]"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <Info className="h-4 w-4" />
-                    </Link>
-                </div>
+                {unreadChapters > 0 && (
+                    <div className="absolute right-2 top-2">
+                        <span className="rounded-full border border-primary/25 bg-primary px-2 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
+                            {unreadChapters} unread
+                        </span>
+                    </div>
+                )}
 
                 {/* Progress Bar */}
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
@@ -143,9 +129,13 @@ export function MangaCard({ manga }: { manga: Manga }) {
             </div>
 
             <div className="flex flex-1 flex-col p-3.5">
-                <h3 className="line-clamp-1 text-base font-bold tracking-tight mb-1" title={manga.title}>
+                <Link
+                    href={`/manga/${manga.slug}`}
+                    className="mb-1 line-clamp-1 rounded-sm text-base font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={manga.title}
+                >
                     {manga.title}
-                </h3>
+                </Link>
 
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -164,7 +154,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
                 </div>
 
                 {!isCompleted && latestChapter && (
-                    <div className="relative z-20 mt-3 grid grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                         <button
                             type="button"
                             onClick={markLatestRead}
@@ -187,12 +177,28 @@ export function MangaCard({ manga }: { manga: Manga }) {
                         </button>
                     </div>
                 )}
-            </div>
 
-            {/* Main Link for accessibility/clicking anywhere else */}
-            <Link href={`/manga/${manga.slug}`} className="absolute inset-0 z-10">
-                <span className="sr-only">View {manga.title}</span>
-            </Link>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                    {latestChapter && (
+                        <a
+                            href={latestChapter.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ui-button ui-button-primary min-h-8 px-2 py-1.5 text-[11px] uppercase"
+                        >
+                            <Play className="h-3 w-3 fill-current" />
+                            Read
+                        </a>
+                    )}
+                    <Link
+                        href={`/manga/${manga.slug}`}
+                        className="ui-button ui-button-secondary min-h-8 px-2 py-1.5 text-[11px] uppercase"
+                    >
+                        <ExternalLink className="h-3 w-3" />
+                        Details
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 }

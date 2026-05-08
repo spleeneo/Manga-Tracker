@@ -1,7 +1,7 @@
 import { isDatabaseConfigured, prisma } from "@/lib/db";
-import { MangaCard } from "@/components/manga-card";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
+import { LibraryDashboard } from "@/components/library-dashboard";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../auth";
 
@@ -106,11 +106,7 @@ export default async function Home() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {mangas.map((manga) => (
-              <MangaCard key={manga.id} manga={manga} />
-            ))}
-          </div>
+          <LibraryDashboard mangas={mangas} />
         )}
       </main>
     </div>
