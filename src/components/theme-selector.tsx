@@ -50,7 +50,7 @@ export function ThemeSelector() {
   ];
 
   return (
-    <div className="flex rounded-lg border bg-muted/50 p-1 shadow-sm" aria-label="Theme selector">
+    <div className="flex rounded-lg border bg-card p-1 shadow-sm" aria-label="Theme selector">
       {options.map((option) => (
         <button
           key={option.value}
@@ -58,9 +58,9 @@ export function ThemeSelector() {
           onClick={() => setSelectedTheme(option.value)}
           aria-pressed={theme === option.value}
           title={option.label}
-          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${theme === option.value
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-card hover:text-foreground"
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${theme === option.value
+            ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/20"
+            : "border-transparent text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-sm hover:ring-2 hover:ring-primary/20"
             }`}
         >
           {option.icon}

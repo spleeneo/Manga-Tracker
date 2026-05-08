@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BookOpen, ExternalLink, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AddSourceDialog } from "@/components/add-source-dialog";
+import { AuthButton } from "@/components/auth-button";
 import { ChapterList } from "@/components/chapter-list";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
@@ -117,8 +118,9 @@ export default async function MangaPage({ params }: PageProps) {
                         <ArrowLeft className="h-4 w-4" />
                         Back to Library
                     </Link>
-                    <div className="absolute right-4 top-6">
+                    <div className="absolute right-4 top-6 flex items-center gap-3">
                         <ThemeSelector />
+                        <AuthButton />
                     </div>
                 </div>
             </div>
