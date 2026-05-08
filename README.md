@@ -116,6 +116,14 @@ This will execute a script to delete all entries from the configured Postgres da
 - `scripts`: Maintenance scripts (reset-db, cleanup-db).
 - `prisma`: Database schema (`schema.prisma`).
 
+## Documentation
+
+- [Architecture](docs/architecture.md): shared manga data, per-user library state, request/update flows.
+- [Providers](docs/providers.md): scraper registry, provider capabilities, ranking and readability limitations.
+- [Operations](docs/ops.md): local setup, Vercel/Neon deploy, OAuth, cron, routine checks.
+- [Security](docs/security.md): auth, ownership rules, secret handling, hardening notes.
+- [Product Notes](docs/product-notes.md): UX principles, readability detection, backlog.
+
 ## Contributing
 
 1.  Fork the repository
