@@ -1,10 +1,10 @@
 import { isDatabaseConfigured, prisma } from "@/lib/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BookOpen, ExternalLink, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { BookOpen, ExternalLink } from "lucide-react";
 import { AddSourceDialog } from "@/components/add-source-dialog";
 import { AuthButton } from "@/components/auth-button";
+import { BrandLink } from "@/components/brand-link";
 import { ChapterList } from "@/components/chapter-list";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
@@ -111,13 +111,9 @@ export default async function MangaPage({ params }: PageProps) {
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
 
                 <div className="page-wrap relative h-full">
-                    <Link
-                        href="/"
-                        className="ui-button ui-button-secondary absolute left-4 top-6"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Library
-                    </Link>
+                    <div className="absolute left-4 top-5">
+                        <BrandLink />
+                    </div>
                     <div className="absolute right-4 top-6 flex items-center gap-3">
                         <ThemeSelector />
                         <AuthButton />
