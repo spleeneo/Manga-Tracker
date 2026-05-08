@@ -46,16 +46,18 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
     };
 
     return (
-        <a
-            href={chapter.url}
-            target="_blank"
-            rel="noopener noreferrer"
+        <div
             className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${isRead ? 'bg-muted/35 opacity-70' : ''}`}
         >
             <div className="flex items-center justify-between mb-1">
-                <span className={`font-bold ${isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
+                <a
+                    href={chapter.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`rounded-sm font-bold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isRead ? 'text-muted-foreground' : 'text-foreground'}`}
+                >
                     Chapter {chapter.chapterNumber}
-                </span>
+                </a>
                 <button
                     onClick={toggleRead}
                     disabled={loading}
@@ -95,6 +97,6 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
             </div>
 
             {isRead && <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-muted-foreground/20" />}
-        </a>
+        </div>
     );
 }

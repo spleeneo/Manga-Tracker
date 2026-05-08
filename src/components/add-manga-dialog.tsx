@@ -194,9 +194,8 @@ export function AddMangaDialog() {
                             <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
                                 {searchResults.length > 0 ? (
                                     searchResults.map((manga, idx) => (
-                                        <button
+                                        <div
                                             key={manga.title || idx}
-                                            onClick={() => selectManga(manga)}
                                             className="interactive-surface group flex flex-col items-center gap-4 rounded-lg p-3 text-left sm:flex-row sm:items-start"
                                         >
                                             <div className="h-28 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
@@ -207,22 +206,25 @@ export function AddMangaDialog() {
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0 py-1">
-                                                <h3 className="text-base font-bold leading-tight truncate pr-2 group-hover:text-primary transition-colors">{manga.title}</h3>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectManga(manga)}
+                                                    className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                >
+                                                    <h3 className="truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">{manga.title}</h3>
+                                                </button>
                                                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1 mb-2">{manga.description}</p>
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
                                                         manga.sources.map((source: SearchSource, sourceIdx: number) => (
-                                                            <div
+                                                            <button
+                                                                type="button"
                                                                 key={source.url || sourceIdx}
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    selectManga(manga, source.url);
-                                                                }}
-                                                                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground"
+                                                                onClick={() => selectManga(manga, source.url)}
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                             >
                                                                 {source.name}
-                                                            </div>
+                                                            </button>
                                                         ))
                                                     ) : (
                                                         <span className="text-xs text-red-500">No sources</span>
@@ -230,7 +232,7 @@ export function AddMangaDialog() {
                                                     <span className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{manga.status}</span>
                                                 </div>
                                             </div>
-                                        </button>
+                                        </div>
                                     ))
                                 ) : searchQuery.length >= 3 && !isSearching ? (
                                     <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">

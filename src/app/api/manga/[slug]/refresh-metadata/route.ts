@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db";
 import { fetchMetadata } from "@/lib/scrapers/registry";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUserId } from "@/lib/session";
 
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ slug: string }> }
 ) {
     try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
         const { slug } = await params;
 
         const manga = await prisma.manga.findUnique({
@@ -16,6 +22,18 @@ export async function POST(
 
         if (!manga) {
             return NextResponse.json({ error: "Manga not found" }, { status: 404 });
+        }
+
+        const tracked = await prisma.userManga.findUnique({
+            where: {
+                userId_mangaId: {
+                    userId,
+                    mangaId: manga.id,
+                },
+            },
+        });
+        if (!tracked) {
+            return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
         }
 
         if (manga.sources.length === 0) {
