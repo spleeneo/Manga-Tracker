@@ -1,4 +1,5 @@
 import { isDatabaseConfigured, prisma } from "@/lib/db";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BookOpen, ExternalLink, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -62,6 +63,23 @@ async function getManga(slug: string, userId: string) {
             ...chapter,
             isRead: readByChapterId.get(chapter.id) ?? false,
         })),
+    };
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const { slug } = await params;
+
+    if (!isDatabaseConfigured) {
+        return { title: "Manga" };
+    }
+
+    const manga = await prisma.manga.findUnique({
+        where: { slug },
+        select: { title: true },
+    });
+
+    return {
+        title: manga?.title ?? "Manga",
     };
 }
 
