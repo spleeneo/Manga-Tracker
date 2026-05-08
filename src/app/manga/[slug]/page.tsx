@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/db";
+import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { BookOpen, ExternalLink, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AddSourceDialog } from "@/components/add-source-dialog";
 import { ChapterList } from "@/components/chapter-list";
-import { ChapterItem } from "@/components/chapter-item";
+import { auth } from "../../../../auth";
 
 interface PageProps {
     params: Promise<{
@@ -12,7 +12,19 @@ interface PageProps {
     }>;
 }
 
-async function getManga(slug: string) {
+interface ChapterView {
+    id: string;
+    chapterNumber: number;
+    title: string | null;
+    url: string;
+    releaseDate: Date | null;
+    isRead: boolean;
+    sourceId: string | null;
+}
+
+async function getManga(slug: string, userId: string) {
+    if (!isDatabaseConfigured) return null;
+
     const manga = await prisma.manga.findUnique({
         where: { slug: slug },
         include: {
@@ -24,12 +36,42 @@ async function getManga(slug: string) {
     });
 
     if (!manga) return null;
-    return manga;
+
+    const tracked = await prisma.userManga.findUnique({
+        where: {
+            userId_mangaId: {
+                userId,
+                mangaId: manga.id,
+            },
+        },
+    });
+    if (!tracked) return null;
+
+    const userChapters = await prisma.userChapter.findMany({
+        where: {
+            userId,
+            chapterId: { in: manga.chapters.map((chapter) => chapter.id) },
+        },
+    });
+    const readByChapterId = new Map(userChapters.map((entry) => [entry.chapterId, entry.isRead]));
+
+    return {
+        ...manga,
+        chapters: manga.chapters.map((chapter) => ({
+            ...chapter,
+            isRead: readByChapterId.get(chapter.id) ?? false,
+        })),
+    };
 }
 
 export default async function MangaPage({ params }: PageProps) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        notFound();
+    }
+
     const { slug } = await params;
-    const manga = await getManga(slug);
+    const manga = await getManga(slug, session.user.id);
 
     if (!manga) {
         notFound();
@@ -130,7 +172,7 @@ export default async function MangaPage({ params }: PageProps) {
                                 mangaId={manga.id}
                                 slug={manga.slug}
                                 initialSources={manga.sources}
-                                initialChapters={manga.chapters as any}
+                                initialChapters={manga.chapters as ChapterView[]}
                             />
                         </div>
                     </div>
@@ -138,15 +180,4 @@ export default async function MangaPage({ params }: PageProps) {
             </div>
         </div>
     );
-}
-
-// Client component wrapper might be needed if using hooks, but date-fns is fine in server components if used carefully. 
-// However, formatDistanceToNow returns a string.
-// Let's just use a simple helper here to avoid hydration errors if dates mismatch, 
-// though for this static generation it might be fine.
-// Actually, let's keep it simple.
-function useTimeAgo(date: Date) {
-    // This is a naive implementation for server rendering. 
-    // Ideally use a client component for relative time to avoid hydration mismatch.
-    return date.toLocaleDateString();
 }

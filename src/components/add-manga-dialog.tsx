@@ -4,11 +4,24 @@ import { useState, useEffect } from "react";
 import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search, Link2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+interface SearchSource {
+    name: string;
+    url: string;
+}
+
+interface SearchResult {
+    title: string;
+    coverUrl?: string;
+    status?: string;
+    description?: string;
+    sources?: SearchSource[];
+}
+
 export function AddMangaDialog() {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
     const router = useRouter();
@@ -20,7 +33,7 @@ export function AddMangaDialog() {
         status: string;
         description: string;
         sourceUrl: string;
-        sources: any[];
+        sources: SearchSource[];
     }>({
         title: "",
         slug: "",
@@ -33,10 +46,7 @@ export function AddMangaDialog() {
 
     // Simple debounce for search
     useEffect(() => {
-        if (!searchQuery || searchQuery.length < 3) {
-            setSearchResults([]);
-            return;
-        }
+        if (!searchQuery || searchQuery.length < 3) return;
 
         const timer = setTimeout(async () => {
             setIsSearching(true);
@@ -45,7 +55,7 @@ export function AddMangaDialog() {
                 const data = await res.json();
                 console.log("Search API response:", data);
                 console.log("Search results:", data.results);
-                setSearchResults(data.results || []);
+                setSearchResults((data.results || []) as SearchResult[]);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -56,7 +66,7 @@ export function AddMangaDialog() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const selectManga = (manga: any, initialSourceUrl?: string) => {
+    const selectManga = (manga: SearchResult, initialSourceUrl?: string) => {
         setFormData({
             title: manga.title,
             slug: manga.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -88,9 +98,9 @@ export function AddMangaDialog() {
             setIsOpen(false);
             resetForm();
             router.refresh();
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
-            alert(error.message);
+            alert(error instanceof Error ? error.message : "Failed to create manga");
         } finally {
             setLoading(false);
         }
@@ -200,7 +210,7 @@ export function AddMangaDialog() {
                                                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1 mb-2">{manga.description}</p>
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
-                                                        manga.sources.map((source: any, sourceIdx: number) => (
+                                                        manga.sources.map((source: SearchSource, sourceIdx: number) => (
                                                             <div
                                                                 key={source.url || sourceIdx}
                                                                 onClick={(e) => {

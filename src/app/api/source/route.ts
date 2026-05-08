@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUserId } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
     try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
         const body = await req.json();
         const { mangaId, sourceName, sourceUrl } = body;
 
@@ -25,20 +31,36 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Check for duplicate source (same manga, same name)
+        // Check for duplicate source (same manga, same URL)
         const existingSource = await prisma.source.findUnique({
             where: {
-                mangaId_sourceName: {
+                mangaId_sourceUrl: {
                     mangaId,
-                    sourceName,
+                    sourceUrl,
                 },
             },
         });
 
         if (existingSource) {
             return NextResponse.json(
-                { error: "Source with this name already exists for this manga" },
+                { error: "Source with this URL already exists for this manga" },
                 { status: 409 }
+            );
+        }
+
+        const tracked = await prisma.userManga.findUnique({
+            where: {
+                userId_mangaId: {
+                    userId,
+                    mangaId,
+                },
+            },
+        });
+
+        if (!tracked) {
+            return NextResponse.json(
+                { error: "Manga not tracked by this user" },
+                { status: 403 }
             );
         }
 

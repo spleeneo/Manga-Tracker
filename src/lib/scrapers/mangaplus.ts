@@ -1,143 +1,109 @@
 import { Scraper, SearchResult, ScrapedChapter, MangaMetadata } from "./types";
-import protobuf from "protobufjs";
+import { fetchWithRetry, ScraperRequestError } from "./http";
 
 const API_BASE = "https://jumpg-webapi.tokyo-cdn.com/api";
 
-const protoDefinition = `
-syntax = "proto3";
-
-message Response {
-    optional SuccessResult success = 1;
+interface MangaPlusTitle {
+    titleId?: number;
+    name?: string;
+    author?: string;
+    portraitImageUrl?: string;
+    language?: string;
 }
 
-message SuccessResult {
-    optional bool isFeaturedUpdated = 1;
-    optional AllTitlesView allTitlesView = 25;
-    optional TitleDetailView titleDetailView = 8;
-    optional TitleRankingView titleRankingView = 6;
-    optional WebHomeView webHomeView = 11;
+interface MangaPlusTitleGroup {
+    titles?: MangaPlusTitle[];
 }
 
-message AllTitlesView {
-    repeated SimpleTitle titles = 1;
+interface MangaPlusChapter {
+    chapterId?: number;
+    name?: string;
+    subTitle?: string;
+    startTimeStamp?: number;
 }
 
-message SimpleTitle {
-    optional string name = 1;
-    optional string portraitImageUrl = 2;
+interface MangaPlusChapterGroup {
+    firstChapterList?: MangaPlusChapter[];
+    midChapterList?: MangaPlusChapter[];
+    lastChapterList?: MangaPlusChapter[];
 }
 
-message TitleDetailView {
-    optional Title title = 1;
-    optional string titleImageUrl = 2; 
-    optional string overview = 3; 
-    optional string contentWrapper = 4;
-    repeated Chapter lastChapterList = 28;
+interface MangaPlusTitleDetailView {
+    title?: MangaPlusTitle;
+    overview?: string;
+    chapterListGroup?: MangaPlusChapterGroup[];
 }
 
-message TitleRankingView {
-    repeated Title titles = 1;
+interface MangaPlusJsonResponse {
+    success?: {
+        allTitlesViewV2?: {
+            AllTitlesGroup?: MangaPlusTitleGroup[];
+            allTitlesGroup?: MangaPlusTitleGroup[];
+        };
+        titleDetailView?: MangaPlusTitleDetailView;
+    };
 }
 
-message WebHomeView {
-    repeated Group groups = 2;
+interface MangaPlusNamedTitle extends MangaPlusTitle {
+    titleId: number;
+    name: string;
 }
-
-message Group {
-    optional string groupName = 1;
-    repeated Title titles = 2;
-}
-
-message Title {
-    optional uint32 titleId = 1;
-    optional string name = 2;
-    optional string author = 3;
-    optional string portraitImageUrl = 4;
-    optional string landscapeImageUrl = 5;
-    optional uint32 viewCount = 6;
-    optional uint32 language = 7;
-}
-
-message Chapter {
-    optional string chapterIdStr = 1; 
-    optional ChapterDetail detail = 2;
-    optional string startTimeStamp = 6; 
-    optional string endTimeStamp = 7;
-}
-
-message ChapterDetail {
-    optional uint32 subId = 1;
-    optional string nameHeader = 3; // e.g. "#003"
-    optional string subTitle = 4;   // e.g. "The Great Pirate"
-    optional string thumbnail = 5;
-}
-`;
-
-
-// Initialize the root object
-const root = protobuf.parse(protoDefinition).root;
-const ResponseMessage = root.lookupType("Response");
 
 export class MangaPlusScraper implements Scraper {
     name = "MangaPlus";
+    capabilities = { search: true, metadata: true, chapters: true };
     baseUrl = "https://mangaplus.shueisha.co.jp";
 
     canHandle(url: string): boolean {
         return url.includes("mangaplus.shueisha.co.jp");
     }
 
-    private async fetchProto(url: string): Promise<any> {
+    private async fetchJson(url: string): Promise<MangaPlusJsonResponse> {
         try {
-            const res = await fetch(url, {
+            const separator = url.includes("?") ? "&" : "?";
+            const res = await fetchWithRetry(`${url}${separator}format=json`, {
                 headers: {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                    "Accept": "application/json, text/plain, */*" // Sometimes helps
+                    "Accept": "application/json, text/plain, */*"
                 }
             });
 
-            if (!res.ok) {
-                throw new Error(`MangaPlus API error: ${res.status}`);
-            }
-
-            const buffer = await res.arrayBuffer();
-            const decoded = ResponseMessage.decode(new Uint8Array(buffer));
-            const obj = ResponseMessage.toObject(decoded, {
-                longs: String,
-                enums: String,
-                bytes: String,
-            });
-            return obj;
+            return await res.json() as MangaPlusJsonResponse;
         } catch (e) {
-            console.error("MangaPlus Proto Error:", e);
-            throw e;
+            if (e instanceof ScraperRequestError) {
+                throw new ScraperRequestError(`MangaPlus request failed (${e.kind})`, e.kind, e.status, { cause: e });
+            }
+            throw new ScraperRequestError("MangaPlus response parse failed", "parsing", undefined, { cause: e as Error });
         }
     }
 
     async search(query: string): Promise<SearchResult[]> {
         const url = `${API_BASE}/title_list/allV2`;
         try {
-            const data = await this.fetchProto(url);
-            const titles = data.success?.allTitlesView?.titles || [];
+            const data = await this.fetchJson(url);
+            const groups = data.success?.allTitlesViewV2?.AllTitlesGroup
+                ?? data.success?.allTitlesViewV2?.allTitlesGroup
+                ?? [];
+            const titles = groups.flatMap((group) => group.titles ?? []);
 
-            return titles
-                .filter((t: any) => t.name && t.name.toLowerCase().includes(query.toLowerCase()))
-                .slice(0, 5) // Limit results
-                .map((t: any) => {
-                    let titleId = "0";
-                    if (t.portraitImageUrl) {
-                        const match = t.portraitImageUrl.match(/title\/(\d+)/);
-                        if (match) titleId = match[1];
-                    }
+            const matchingTitles = titles.filter((title): title is MangaPlusNamedTitle =>
+                typeof title.titleId === "number"
+                && typeof title.name === "string"
+                && title.name.toLowerCase().includes(query.toLowerCase())
+                && (!title.language || title.language === "ENGLISH")
+            );
 
-                    return {
-                        title: t.name,
-                        sourceUrl: `${this.baseUrl}/titles/${titleId}`,
-                        sourceName: "MangaPlus",
-                        coverUrl: t.portraitImageUrl,
-                        status: "ONGOING",
-                        description: "",
-                    };
-                });
+            return matchingTitles
+                .slice(0, 5)
+                .map((title) => ({
+                    title: title.name,
+                    sourceUrl: `${this.baseUrl}/titles/${title.titleId}`,
+                    sourceName: "MangaPlus",
+                    coverUrl: title.portraitImageUrl,
+                    status: "ONGOING",
+                    author: title.author,
+                    description: "",
+                }));
 
         } catch (e) {
             console.error("MangaPlus search failed:", e);
@@ -153,26 +119,36 @@ export class MangaPlusScraper implements Scraper {
         const url = `${API_BASE}/title_detailV3?title_id=${titleId}`;
 
         try {
-            const data = await this.fetchProto(url);
+            const data = await this.fetchJson(url);
             const detail = data.success?.titleDetailView;
 
             if (!detail) return [];
 
-            const allChapters = detail.lastChapterList || [];
+            const allChapters = (detail.chapterListGroup ?? []).flatMap((group) => [
+                ...(group.firstChapterList ?? []),
+                ...(group.midChapterList ?? []),
+                ...(group.lastChapterList ?? []),
+            ]);
 
-            return allChapters.map((ch: any) => {
-                const header = ch.detail?.nameHeader || "";
-                const sub = ch.detail?.subTitle || "";
-                const title = header && sub ? `${header}: ${sub}` : header || sub || `Chapter ${ch.chapterIdStr}`;
-                const num = parseFloat(header.replace('#', '')) || 0;
+            return allChapters
+                .filter((chapter) => typeof chapter.chapterId === "number")
+                .map((chapter) => {
+                    const header = chapter.name || "";
+                    const sub = chapter.subTitle || "";
+                    const title = header && sub ? `${header}: ${sub}` : header || sub || `Chapter ${chapter.chapterId}`;
+                    const num = parseFloat(header.replace("#", "")) || chapter.chapterId || 0;
+                    const releaseDate = chapter.startTimeStamp
+                        ? new Date(chapter.startTimeStamp * 1000)
+                        : undefined;
 
-                return {
-                    chapterNumber: num,
-                    title: title,
-                    url: `${this.baseUrl}/viewer/${ch.chapterIdStr}`,
-                    releaseDate: new Date(),
-                };
-            }).filter(c => c.url.includes("viewer")); // Keep all chapters even if num is 0
+                    return {
+                        providerChapterId: String(chapter.chapterId),
+                        chapterNumber: num,
+                        title,
+                        url: `${this.baseUrl}/viewer/${chapter.chapterId}`,
+                        releaseDate,
+                    };
+                });
         } catch (e) {
             console.error("MangaPlus chapters failed:", e);
             return [];
@@ -185,10 +161,10 @@ export class MangaPlusScraper implements Scraper {
         const titleId = match[1];
 
         const url = `${API_BASE}/title_detailV3?title_id=${titleId}`;
-        const data = await this.fetchProto(url);
+        const data = await this.fetchJson(url);
         const detail = data.success?.titleDetailView;
 
-        if (!detail || !detail.title) throw new Error("Manga not found");
+        if (!detail?.title?.name) throw new Error("Manga not found");
 
         return {
             title: detail.title.name,

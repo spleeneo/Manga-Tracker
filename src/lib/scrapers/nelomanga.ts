@@ -1,8 +1,17 @@
 import { ScrapedChapter, Scraper, MangaMetadata, SearchResult } from "./types";
 import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "./nelomanga-config";
+import { fetchWithRetry, ScraperRequestError } from "./http";
+
+interface NeloChapterApiItem {
+    chapter_slug: string;
+    chapter_num: number;
+    chapter_name: string;
+    updated_at?: string;
+}
 
 export class NeloMangaScraper implements Scraper {
     name = "NeloManga";
+    capabilities = { search: true, metadata: true, chapters: true };
 
     canHandle(url: string): boolean {
         return url.includes("nelomanga.net");
@@ -32,9 +41,13 @@ export class NeloMangaScraper implements Scraper {
         console.log(`[NeloManga] Fetching chapters via API for: ${slug}`);
         const apiUrl = `${NELOMANGA_BASE}/api/manga/${slug}/chapters`;
 
-        const res = await fetch(apiUrl, { headers: this.getHeaders() });
-        if (!res.ok) {
-            console.error(`[NeloManga] API chapters failed: ${res.status}`);
+        let res: Response;
+        try {
+            res = await fetchWithRetry(apiUrl, { headers: this.getHeaders() });
+        } catch (error) {
+            if (error instanceof ScraperRequestError) {
+                console.error(`[NeloManga] API chapters failed (${error.kind})`);
+            }
             // Fallback to HTML scraping if API fails
             return this.fetchChaptersFromHtml(url);
         }
@@ -45,7 +58,8 @@ export class NeloMangaScraper implements Scraper {
                 return this.fetchChaptersFromHtml(url);
             }
 
-            return result.data.chapters.map((ch: any) => ({
+            return (result.data.chapters as NeloChapterApiItem[]).map((ch) => ({
+                providerChapterId: ch.chapter_slug,
                 url: `https://www.nelomanga.net/manga/${slug}/${ch.chapter_slug}`,
                 chapterNumber: ch.chapter_num,
                 title: ch.chapter_name,
@@ -59,8 +73,7 @@ export class NeloMangaScraper implements Scraper {
 
     private async fetchChaptersFromHtml(url: string): Promise<ScrapedChapter[]> {
         console.log(`[NeloManga] Falling back to HTML chapters for: ${url}`);
-        const res = await fetch(url, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error(`Failed to fetch NeloManga page: ${res.status}`);
+        const res = await fetchWithRetry(url, { headers: this.getHeaders() });
         const html = await res.text();
 
         const chapters: ScrapedChapter[] = [];
@@ -75,6 +88,7 @@ export class NeloMangaScraper implements Scraper {
                 const numMatch = text.match(/([\d.]+)/);
                 if (numMatch) {
                     chapters.push({
+                        providerChapterId: link,
                         url: link.startsWith('http') ? link : `https://www.nelomanga.net${link}`,
                         chapterNumber: parseFloat(numMatch[1]),
                         title: text,
@@ -88,8 +102,7 @@ export class NeloMangaScraper implements Scraper {
 
     async fetchMetadata(url: string): Promise<MangaMetadata> {
         console.log(`[NeloManga] Fetching metadata for: ${url}`);
-        const res = await fetch(url, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error(`Failed to fetch NeloManga metadata: ${res.status}`);
+        const res = await fetchWithRetry(url, { headers: this.getHeaders() });
         const html = await res.text();
 
         const titleMatch = html.match(/<h1>([^<]+)<\/h1>/i);
@@ -123,12 +136,7 @@ export class NeloMangaScraper implements Scraper {
         const searchUrl = `https://www.nelomanga.net/home/search/json?searchword=${encodeURIComponent(slug)}`;
 
         try {
-            const res = await fetch(searchUrl, { headers: this.getHeaders() });
-
-            if (!res.ok) {
-                console.error(`[NeloManga] Search failed: ${res.status}`);
-                return [];
-            }
+            const res = await fetchWithRetry(searchUrl, { headers: this.getHeaders() });
 
             const data = await res.json();
 
@@ -142,7 +150,11 @@ export class NeloMangaScraper implements Scraper {
                 description: `Latest: ${manga.chapterLatest || "Unknown"}`
             }));
         } catch (e) {
-            console.error("[NeloManga] Search parse error", e);
+            if (e instanceof ScraperRequestError) {
+                console.error(`[NeloManga] Search request failed (${e.kind})`, e);
+            } else {
+                console.error("[NeloManga] Search parse error", e);
+            }
             return [];
         }
     }

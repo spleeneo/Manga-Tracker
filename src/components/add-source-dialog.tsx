@@ -117,7 +117,7 @@ export function AddSourceDialog({ mangaId }: AddSourceDialogProps) {
                                 className="w-full rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0 placeholder:text-muted-foreground/40"
                             />
                             <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/40">
-                                Supported: MangaDex, NeloManga
+                                Supported: MangaDex, NeloManga, MangaPlus, Webtoon, Manganato
                             </p>
                         </div>
                     </div>

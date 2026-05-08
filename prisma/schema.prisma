@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Manga {
@@ -19,23 +20,33 @@ model Manga {
   updatedAt   DateTime  @updatedAt
   chapters    Chapter[]
   sources     Source[]
+  userManga   UserManga[]
 }
 
 model Source {
-  id         String @id @default(uuid())
-  mangaId    String
-  sourceName String
-  sourceUrl  String
-  manga      Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  chapters   Chapter[]
+  id            String    @id @default(uuid())
+  mangaId       String
+  sourceName    String
+  sourceUrl     String
+  externalId    String?
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  lastError     String?
+  failureCount  Int       @default(0)
+  disabledUntil DateTime?
+  manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  chapters      Chapter[]
+  preferredBy   UserManga[]
 
-  @@unique([mangaId, sourceName])
+  @@unique([mangaId, sourceUrl])
+  @@index([sourceName])
 }
 
 model Chapter {
   id            String    @id @default(uuid())
   mangaId       String
   sourceId      String?
+  providerChapterId String?
   source        Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   chapterNumber Float
   title         String?
@@ -45,7 +56,85 @@ model Chapter {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  userChapters UserChapter[]
 
-  @@unique([sourceId, chapterNumber])
+  @@unique([sourceId, providerChapterId])
   @@index([mangaId, chapterNumber])
+  @@index([sourceId, chapterNumber])
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String?       @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  library       UserManga[]
+  chapters      UserChapter[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model UserManga {
+  id                String    @id @default(cuid())
+  userId            String
+  mangaId           String
+  status            String    @default("READING")
+  preferredSourceId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga             Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  preferredSource   Source?   @relation(fields: [preferredSourceId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, mangaId])
+  @@index([mangaId])
+}
+
+model UserChapter {
+  id        String    @id @default(cuid())
+  userId    String
+  chapterId String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter   Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([chapterId])
 }

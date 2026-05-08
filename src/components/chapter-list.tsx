@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChapterItem } from "./chapter-item";
 import { CheckUpdatesButton } from "./check-updates-button";
 import { RefreshMetadataButton } from "./refresh-metadata-button";
-import { Loader2, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 interface Source {
     id: string;
@@ -29,24 +29,15 @@ interface ChapterListProps {
     initialChapters: Chapter[];
 }
 
-export function ChapterList({ mangaId, slug, initialSources, initialChapters }: ChapterListProps) {
+export function ChapterList({ slug, initialSources, initialChapters }: ChapterListProps) {
     const [selectedSourceId, setSelectedSourceId] = useState<string | "all">(
         initialSources.length > 0 ? initialSources[0].id : "all"
     );
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [, setIsRefreshing] = useState(false);
+    const autoRefreshAttempts = useRef<Set<string>>(new Set());
 
-    // Auto-fetch if no chapters for selected source
-    useEffect(() => {
-        if (selectedSourceId === "all") return;
-
-        const sourceChapters = chapters.filter(c => c.sourceId === selectedSourceId);
-        if (sourceChapters.length === 0) {
-            handleRefresh();
-        }
-    }, [selectedSourceId]);
-
-    const handleRefresh = async () => {
+    const handleRefresh = useCallback(async () => {
         setIsRefreshing(true);
         try {
             const res = await fetch(`/api/manga/${slug}/check-updates`, {
@@ -65,7 +56,22 @@ export function ChapterList({ mangaId, slug, initialSources, initialChapters }: 
         } finally {
             setIsRefreshing(false);
         }
-    };
+    }, [slug]);
+
+    // Auto-fetch if no chapters for selected source
+    useEffect(() => {
+        if (selectedSourceId === "all") return;
+
+        const sourceChapters = chapters.filter(c => c.sourceId === selectedSourceId);
+        if (sourceChapters.length > 0 || autoRefreshAttempts.current.has(selectedSourceId)) return;
+
+        autoRefreshAttempts.current.add(selectedSourceId);
+        const timeoutId = window.setTimeout(() => {
+            void handleRefresh();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [chapters, handleRefresh, selectedSourceId]);
 
     const filteredChapters = selectedSourceId === "all"
         ? chapters

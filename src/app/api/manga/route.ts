@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { fetchMetadata } from "@/lib/scrapers/registry";
+import { getCurrentUserId } from "@/lib/session";
 
 export async function POST(request: Request) {
     try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
         const body = await request.json();
         const { title, slug, coverUrl, status, description, sourceUrl, sources = [] } = body;
 
@@ -11,7 +17,16 @@ export async function POST(request: Request) {
         // If sourceUrl is provided (from manual entry) and not in sources array, add it
         const sourcesToProcess = [...sources];
         if (sourceUrl && !sourcesToProcess.some(s => s.url === sourceUrl)) {
-            sourcesToProcess.push({ url: sourceUrl, name: sourceUrl.includes("mangadex") ? "MangaDex" : sourceUrl.includes("nelomanga") ? "NeloManga" : "Source" });
+            sourcesToProcess.push({
+                url: sourceUrl,
+                name:
+                    sourceUrl.includes("mangadex") ? "MangaDex" :
+                        sourceUrl.includes("nelomanga") ? "NeloManga" :
+                            sourceUrl.includes("mangaplus") ? "MangaPlus" :
+                                sourceUrl.includes("webtoons") ? "Webtoon" :
+                                    (sourceUrl.includes("manganato") || sourceUrl.includes("chapmanganato")) ? "Manganato" :
+                                        "Source"
+            });
         }
 
         let finalMangaData = { title, slug, coverUrl, status, description };
@@ -54,6 +69,21 @@ export async function POST(request: Request) {
             }
         })).id;
 
+        await prisma.userManga.upsert({
+            where: {
+                    userId_mangaId: {
+                    userId,
+                    mangaId,
+                },
+            },
+            update: { status: "READING" },
+            create: {
+                userId,
+                mangaId,
+                status: "READING",
+            },
+        });
+
         // Process all sources
         if (sourcesToProcess.length > 0) {
             console.log(`[API] Processing ${sourcesToProcess.length} sources for manga ${finalMangaData.title}`);
@@ -67,6 +97,8 @@ export async function POST(request: Request) {
                     url.includes("mangadex") ? "MangaDex" :
                         url.includes("nelomanga") ? "NeloManga" :
                             url.includes("mangaplus") ? "MangaPlus" :
+                                url.includes("webtoons") ? "Webtoon" :
+                                    (url.includes("manganato") || url.includes("chapmanganato")) ? "Manganato" :
                                 "Source"
                 );
 
@@ -75,9 +107,9 @@ export async function POST(request: Request) {
                     // We use findUnique first to avoid unique constraint errors if upsert has race conditions or logic issues
                     const existingSource = await prisma.source.findUnique({
                         where: {
-                            mangaId_sourceName: {
+                            mangaId_sourceUrl: {
                                 mangaId: mangaId,
-                                sourceName: name
+                                sourceUrl: url
                             }
                         }
                     });

@@ -34,7 +34,10 @@ export async function checkForUpdates(specificMangaId?: string) {
                     const existing = await prisma.chapter.findFirst({
                         where: {
                             sourceId: source.id,
-                            chapterNumber: ch.chapterNumber
+                            OR: [
+                                ...(ch.providerChapterId ? [{ providerChapterId: ch.providerChapterId }] : []),
+                                { chapterNumber: ch.chapterNumber },
+                            ],
                         }
                     });
 
@@ -43,6 +46,7 @@ export async function checkForUpdates(specificMangaId?: string) {
                             data: {
                                 mangaId: manga.id,
                                 sourceId: source.id,
+                                providerChapterId: ch.providerChapterId,
                                 chapterNumber: ch.chapterNumber,
                                 title: ch.title,
                                 url: ch.url,

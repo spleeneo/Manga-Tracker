@@ -1,19 +1,27 @@
-# Manga Tracker 📚
+# Manga Tracker
 
-A personal manga tracking application that aggregates chapters from multiple sources (MangaDex, NeloManga, etc.) into a single, clean interface.
+A personal manga tracking application that aggregates chapters from multiple free sources (official and community) into a single interface.
 
 ## Features
 
-- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, and more.
+- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, MangaPlus, Webtoon, Manganato, and more.
 - **Unified Library**: Track all your reading progress in one place.
 - **Auto-Updates**: Automatically fetch new chapters from tracked sources.
 - **Clean UI**: A solid, distraction-free interface (no glassmorphism!) designed for readability.
 - **Click-to-Add**: Easily add manga from search results with a single click.
 
+## Chosen Free Stack
+
+- **Hosting**: Vercel Hobby
+- **Database**: Neon Free Postgres
+- **ORM**: Prisma with Neon pooled runtime connections
+- **Scheduler**: Vercel Cron hitting `GET /api/cron/update` daily
+
 ## Prerequisites
 
 - **Node.js**: Version 18 or higher recommended.
 - **npm**: Comes with Node.js.
+- **Neon Postgres**: Create a free Neon project and copy both connection strings.
 
 ## Installation & Setup
 
@@ -22,13 +30,18 @@ A personal manga tracking application that aggregates chapters from multiple sou
     npm install
     ```
 
-2.  **Database Setup**
-    This project uses SQLite via Prisma. You need to push the schema to create the database file.
+2.  **Environment Setup**
+    Copy `.env.example` to `.env` and fill in the Neon connection strings.
+    Use the pooled connection string for `DATABASE_URL` and the direct connection string for `DIRECT_URL`.
+    Without `DATABASE_URL`, the app will show a setup screen instead of querying the database.
+
+3.  **Database Setup**
+    This project uses Postgres via Prisma. Apply migrations to create the tables.
     ```bash
-    npx prisma db push
+    npm run db:migrate
     ```
 
-3.  **Run the Development Server**
+4.  **Run the Development Server**
     ```bash
     npm run dev
     ```
@@ -36,13 +49,36 @@ A personal manga tracking application that aggregates chapters from multiple sou
 
 ## Development Commands
 
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Starts the development server at localhost:3000 |
-| `npm run build` | Builds the application for production |
-| `npm run start` | Starts the production server |
-| `npm run lint` | Runs the linter to check for code issues |
-| `npm run db:reset` | **⚠️ WIPES DATABASE**: Deletes all manga, sources, and chapters. |
+- `npm run dev`: starts the development server at `localhost:3000`.
+- `npm run build`: builds the application for production.
+- `npm run start`: starts the production server.
+- `npm run lint`: runs the linter to check for code issues.
+- `npm run test`: runs automated tests with Vitest.
+- `npm run db:generate`: regenerates Prisma Client.
+- `npm run db:migrate`: applies Prisma migrations.
+- `npm run db:reset`: wipes all manga, sources, and chapters.
+
+## Operational Endpoints
+
+- `GET /api/health`: service health/readiness endpoint (database + provider status).
+- `GET /api/cron/update`: triggers update scan for all ongoing manga.
+  - Requires `CRON_SECRET` and one of:
+    - `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automatically when `CRON_SECRET` exists),
+    - header `x-cron-secret`, or
+    - query param `?secret=...`
+
+## Deploying on Vercel + Neon
+
+1. Create a Neon project on the free plan.
+2. In Vercel project settings, set:
+   - `DATABASE_URL`: Neon pooled connection string.
+   - `DIRECT_URL`: Neon direct connection string.
+   - `CRON_SECRET`: a random string of at least 16 characters.
+3. Deploy the app from GitHub.
+4. Vercel will run `postinstall` and generate Prisma Client.
+5. Run `npm run db:migrate` locally against Neon, or use `npx prisma migrate deploy` in a trusted deployment step.
+
+`vercel.json` schedules the update cron once per day at 05:00 UTC. Increase frequency only after checking provider rate limits and Vercel/Neon free-tier usage.
 
 ## Resetting the Database
 

@@ -2,12 +2,27 @@ import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult } from "
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
+import { WebtoonScraper } from "./webtoon";
+import { ManganatoScraper } from "./manganato";
 
 const scrapers: Scraper[] = [
     new MangaDexScraper(),
     new NeloMangaScraper(),
     new MangaPlusScraper(),
+    new WebtoonScraper(),
+    new ManganatoScraper(),
 ];
+
+export function getRegisteredScrapers(): Scraper[] {
+    return [...scrapers];
+}
+
+export function getScraperStatus() {
+    return scrapers.map((scraper) => ({
+        name: scraper.name,
+        capabilities: scraper.capabilities ?? { search: true, metadata: true, chapters: true },
+    }));
+}
 
 export async function scrapeChapters(url: string): Promise<ScrapedChapter[]> {
     const scraper = scrapers.find(s => s.canHandle(url));
