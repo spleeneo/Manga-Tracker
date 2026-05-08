@@ -4,6 +4,7 @@ import { BookOpen, ExternalLink, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AddSourceDialog } from "@/components/add-source-dialog";
 import { ChapterList } from "@/components/chapter-list";
+import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
 
 interface PageProps {
@@ -98,6 +99,9 @@ export default async function MangaPage({ params }: PageProps) {
                         <ArrowLeft className="h-4 w-4" />
                         Back to Library
                     </Link>
+                    <div className="absolute right-4 top-6">
+                        <ThemeSelector />
+                    </div>
                 </div>
             </div>
 

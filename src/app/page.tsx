@@ -2,6 +2,7 @@ import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { MangaCard } from "@/components/manga-card";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
+import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../auth";
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,10 @@ export default async function Home() {
             <h1 className="text-2xl font-bold tracking-tight text-primary">
               Manga Tracker
             </h1>
-            <AuthButton />
+            <div className="flex items-center gap-3">
+              <ThemeSelector />
+              <AuthButton />
+            </div>
           </div>
         </header>
 
@@ -80,6 +84,7 @@ export default async function Home() {
           </h1>
           <div className="flex items-center gap-3">
             {session?.user && <AddMangaDialog />}
+            <ThemeSelector />
             <AuthButton />
           </div>
         </div>
