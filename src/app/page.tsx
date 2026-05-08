@@ -46,6 +46,12 @@ export default async function Home() {
             include: {
               chapters: {
                 orderBy: { chapterNumber: 'desc' },
+                include: {
+                  userChapters: {
+                    where: { userId: session.user.id },
+                    select: { isRead: true },
+                  },
+                },
               },
               sources: true,
             }
@@ -53,7 +59,13 @@ export default async function Home() {
         }
       });
 
-      mangas = library.map((entry) => entry.manga);
+      mangas = library.map((entry) => ({
+        ...entry.manga,
+        chapters: entry.manga.chapters.map((chapter) => ({
+          ...chapter,
+          isRead: chapter.userChapters[0]?.isRead ?? false,
+        })),
+      }));
     } catch (e) {
       console.error("Failed to load mangas - database might not be initialized", e);
     }

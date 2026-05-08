@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Play, CheckCircle2, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { BookOpen, Play, CheckCircle2, Info, Check, ListChecks, Loader2 } from "lucide-react";
 
 interface Manga {
     id: string;
@@ -9,15 +11,77 @@ interface Manga {
     slug: string;
     coverUrl: string | null;
     status: string | null;
-    chapters: { chapterNumber: number; isRead: boolean; url: string }[];
+    chapters: { id: string; chapterNumber: number; isRead: boolean; url: string; releaseDate?: Date | string | null }[];
 }
 
 export function MangaCard({ manga }: { manga: Manga }) {
-    const totalChapters = manga.chapters.length;
-    const readChapters = manga.chapters.filter(c => c.isRead).length;
-    const latestChapter = manga.chapters[0];
+    const router = useRouter();
+    const [loadingAction, setLoadingAction] = useState<"latest" | "catch-up" | null>(null);
+    const chapterGroups = useMemo(() => {
+        const groups = new Map<string, Manga["chapters"]>();
+        for (const chapter of manga.chapters) {
+            const key = Number.isFinite(chapter.chapterNumber)
+                ? chapter.chapterNumber.toFixed(3)
+                : chapter.id;
+            groups.set(key, [...(groups.get(key) ?? []), chapter]);
+        }
+
+        return Array.from(groups.values())
+            .map((group) => ({
+                chapterNumber: group[0].chapterNumber,
+                isRead: group.some((chapter) => chapter.isRead),
+                candidates: group,
+                best: [...group].sort((a, b) => {
+                    const bTime = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
+                    const aTime = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
+                    return bTime - aTime;
+                })[0],
+            }))
+            .sort((a, b) => b.chapterNumber - a.chapterNumber);
+    }, [manga.chapters]);
+
+    const totalChapters = chapterGroups.length;
+    const readChapters = chapterGroups.filter(c => c.isRead).length;
+    const latestChapter = chapterGroups[0]?.best;
     const progress = totalChapters > 0 ? (readChapters / totalChapters) * 100 : 0;
     const isCompleted = readChapters === totalChapters && totalChapters > 0;
+    const latestGroup = chapterGroups[0];
+
+    const markChaptersRead = async (chapterIds: string[], action: "latest" | "catch-up") => {
+        if (chapterIds.length === 0) return;
+
+        setLoadingAction(action);
+        try {
+            await Promise.all(chapterIds.map((chapterId) => (
+                fetch(`/api/manga/chapter/${chapterId}/read`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isRead: true })
+                })
+            )));
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to update reading progress");
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const markLatestRead = () => {
+        if (!latestGroup) return;
+        const unreadLatestIds = latestGroup.candidates
+            .filter((chapter) => !chapter.isRead)
+            .map((chapter) => chapter.id);
+        void markChaptersRead(unreadLatestIds, "latest");
+    };
+
+    const catchUp = () => {
+        const unreadIds = manga.chapters
+            .filter((chapter) => !chapter.isRead)
+            .map((chapter) => chapter.id);
+        void markChaptersRead(unreadIds, "catch-up");
+    };
 
     return (
         <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/50">
@@ -98,6 +162,31 @@ export function MangaCard({ manga }: { manga: Manga }) {
                         <span>VOL. {latestChapter.chapterNumber}</span>
                     )}
                 </div>
+
+                {!isCompleted && latestChapter && (
+                    <div className="relative z-20 mt-3 grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={markLatestRead}
+                            disabled={loadingAction !== null || latestGroup?.isRead}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-input bg-background px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                            title={`Mark chapter ${latestChapter.chapterNumber} as read`}
+                        >
+                            {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                            Latest
+                        </button>
+                        <button
+                            type="button"
+                            onClick={catchUp}
+                            disabled={loadingAction !== null}
+                            className="inline-flex items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Mark all current chapters as read"
+                        >
+                            {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ListChecks className="h-3 w-3" />}
+                            Catch up
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Main Link for accessibility/clicking anywhere else */}
