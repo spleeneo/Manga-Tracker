@@ -84,7 +84,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
     };
 
     return (
-        <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/50">
+        <div className="interactive-surface group relative flex flex-col overflow-hidden rounded-lg">
             <div className="aspect-[2/3] w-full overflow-hidden bg-muted relative">
                 {manga.coverUrl ? (
                     <img
@@ -100,10 +100,10 @@ export function MangaCard({ manga }: { manga: Manga }) {
 
                 {/* Status Badge */}
                 {manga.status && (
-                    <div className="absolute top-2 left-2">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded shadow-sm ${manga.status === 'ONGOING' ? 'bg-green-500 text-white' :
-                            manga.status === 'COMPLETED' ? 'bg-blue-500 text-white' :
-                                'bg-yellow-500 text-white'
+                    <div className="absolute left-2 top-2">
+                        <span className={`status-pill shadow-sm ${manga.status === 'ONGOING' ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                            manga.status === 'COMPLETED' ? 'border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300' :
+                                'border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300'
                             }`}>
                             {manga.status}
                         </span>
@@ -111,13 +111,13 @@ export function MangaCard({ manga }: { manga: Manga }) {
                 )}
 
                 {/* Hover Action Overlay - Solid style */}
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent translate-y-full transition-transform duration-300 group-hover:translate-y-0 flex gap-2">
+                <div className="absolute inset-x-0 bottom-0 flex gap-2 bg-gradient-to-t from-black/85 to-transparent p-3 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
                     {latestChapter && (
                         <a
                             href={latestChapter.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="relative z-20 flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
+                            className="relative z-20 flex flex-1 items-center justify-center gap-2 rounded-md bg-primary py-2 text-xs font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.98]"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Play className="h-3 w-3 fill-current" />
@@ -126,7 +126,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
                     )}
                     <Link
                         href={`/manga/${manga.slug}`}
-                        className="relative z-20 flex items-center justify-center rounded-lg bg-white text-black p-2 hover:bg-zinc-200 transition-colors shadow-lg"
+                        className="relative z-20 flex items-center justify-center rounded-md bg-white p-2 text-black shadow-lg transition-all hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.98]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <Info className="h-4 w-4" />
@@ -142,12 +142,12 @@ export function MangaCard({ manga }: { manga: Manga }) {
                 </div>
             </div>
 
-            <div className="flex flex-1 flex-col p-4">
+            <div className="flex flex-1 flex-col p-3.5">
                 <h3 className="line-clamp-1 text-base font-bold tracking-tight mb-1" title={manga.title}>
                     {manga.title}
                 </h3>
 
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex items-center gap-1">
                         {isCompleted ? (
                             <span className="flex items-center gap-1 text-green-500">
@@ -169,7 +169,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
                             type="button"
                             onClick={markLatestRead}
                             disabled={loadingAction !== null || latestGroup?.isRead}
-                            className="inline-flex items-center justify-center gap-1 rounded-md border border-input bg-background px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                            className="ui-button ui-button-secondary min-h-8 px-2 py-1.5 text-[11px] uppercase"
                             title={`Mark chapter ${latestChapter.chapterNumber} as read`}
                         >
                             {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
@@ -179,7 +179,7 @@ export function MangaCard({ manga }: { manga: Manga }) {
                             type="button"
                             onClick={catchUp}
                             disabled={loadingAction !== null}
-                            className="inline-flex items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="ui-button ui-button-primary min-h-8 px-2 py-1.5 text-[11px] uppercase"
                             title="Mark all current chapters as read"
                         >
                             {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ListChecks className="h-3 w-3" />}

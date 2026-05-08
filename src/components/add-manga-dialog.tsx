@@ -125,7 +125,7 @@ export function AddMangaDialog() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="group relative flex items-center gap-2 overflow-hidden rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(var(--primary),0.4)] active:scale-95"
+                className="ui-button ui-button-primary"
             >
                 <Plus className="h-4 w-4" />
                 <span>Track New Manga</span>
@@ -134,17 +134,17 @@ export function AddMangaDialog() {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="dialog-overlay sm:p-6">
             <div
-                className="absolute inset-0 bg-black/80 animate-in fade-in duration-300"
+                className="absolute inset-0"
                 onClick={() => setIsOpen(false)}
             />
 
-            <div className="relative w-full max-w-xl overflow-hidden rounded-xl border-2 border-zinc-200 bg-white shadow-2xl animate-in zoom-in-95 duration-300 sm:max-w-2xl">
+            <div className="dialog-panel max-w-xl sm:max-w-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b px-6 py-4">
+                <div className="flex items-center justify-between border-b bg-card px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                        <div className="rounded-md bg-primary/10 p-2 text-primary">
                             <Plus className="h-5 w-5" />
                         </div>
                         <div>
@@ -154,35 +154,36 @@ export function AddMangaDialog() {
                     </div>
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        className="ui-icon-button"
+                        aria-label="Close"
                     >
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <div className="flex border-b bg-muted/30">
+                <div className="flex gap-2 border-b bg-muted/35 p-2">
                     <button
                         onClick={() => setMode("SEARCH")}
-                        className={`flex-1 px-4 py-3.5 text-sm font-bold transition-all ${mode === "SEARCH" ? "bg-card text-primary shadow-[inset_0_-2px_0_0_currentColor]" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                        className={`ui-tab flex-1 ${mode === "SEARCH" ? "ui-tab-active" : "bg-card"}`}
                     >
                         SEARCH ONLINE
                     </button>
                     <button
                         onClick={() => setMode("MANUAL")}
-                        className={`flex-1 px-4 py-3.5 text-sm font-bold transition-all ${mode === "MANUAL" ? "bg-card text-primary shadow-[inset_0_-2px_0_0_currentColor]" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                        className={`ui-tab flex-1 ${mode === "MANUAL" ? "ui-tab-active" : "bg-card"}`}
                     >
                         MANUAL ENTRY
                     </button>
                 </div>
 
-                <div className="p-8">
+                <div className="max-h-[72vh] overflow-y-auto p-6 custom-scrollbar sm:p-8">
                     {mode === "SEARCH" ? (
                         <div className="space-y-6">
                             <div className="relative">
                                 <input
                                     autoFocus
                                     placeholder="Search (e.g. Naruto, One Piece...)"
-                                    className="w-full rounded-xl border-2 border-muted bg-muted/50 px-5 py-4 pl-12 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0 placeholder:text-muted-foreground/40"
+                                    className="ui-field pl-12"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -190,15 +191,15 @@ export function AddMangaDialog() {
                                 {isSearching && <Loader2 className="absolute right-4 top-4.5 h-5 w-5 animate-spin text-primary" />}
                             </div>
 
-                            <div className="grid gap-4 max-h-[420px] overflow-y-auto pr-3 custom-scrollbar">
+                            <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
                                 {searchResults.length > 0 ? (
                                     searchResults.map((manga, idx) => (
                                         <button
                                             key={manga.title || idx}
                                             onClick={() => selectManga(manga)}
-                                            className="group flex flex-col sm:flex-row items-center sm:items-start gap-4 rounded-xl border bg-card p-3 text-left transition-all hover:bg-muted/50 hover:border-primary/50"
+                                            className="interactive-surface group flex flex-col items-center gap-4 rounded-lg p-3 text-left sm:flex-row sm:items-start"
                                         >
-                                            <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg bg-muted border">
+                                            <div className="h-28 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
                                                 {manga.coverUrl ? (
                                                     <img src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                                 ) : (
@@ -218,7 +219,7 @@ export function AddMangaDialog() {
                                                                     e.stopPropagation();
                                                                     selectManga(manga, source.url);
                                                                 }}
-                                                                className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground"
                                                             >
                                                                 {source.name}
                                                             </div>
@@ -226,7 +227,7 @@ export function AddMangaDialog() {
                                                     ) : (
                                                         <span className="text-xs text-red-500">No sources</span>
                                                     )}
-                                                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded">{manga.status}</span>
+                                                    <span className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{manga.status}</span>
                                                 </div>
                                             </div>
                                         </button>
@@ -249,35 +250,35 @@ export function AddMangaDialog() {
                             <div className="grid gap-8 sm:grid-cols-2">
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Title</label>
+                                        <label className="ui-label">Title</label>
                                         <input
                                             required
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                             placeholder="e.g. One Piece"
-                                            className="w-full rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0"
+                                            className="ui-field"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Slug</label>
+                                        <label className="ui-label">Slug</label>
                                         <input
                                             required
                                             value={formData.slug}
                                             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                                             placeholder="e.g. one-piece"
-                                            className="w-full rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0"
+                                            className="ui-field"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Source URL (Auto-Track)</label>
+                                        <label className="ui-label">Source URL (Auto-Track)</label>
                                         <div className="group relative">
                                             <input
                                                 value={formData.sourceUrl}
                                                 onChange={(e) => setFormData({ ...formData, sourceUrl: e.target.value })}
                                                 placeholder="https://mangadex.org/..."
-                                                className="w-full rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 pl-11 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0"
+                                                className="ui-field pl-11"
                                             />
                                             <Link2 className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
                                         </div>
@@ -286,43 +287,43 @@ export function AddMangaDialog() {
 
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Cover URL</label>
+                                        <label className="ui-label">Cover URL</label>
                                         <div className="group relative">
                                             <input
                                                 value={formData.coverUrl}
                                                 onChange={(e) => setFormData({ ...formData, coverUrl: e.target.value })}
                                                 placeholder="https://..."
-                                                className="w-full rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 pl-11 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0"
+                                                className="ui-field pl-11"
                                             />
                                             <ImageIcon className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Description</label>
+                                        <label className="ui-label">Description</label>
                                         <textarea
                                             rows={6}
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             placeholder="Manga overview..."
-                                            className="w-full resize-none rounded-xl border-2 border-muted bg-muted/40 px-4 py-3 font-medium transition-all focus:border-primary focus:bg-card focus:ring-0"
+                                            className="ui-field resize-none"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mt-8 flex items-center justify-end gap-3 border-t pt-8">
+                            <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end">
                                 <button
                                     type="button"
                                     onClick={() => setMode("SEARCH")}
-                                    className="rounded-xl px-8 py-3 text-sm font-bold tracking-wide text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                                    className="ui-button ui-button-ghost"
                                 >
                                     BACK TO SEARCH
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex min-w-[160px] items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-bold tracking-wide text-primary-foreground shadow-xl shadow-primary/20 transition-all hover:translate-y-[-2px] hover:shadow-primary/30 active:translate-y-0 disabled:opacity-70"
+                                    className="ui-button ui-button-primary min-w-[160px]"
                                 >
                                     {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "TRACK MANGA"}
                                 </button>

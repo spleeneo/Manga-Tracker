@@ -50,7 +50,7 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
             href={chapter.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`group relative flex flex-col rounded-lg border p-4 transition-all hover:bg-accent hover:shadow-md ${isRead ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
+            className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${isRead ? 'bg-muted/35 opacity-70' : ''}`}
         >
             <div className="flex items-center justify-between mb-1">
                 <span className={`font-bold ${isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
@@ -59,7 +59,8 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
                 <button
                     onClick={toggleRead}
                     disabled={loading}
-                    className={`flex h-6 w-6 items-center justify-center rounded-full border transition-all ${isRead ? 'bg-primary border-primary text-primary-foreground' : 'hover:border-primary hover:text-primary border-muted-foreground/30'}`}
+                    className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isRead ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30 bg-card text-muted-foreground hover:border-primary hover:bg-primary/10 hover:text-primary'}`}
+                    aria-label={isRead ? "Mark chapter unread" : "Mark chapter read"}
                 >
                     {loading ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -72,28 +73,28 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
             </div>
 
             {chapter.title && (
-                <span className="text-sm text-muted-foreground line-clamp-1 mb-2">{chapter.title}</span>
+                <span className="mb-2 line-clamp-1 text-sm text-muted-foreground">{chapter.title}</span>
             )}
 
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
                 {chapter.sourceName && (
-                    <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
                         {chapter.sourceName}
                     </span>
                 )}
                 {chapter.alternativeCount ? (
-                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <span className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
                         +{chapter.alternativeCount} alt
                     </span>
                 ) : null}
                 {chapter.releaseDate && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground/70">
                         {new Date(chapter.releaseDate).toLocaleDateString()}
                     </span>
                 )}
             </div>
 
-            {isRead && <div className="absolute inset-0 bg-background/5 pointer-events-none rounded-lg" />}
+            {isRead && <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-muted-foreground/20" />}
         </a>
     );
 }

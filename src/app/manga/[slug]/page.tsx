@@ -99,20 +99,20 @@ export default async function MangaPage({ params }: PageProps) {
     return (
         <div className="min-h-screen bg-background pb-12">
             {/* Header / Banner Area */}
-            <div className="relative h-64 w-full overflow-hidden bg-muted">
+            <div className="relative h-60 w-full overflow-hidden border-b bg-muted">
                 {manga.coverUrl && (
                     <div
-                        className="absolute inset-0 bg-cover bg-center opacity-30"
+                        className="absolute inset-0 bg-cover bg-center opacity-25"
                         style={{ backgroundImage: `url(/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)})` }}
                     />
                 )}
                 {/* Dark gradient overlay for text readability if needed, though mostly decorative here */}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
 
-                <div className="container mx-auto relative h-full px-4">
+                <div className="page-wrap relative h-full">
                     <Link
                         href="/"
-                        className="absolute top-6 left-4 inline-flex items-center gap-2 rounded-full bg-background px-4 py-2 text-sm font-bold shadow-md hover:bg-muted transition-colors border"
+                        className="ui-button ui-button-secondary absolute left-4 top-6"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Back to Library
@@ -123,11 +123,11 @@ export default async function MangaPage({ params }: PageProps) {
                 </div>
             </div>
 
-            <div className="container mx-auto -mt-32 px-4 relative z-10">
-                <div className="grid gap-8 md:grid-cols-[300px_1fr]">
+            <div className="page-wrap relative z-10 -mt-28">
+                <div className="grid gap-6 md:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr]">
                     {/* Sidebar / Cover */}
-                    <div className="flex flex-col gap-4">
-                        <div className="aspect-[2/3] overflow-hidden rounded-xl border bg-card shadow-2xl relative group">
+                    <div className="mx-auto flex w-full max-w-[260px] flex-col gap-4 md:mx-0 xl:max-w-[280px]">
+                        <div className="surface group relative aspect-[2/3] overflow-hidden rounded-lg">
                             {manga.coverUrl ? (
                                 <img
                                     src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
@@ -141,7 +141,7 @@ export default async function MangaPage({ params }: PageProps) {
                             )}
                         </div>
 
-                        <div className="rounded-xl border bg-card p-4 shadow-sm">
+                        <div className="surface rounded-lg p-4">
                             <h3 className="font-semibold mb-3">Sources</h3>
                             {manga.sources.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No sources linked yet.</p>
@@ -153,7 +153,7 @@ export default async function MangaPage({ params }: PageProps) {
                                                 href={source.sourceUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 text-sm text-primary hover:underline hover:text-primary/80"
+                                                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                             >
                                                 <ExternalLink className="h-3 w-3" />
                                                 {source.sourceName}
@@ -169,13 +169,13 @@ export default async function MangaPage({ params }: PageProps) {
                     </div>
 
                     {/* Main Content */}
-                    <div className="space-y-8 pt-8 md:pt-32">
+                    <div className="min-w-0 space-y-6 pt-8 md:pt-28">
                         <div>
                             <h1 className="text-4xl font-bold tracking-tight">{manga.title}</h1>
                             <div className="mt-2 flex items-center gap-4 text-muted-foreground">
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${manga.status === 'ONGOING' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                    manga.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                        'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                <span className={`status-pill ${manga.status === 'ONGOING' ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                                    manga.status === 'COMPLETED' ? 'border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300' :
+                                        'border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300'
                                     }`}>
                                     {manga.status || 'Unknown Status'}
                                 </span>
@@ -184,7 +184,7 @@ export default async function MangaPage({ params }: PageProps) {
                         </div>
 
                         {manga.description && (
-                            <div className="prose prose-stone dark:prose-invert max-w-none">
+                            <div className="surface-soft rounded-lg p-4 text-sm leading-7 text-muted-foreground">
                                 <p>{manga.description}</p>
                             </div>
                         )}

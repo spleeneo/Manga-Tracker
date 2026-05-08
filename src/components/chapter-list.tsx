@@ -131,14 +131,15 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
     const sortedChapters = [...filteredChapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="space-y-5">
+            <div className="surface rounded-lg p-3 sm:p-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={() => setSelectedSourceId("all")}
-                        className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === "all"
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
-                            : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:bg-accent hover:text-accent-foreground"
+                        className={`ui-tab whitespace-nowrap ${selectedSourceId === "all"
+                            ? "ui-tab-active"
+                            : "bg-card"
                             }`}
                         aria-pressed={selectedSourceId === "all"}
                     >
@@ -148,9 +149,9 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                         <button
                             key={source.id}
                             onClick={() => setSelectedSourceId(source.id)}
-                            className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === source.id
-                                ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
-                                : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:bg-accent hover:text-accent-foreground"
+                            className={`ui-tab whitespace-nowrap ${selectedSourceId === source.id
+                                ? "ui-tab-active"
+                                : "bg-card"
                                 }`}
                             aria-pressed={selectedSourceId === source.id}
                         >
@@ -162,6 +163,7 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                 <div className="flex shrink-0 items-center gap-2">
                     <CheckUpdatesButton slug={slug} />
                     <RefreshMetadataButton slug={slug} />
+                </div>
                 </div>
             </div>
 
@@ -181,13 +183,13 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
             )}
 
             {selectedSourceId === "all" && chapters.length !== sortedChapters.length && (
-                <p className="text-xs text-muted-foreground">
+                <p className="rounded-md border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
                     Showing one best chapter per chapter number. Source-specific duplicates are still available from the provider tabs.
                 </p>
             )}
 
             {sortedChapters.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
+                <div className="rounded-lg border border-dashed bg-card/60 p-12 text-center text-muted-foreground">
                     No chapters found for this source.
                 </div>
             ) : (

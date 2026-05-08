@@ -7,7 +7,7 @@ export async function AuthButton() {
   if (!session?.user) {
     if (!isGoogleConfigured) {
       return (
-        <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+        <span className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
           Google auth setup needed
         </span>
       );
@@ -20,7 +20,7 @@ export async function AuthButton() {
           await signIn("google");
         }}
       >
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+        <button className="ui-button ui-button-primary">
           Sign in with Google
         </button>
       </form>
@@ -39,7 +39,7 @@ export async function AuthButton() {
           await signOut();
         }}
       >
-        <button className="rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+        <button className="ui-button ui-button-secondary">
           Sign out
         </button>
       </form>

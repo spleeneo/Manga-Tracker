@@ -13,20 +13,20 @@ export default async function Home() {
   if (!isDatabaseConfigured) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b">
-          <div className="container mx-auto flex h-16 items-center justify-between px-4">
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
+        <header className="app-header">
+          <div className="page-wrap flex h-16 items-center justify-between">
+            <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
               Manga Tracker
             </h1>
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <ThemeSelector />
               <AuthButton />
             </div>
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
+        <main className="page-wrap py-8">
+          <div className="empty-state">
             <h2 className="text-xl font-semibold">Database setup needed</h2>
             <p className="mt-2 max-w-xl text-muted-foreground">
               Create a free Neon Postgres database, copy `.env.example` to `.env`, fill `DATABASE_URL` and `DIRECT_URL`, then run `npm run db:migrate`.
@@ -77,12 +77,12 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
+      <header className="app-header">
+        <div className="page-wrap flex h-16 items-center justify-between">
+            <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
             Manga Tracker
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {session?.user && <AddMangaDialog />}
             <ThemeSelector />
             <AuthButton />
@@ -90,23 +90,23 @@ export default async function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="page-wrap py-8">
         {!session?.user ? (
-          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
+          <div className="empty-state">
             <h2 className="text-xl font-semibold">Sign in to view your library</h2>
             <p className="mt-2 max-w-lg text-muted-foreground">
               Manga, sources, and chapters are shared in the background, but your tracked library and read progress are private to your account.
             </p>
           </div>
         ) : mangas.length === 0 ? (
-          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
+          <div className="empty-state">
             <h2 className="text-xl font-semibold">No manga tracked yet</h2>
             <p className="mt-2 text-muted-foreground">
               Add your first manga to start tracking releases.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {mangas.map((manga) => (
               <MangaCard key={manga.id} manga={manga} />
             ))}
