@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Manga Tracker",
-    template: "%s | Manga Tracker",
+    default: "Mangateo",
+    template: "%s | Mangateo",
   },
-  description: "Track manga chapters across multiple sources.",
+  description: "Mangateo tracks manga chapters across multiple sources.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -1,6 +1,6 @@
 # Functional Audit Checklist
 
-This checklist captures expected behavior for core Manga Tracker flows and doubles as a source for automated test coverage.
+This checklist captures expected behavior for core Mangateo flows and doubles as a source for automated test coverage.
 
 ## Core API flows
 

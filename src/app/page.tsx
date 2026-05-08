@@ -16,7 +16,7 @@ export default async function Home() {
         <header className="app-header">
           <div className="page-wrap flex h-16 items-center justify-between">
             <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
-              Manga Tracker
+              Mangateo
             </h1>
             <div className="flex min-w-0 items-center gap-3">
               <ThemeSelector />
@@ -80,7 +80,7 @@ export default async function Home() {
       <header className="app-header">
         <div className="page-wrap flex h-16 items-center justify-between">
             <h1 className="shrink-0 whitespace-nowrap text-2xl font-bold tracking-tight">
-            Manga Tracker
+            Mangateo
           </h1>
           <div className="flex min-w-0 items-center gap-3">
             {session?.user && <AddMangaDialog />}

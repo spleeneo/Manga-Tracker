@@ -1,4 +1,4 @@
-# Manga Tracker
+# Mangateo
 
 A personal manga tracking application that aggregates chapters from multiple free sources (official and community) into a single interface.
 

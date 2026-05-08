@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark" | "system";
 
-const storageKey = "manga-tracker-theme";
+const storageKey = "mangateo-theme";
+const legacyStorageKey = "manga-tracker-theme";
 
 function applyTheme(theme: Theme) {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -17,7 +18,11 @@ export function ThemeSelector() {
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
-    const storedTheme = (localStorage.getItem(storageKey) as Theme | null) ?? "system";
+    const legacyTheme = localStorage.getItem(legacyStorageKey) as Theme | null;
+    const storedTheme = (localStorage.getItem(storageKey) as Theme | null) ?? legacyTheme ?? "system";
+    if (legacyTheme && !localStorage.getItem(storageKey)) {
+      localStorage.setItem(storageKey, legacyTheme);
+    }
     applyTheme(storedTheme);
     window.queueMicrotask(() => setTheme(storedTheme));
 
