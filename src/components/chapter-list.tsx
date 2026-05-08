@@ -20,6 +20,8 @@ interface Chapter {
     releaseDate: Date | null;
     isRead: boolean;
     sourceId: string | null;
+    sourceName?: string;
+    alternativeCount?: number;
 }
 
 interface ChapterListProps {
@@ -31,7 +33,7 @@ interface ChapterListProps {
 
 export function ChapterList({ slug, initialSources, initialChapters }: ChapterListProps) {
     const [selectedSourceId, setSelectedSourceId] = useState<string | "all">(
-        initialSources.length > 0 ? initialSources[0].id : "all"
+        "all"
     );
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
     const [, setIsRefreshing] = useState(false);
@@ -73,9 +75,55 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
         return () => window.clearTimeout(timeoutId);
     }, [chapters, handleRefresh, selectedSourceId]);
 
+    const sourceById = new Map(initialSources.map((source) => [source.id, source]));
+
+    const getSourceRank = (sourceName?: string) => {
+        switch (sourceName?.toLowerCase()) {
+            case "mangaplus":
+                return 5;
+            case "mangadex":
+                return 4;
+            case "webtoon":
+                return 3;
+            case "nelomanga":
+                return 2;
+            case "manganato":
+                return 1;
+            default:
+                return 0;
+        }
+    };
+
+    const getChapterScore = (chapter: Chapter) => {
+        const sourceName = chapter.sourceId ? sourceById.get(chapter.sourceId)?.sourceName : undefined;
+        const sourceRank = getSourceRank(sourceName);
+        const dateScore = chapter.releaseDate ? new Date(chapter.releaseDate).getTime() / 1_000_000_000_000 : 0;
+        return sourceRank * 10 + dateScore;
+    };
+
+    const pickBestChapter = (candidates: Chapter[]) => {
+        return [...candidates].sort((a, b) => getChapterScore(b) - getChapterScore(a))[0];
+    };
+
+    const withSourceMetadata = (chapter: Chapter, alternativeCount = 0): Chapter => ({
+        ...chapter,
+        sourceName: chapter.sourceId ? sourceById.get(chapter.sourceId)?.sourceName : undefined,
+        alternativeCount,
+    });
+
     const filteredChapters = selectedSourceId === "all"
-        ? chapters
-        : chapters.filter(c => c.sourceId === selectedSourceId);
+        ? Array.from(
+            chapters.reduce((groups, chapter) => {
+                const key = Number.isFinite(chapter.chapterNumber)
+                    ? chapter.chapterNumber.toFixed(3)
+                    : chapter.url;
+                groups.set(key, [...(groups.get(key) ?? []), chapter]);
+                return groups;
+            }, new Map<string, Chapter[]>()).values()
+        ).map((group) => withSourceMetadata(pickBestChapter(group), group.length - 1))
+        : chapters
+            .filter(c => c.sourceId === selectedSourceId)
+            .map((chapter) => withSourceMetadata(chapter));
 
     const selectedSource = initialSources.find(s => s.id === selectedSourceId);
 
@@ -88,21 +136,23 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
                     <button
                         onClick={() => setSelectedSourceId("all")}
-                        className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === "all"
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === "all"
+                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
                             }`}
+                        aria-pressed={selectedSourceId === "all"}
                     >
-                        All Sources
+                        Best Available
                     </button>
                     {initialSources.map((source) => (
                         <button
                             key={source.id}
                             onClick={() => setSelectedSourceId(source.id)}
-                            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === source.id
-                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            className={`whitespace-nowrap rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${selectedSourceId === source.id
+                                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                 }`}
+                            aria-pressed={selectedSourceId === source.id}
                         >
                             {source.sourceName}
                         </button>
@@ -128,6 +178,12 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                         {selectedSource.sourceUrl}
                     </a>
                 </div>
+            )}
+
+            {selectedSourceId === "all" && chapters.length !== sortedChapters.length && (
+                <p className="text-xs text-muted-foreground">
+                    Showing one best chapter per chapter number. Source-specific duplicates are still available from the provider tabs.
+                </p>
             )}
 
             {sortedChapters.length === 0 ? (

@@ -12,6 +12,8 @@ interface ChapterItemProps {
         releaseDate: Date | null;
         title: string | null;
         isRead: boolean;
+        sourceName?: string;
+        alternativeCount?: number;
     };
 }
 
@@ -73,11 +75,23 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
                 <span className="text-sm text-muted-foreground line-clamp-1 mb-2">{chapter.title}</span>
             )}
 
-            {chapter.releaseDate && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mt-auto">
-                    {new Date(chapter.releaseDate).toLocaleDateString()}
-                </span>
-            )}
+            <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+                {chapter.sourceName && (
+                    <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {chapter.sourceName}
+                    </span>
+                )}
+                {chapter.alternativeCount ? (
+                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        +{chapter.alternativeCount} alt
+                    </span>
+                ) : null}
+                {chapter.releaseDate && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                        {new Date(chapter.releaseDate).toLocaleDateString()}
+                    </span>
+                )}
+            </div>
 
             {isRead && <div className="absolute inset-0 bg-background/5 pointer-events-none rounded-lg" />}
         </a>
