@@ -37,24 +37,17 @@ export async function GET(request: NextRequest) {
                     mangaId: manga.id,
                 },
             },
+            select: { lastReadChapterNumber: true },
         });
         if (!tracked) {
             return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
         }
 
-        const userChapters = await prisma.userChapter.findMany({
-            where: {
-                userId,
-                chapterId: { in: manga.chapters.map((chapter) => chapter.id) },
-            },
-        });
-        const readByChapterId = new Map(userChapters.map((entry) => [entry.chapterId, entry.isRead]));
-
         return NextResponse.json({
             ...manga,
             chapters: manga.chapters.map((chapter) => ({
                 ...chapter,
-                isRead: readByChapterId.get(chapter.id) ?? false,
+                isRead: tracked.lastReadChapterNumber != null && chapter.chapterNumber <= tracked.lastReadChapterNumber,
             })),
         });
     } catch (error) {

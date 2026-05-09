@@ -6,7 +6,6 @@ const {
   getCurrentUserIdMock,
   mangaFindUniqueMock,
   mangaUpdateMock,
-  userChapterFindManyMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
   checkForUpdatesMock: vi.fn(),
@@ -14,7 +13,6 @@ const {
   getCurrentUserIdMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   mangaUpdateMock: vi.fn(),
-  userChapterFindManyMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
 }));
 
@@ -35,9 +33,6 @@ vi.mock("@/lib/db", () => ({
     manga: {
       findUnique: mangaFindUniqueMock,
       update: mangaUpdateMock,
-    },
-    userChapter: {
-      findMany: userChapterFindManyMock,
     },
     userManga: {
       findUnique: userMangaFindUniqueMock,
@@ -90,10 +85,9 @@ describe("owned manga API routes", () => {
     const res = await getManga(req as never);
 
     expect(res.status).toBe(403);
-    expect(userChapterFindManyMock).not.toHaveBeenCalled();
   });
 
-  it("returns user-specific read state for tracked manga data", async () => {
+  it("returns progress-derived read state for tracked manga data", async () => {
     mangaFindUniqueMock.mockResolvedValue({
       id: "m1",
       chapters: [
@@ -102,8 +96,7 @@ describe("owned manga API routes", () => {
       ],
       sources: [],
     });
-    userMangaFindUniqueMock.mockResolvedValue({ id: "um1" });
-    userChapterFindManyMock.mockResolvedValue([{ chapterId: "c2", isRead: true }]);
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 1 });
 
     const req = { nextUrl: new URL("http://localhost/api/manga/get?slug=one-piece") };
     const res = await getManga(req as never);
@@ -111,8 +104,8 @@ describe("owned manga API routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.chapters).toEqual([
-      expect.objectContaining({ id: "c1", isRead: false }),
-      expect.objectContaining({ id: "c2", isRead: true }),
+      expect.objectContaining({ id: "c1", isRead: true }),
+      expect.objectContaining({ id: "c2", isRead: false }),
     ]);
   });
 

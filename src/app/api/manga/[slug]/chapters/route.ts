@@ -41,6 +41,7 @@ export async function GET(
           mangaId: manga.id,
         },
       },
+      select: { lastReadChapterNumber: true },
     });
     if (!tracked) {
       return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
@@ -61,10 +62,10 @@ export async function GET(
 
     const page = await getMangaChapterPage({
       mangaId: manga.id,
-      userId,
       cursor,
       limit,
       sourceId,
+      lastReadChapterNumber: tracked.lastReadChapterNumber,
     });
 
     return NextResponse.json({ ...page, mode });

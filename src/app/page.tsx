@@ -1,9 +1,10 @@
-import { isDatabaseConfigured, prisma } from "@/lib/db";
+import { isDatabaseConfigured } from "@/lib/db";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { LibraryDashboard } from "@/components/library-dashboard";
 import { ThemeSelector } from "@/components/theme-selector";
+import { getLibraryMangaSummaries, type LibraryMangaSummary } from "@/lib/library-summary";
 import { auth } from "../../auth";
 
 export const dynamic = 'force-dynamic';
@@ -36,50 +37,10 @@ export default async function Home() {
     );
   }
 
-  // Use try-catch to handle the case where database might not be set up yet
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mangas: any[] = [];
+  let mangas: LibraryMangaSummary[] = [];
   if (session?.user?.id) {
     try {
-      const library = await prisma.userManga.findMany({
-        where: { userId: session.user.id },
-        orderBy: { updatedAt: "desc" },
-        include: {
-          manga: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              coverUrl: true,
-              status: true,
-              chapters: {
-                orderBy: { chapterNumber: 'desc' },
-                select: {
-                  id: true,
-                  chapterNumber: true,
-                  url: true,
-                  releaseDate: true,
-                  userChapters: {
-                    where: { userId: session.user.id },
-                    select: { isRead: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      mangas = library.map((entry) => ({
-        ...entry.manga,
-        chapters: entry.manga.chapters.map((chapter) => ({
-          id: chapter.id,
-          chapterNumber: chapter.chapterNumber,
-          url: chapter.url,
-          releaseDate: chapter.releaseDate,
-          isRead: chapter.userChapters[0]?.isRead ?? false,
-        })),
-      }));
+      mangas = await getLibraryMangaSummaries(session.user.id);
     } catch (e) {
       console.error("Failed to load mangas - database might not be initialized", e);
     }

@@ -20,16 +20,16 @@ export function getChapterMode(value: string | null): ChapterListMode {
 
 export async function getMangaChapterPage({
   mangaId,
-  userId,
   cursor,
   limit = CHAPTER_PAGE_SIZE,
   sourceId,
+  lastReadChapterNumber,
 }: {
   mangaId: string;
-  userId: string;
   cursor?: number;
   limit?: number;
   sourceId?: string;
+  lastReadChapterNumber?: number | null;
 }) {
   const pageSize = Math.min(Math.max(limit, 1), 100);
 
@@ -58,24 +58,10 @@ export async function getMangaChapterPage({
   });
 
   const visibleChapters = chapters.slice(0, pageSize);
-  const userChapters = visibleChapters.length > 0
-    ? await prisma.userChapter.findMany({
-        where: {
-          userId,
-          chapterId: { in: visibleChapters.map((chapter) => chapter.id) },
-        },
-        select: {
-          chapterId: true,
-          isRead: true,
-        },
-      })
-    : [];
-  const readByChapterId = new Map(userChapters.map((entry) => [entry.chapterId, entry.isRead]));
-
   return {
     chapters: visibleChapters.map((chapter): ChapterView => ({
       ...chapter,
-      isRead: readByChapterId.get(chapter.id) ?? false,
+      isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
     })),
     nextCursor: chapters.length > pageSize
       ? visibleChapters[visibleChapters.length - 1]?.chapterNumber ?? null

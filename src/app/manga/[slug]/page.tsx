@@ -36,19 +36,21 @@ async function getManga(slug: string, userId: string) {
                 mangaId: manga.id,
             },
         },
+        select: { lastReadChapterNumber: true },
     });
     if (!tracked) return null;
 
     const chapterPage = await getMangaChapterPage({
         mangaId: manga.id,
-        userId,
         limit: CHAPTER_PAGE_SIZE,
+        lastReadChapterNumber: tracked.lastReadChapterNumber,
     });
 
     return {
         ...manga,
         chapters: chapterPage.chapters,
         nextChapterCursor: chapterPage.nextCursor,
+        lastReadChapterNumber: tracked.lastReadChapterNumber,
     };
 }
 
@@ -186,6 +188,7 @@ export default async function MangaPage({ params }: PageProps) {
                                 initialSources={manga.sources}
                                 initialChapters={manga.chapters as ChapterView[]}
                                 initialNextCursor={manga.nextChapterCursor}
+                                initialLastReadChapterNumber={manga.lastReadChapterNumber}
                             />
                         </div>
                     </div>

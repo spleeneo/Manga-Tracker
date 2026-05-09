@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUniqueChapter, findUniqueUserManga, upsertUserChapter } = vi.hoisted(() => ({
+const { findUniqueChapter, findUniqueUserManga, updateUserManga, upsertUserChapter } = vi.hoisted(() => ({
   findUniqueChapter: vi.fn(),
   findUniqueUserManga: vi.fn(),
+  updateUserManga: vi.fn(),
   upsertUserChapter: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     chapter: { findUnique: findUniqueChapter },
-    userManga: { findUnique: findUniqueUserManga },
+    userManga: { findUnique: findUniqueUserManga, update: updateUserManga },
     userChapter: { upsert: upsertUserChapter },
   },
 }));
@@ -26,9 +27,10 @@ describe("POST /api/manga/chapter/[id]/read", () => {
   });
 
   it("updates chapter read status", async () => {
-    findUniqueChapter.mockResolvedValue({ id: "c1", mangaId: "m1" });
+    findUniqueChapter.mockResolvedValue({ id: "c1", mangaId: "m1", chapterNumber: 12 });
     findUniqueUserManga.mockResolvedValue({ id: "um1" });
     upsertUserChapter.mockResolvedValue({ id: "uc1", chapterId: "c1", isRead: true });
+    updateUserManga.mockResolvedValue({ id: "um1", lastReadChapterNumber: 12 });
     const req = new Request("http://localhost", {
       method: "POST",
       body: JSON.stringify({ isRead: true }),
@@ -40,6 +42,9 @@ describe("POST /api/manga/chapter/[id]/read", () => {
 
     expect(res.status).toBe(200);
     expect(body.isRead).toBe(true);
+    expect(updateUserManga).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ lastReadChapterNumber: 12 }),
+    }));
   });
 
   it("returns 500 if update fails", async () => {

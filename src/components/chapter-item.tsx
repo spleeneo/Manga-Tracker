@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface ChapterItemProps {
+    slug: string;
     chapter: {
         id: string;
         url: string;
@@ -15,12 +15,11 @@ interface ChapterItemProps {
         sourceName?: string;
         alternativeCount?: number;
     };
+    onProgressChange: (lastReadChapterNumber: number | null) => void;
 }
 
-export function ChapterItem({ chapter }: ChapterItemProps) {
-    const [isRead, setIsRead] = useState(chapter.isRead);
+export function ChapterItem({ slug, chapter, onProgressChange }: ChapterItemProps) {
     const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
     const toggleRead = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -28,15 +27,18 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
 
         setLoading(true);
         try {
-            const res = await fetch(`/api/manga/chapter/${chapter.id}/read`, {
+            const res = await fetch(`/api/manga/${slug}/progress`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ isRead: !isRead })
+                body: JSON.stringify({
+                    action: chapter.isRead ? "previous" : "set",
+                    chapterNumber: chapter.chapterNumber,
+                }),
             });
 
             if (res.ok) {
-                setIsRead(!isRead);
-                router.refresh();
+                const body = await res.json();
+                onProgressChange(body.lastReadChapterNumber ?? null);
             }
         } catch (error) {
             console.error(error);
@@ -47,26 +49,26 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
 
     return (
         <div
-            className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${isRead ? 'bg-muted/35 opacity-70' : ''}`}
+            className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${chapter.isRead ? 'bg-muted/35 opacity-70' : ''}`}
         >
             <div className="flex items-center justify-between mb-1">
                 <a
                     href={chapter.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`rounded-sm font-bold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isRead ? 'text-muted-foreground' : 'text-foreground'}`}
+                    className={`rounded-sm font-bold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${chapter.isRead ? 'text-muted-foreground' : 'text-foreground'}`}
                 >
                     Chapter {chapter.chapterNumber}
                 </a>
                 <button
                     onClick={toggleRead}
                     disabled={loading}
-                    className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isRead ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30 bg-card text-muted-foreground hover:border-primary hover:bg-primary/10 hover:text-primary'}`}
-                    aria-label={isRead ? "Mark chapter unread" : "Mark chapter read"}
+                    className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${chapter.isRead ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30 bg-card text-muted-foreground hover:border-primary hover:bg-primary/10 hover:text-primary'}`}
+                    aria-label={chapter.isRead ? "Move progress before this chapter" : "Mark progress to this chapter"}
                 >
                     {loading ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : isRead ? (
+                    ) : chapter.isRead ? (
                         <Check className="h-3 w-3" />
                     ) : (
                         <div className="h-1.5 w-1.5 rounded-full bg-transparent group-hover:bg-primary/50" />
@@ -96,7 +98,7 @@ export function ChapterItem({ chapter }: ChapterItemProps) {
                 )}
             </div>
 
-            {isRead && <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-muted-foreground/20" />}
+            {chapter.isRead && <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-muted-foreground/20" />}
         </div>
     );
 }

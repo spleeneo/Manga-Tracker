@@ -1,88 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { BookOpen, Play, CheckCircle2, Check, ListChecks, Loader2, ExternalLink } from "lucide-react";
+import { BookOpen, CheckCircle2, ExternalLink, ListChecks, Loader2, Play } from "lucide-react";
+import type { LibraryMangaSummary } from "@/lib/library-summary";
 
-export interface MangaCardData {
-    id: string;
-    title: string;
-    slug: string;
-    coverUrl: string | null;
-    status: string | null;
-    chapters: { id: string; chapterNumber: number; isRead: boolean; url: string; releaseDate?: Date | string | null }[];
-}
+export type MangaCardData = LibraryMangaSummary;
 
-export function MangaCard({ manga }: { manga: MangaCardData }) {
-    const router = useRouter();
-    const [loadingAction, setLoadingAction] = useState<"latest" | "catch-up" | null>(null);
-    const chapterGroups = useMemo(() => {
-        const groups = new Map<string, MangaCardData["chapters"]>();
-        for (const chapter of manga.chapters) {
-            const key = Number.isFinite(chapter.chapterNumber)
-                ? chapter.chapterNumber.toFixed(3)
-                : chapter.id;
-            groups.set(key, [...(groups.get(key) ?? []), chapter]);
-        }
-
-        return Array.from(groups.values())
-            .map((group) => ({
-                chapterNumber: group[0].chapterNumber,
-                isRead: group.some((chapter) => chapter.isRead),
-                candidates: group,
-                best: [...group].sort((a, b) => {
-                    const bTime = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
-                    const aTime = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
-                    return bTime - aTime;
-                })[0],
-            }))
-            .sort((a, b) => b.chapterNumber - a.chapterNumber);
-    }, [manga.chapters]);
-
-    const totalChapters = chapterGroups.length;
-    const readChapters = chapterGroups.filter(c => c.isRead).length;
-    const latestChapter = chapterGroups[0]?.best;
-    const unreadChapters = totalChapters - readChapters;
-    const progress = totalChapters > 0 ? (readChapters / totalChapters) * 100 : 0;
-    const isCompleted = readChapters === totalChapters && totalChapters > 0;
-    const latestGroup = chapterGroups[0];
-
-    const markChaptersRead = async (chapterIds: string[], action: "latest" | "catch-up") => {
-        if (chapterIds.length === 0) return;
-
-        setLoadingAction(action);
-        try {
-            await Promise.all(chapterIds.map((chapterId) => (
-                fetch(`/api/manga/chapter/${chapterId}/read`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ isRead: true })
-                })
-            )));
-            router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert("Failed to update reading progress");
-        } finally {
-            setLoadingAction(null);
-        }
-    };
-
-    const markLatestRead = () => {
-        if (!latestGroup) return;
-        const unreadLatestIds = latestGroup.candidates
-            .filter((chapter) => !chapter.isRead)
-            .map((chapter) => chapter.id);
-        void markChaptersRead(unreadLatestIds, "latest");
-    };
-
-    const catchUp = () => {
-        const unreadIds = manga.chapters
-            .filter((chapter) => !chapter.isRead)
-            .map((chapter) => chapter.id);
-        void markChaptersRead(unreadIds, "catch-up");
-    };
+export function MangaCard({
+    manga,
+    loadingAction,
+    onProgress,
+}: {
+    manga: MangaCardData;
+    loadingAction?: "latest" | "catch-up" | null;
+    onProgress: (slug: string, action: "latest" | "catch-up") => void;
+}) {
+    const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
+    const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
 
     return (
         <div className="interactive-surface group flex flex-col overflow-hidden rounded-lg">
@@ -103,7 +37,6 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                     </div>
                 )}
 
-                {/* Status Badge */}
                 {manga.status && (
                     <div className="absolute left-2 top-2">
                         <span className="status-pill cover-status-pill">
@@ -112,20 +45,16 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                     </div>
                 )}
 
-                {unreadChapters > 0 && (
+                {manga.unreadChapters > 0 && (
                     <div className="absolute right-2 top-2">
                         <span className="rounded-full border border-border bg-card px-2 py-1 text-[11px] font-bold text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
-                            {unreadChapters} unread
+                            {manga.unreadChapters} unread
                         </span>
                     </div>
                 )}
 
-                {/* Progress Bar */}
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
-                    <div
-                        className="h-full bg-primary"
-                        style={{ width: `${progress}%` }}
-                    />
+                    <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
             </Link>
 
@@ -140,26 +69,24 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
 
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex items-center gap-1">
-                        {isCompleted ? (
+                        {manga.isCaughtUp ? (
                             <span className="flex items-center gap-1 text-foreground">
                                 <CheckCircle2 className="h-3 w-3" />
                                 CAUGHT UP
                             </span>
                         ) : (
-                            <span>{readChapters} / {totalChapters} READ</span>
+                            <span>{manga.readChapters} / {manga.totalChapters} READ</span>
                         )}
                     </div>
-                    {latestChapter && (
-                        <span>Ch. {latestChapter.chapterNumber}</span>
-                    )}
+                    {manga.latestChapter && <span>Ch. {manga.latestChapter.chapterNumber}</span>}
                 </div>
 
                 <div className="mt-3 rounded-md border border-border bg-muted/35 p-2.5">
                     <div className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">
                         Set progress
                     </div>
-                    {latestChapter ? (
-                        isCompleted ? (
+                    {manga.latestChapter ? (
+                        manga.isCaughtUp ? (
                             <div className="flex min-h-8 items-center justify-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-bold uppercase text-foreground">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 Caught up
@@ -168,18 +95,18 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                             <div className="grid gap-2">
                                 <button
                                     type="button"
-                                    onClick={markLatestRead}
-                                    disabled={loadingAction !== null || latestGroup?.isRead}
+                                    onClick={() => onProgress(manga.slug, "latest")}
+                                    disabled={Boolean(loadingAction)}
                                     className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
-                                    title={`Mark chapter ${latestChapter.chapterNumber} as read`}
+                                    title={`Mark chapter ${manga.latestChapter.chapterNumber} as read`}
                                 >
-                                    {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                    {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                                     Mark latest read
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={catchUp}
-                                    disabled={loadingAction !== null}
+                                    onClick={() => onProgress(manga.slug, "catch-up")}
+                                    disabled={Boolean(loadingAction)}
                                     className="ui-button ui-button-primary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
                                     title="Mark all current chapters as read"
                                 >
@@ -196,9 +123,9 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                    {latestChapter && (
+                    {readTarget && (
                         <a
-                            href={latestChapter.url}
+                            href={readTarget.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="ui-button ui-button-primary min-h-8 px-2 py-1.5 text-[11px] uppercase"

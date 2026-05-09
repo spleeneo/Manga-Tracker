@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { performance } from "node:perf_hooks";
 
 const prisma = new PrismaClient();
@@ -68,7 +68,8 @@ async function runHomeQuery(userId: string) {
   const library = await prisma.userManga.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
-    include: {
+    select: {
+      lastReadChapterNumber: true,
       manga: {
         select: {
           id: true,
@@ -76,29 +77,41 @@ async function runHomeQuery(userId: string) {
           slug: true,
           coverUrl: true,
           status: true,
-          chapters: {
-            orderBy: { chapterNumber: "desc" },
-            select: {
-              id: true,
-              chapterNumber: true,
-              url: true,
-              releaseDate: true,
-              userChapters: {
-                where: { userId },
-                select: { isRead: true },
-              },
-            },
-          },
-          sources: true,
         },
       },
     },
   });
+  const mangaIds = library.map((entry) => entry.manga.id);
+  const bestChapters = mangaIds.length > 0
+    ? await prisma.$queryRaw<Array<{ mangaId: string; chapterNumber: number; url: string; releaseDate: Date | null }>>`
+      SELECT DISTINCT ON (c."mangaId", c."chapterNumber")
+        c."mangaId" AS "mangaId",
+        c."chapterNumber" AS "chapterNumber",
+        c."url" AS "url",
+        c."releaseDate" AS "releaseDate"
+      FROM "Chapter" c
+      LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      WHERE c."mangaId" IN (${Prisma.join(mangaIds)})
+      ORDER BY
+        c."mangaId",
+        c."chapterNumber" DESC,
+        CASE LOWER(COALESCE(s."sourceName", ''))
+          WHEN 'mangaplus' THEN 5
+          WHEN 'mangadex' THEN 4
+          WHEN 'webtoon' THEN 3
+          WHEN 'nelomanga' THEN 2
+          WHEN 'manganato' THEN 1
+          ELSE 0
+        END DESC,
+        c."releaseDate" DESC NULLS LAST,
+        c."createdAt" DESC
+    `
+    : [];
 
   return {
     librarySize: library.length,
-    chapterRows: library.reduce((total, entry) => total + entry.manga.chapters.length, 0),
-    approxPayloadBytes: Buffer.byteLength(JSON.stringify(library)),
+    distinctChapterRows: bestChapters.length,
+    approxPayloadBytes: Buffer.byteLength(JSON.stringify({ library, bestChapters })),
   };
 }
 
@@ -109,6 +122,7 @@ async function runDetailQuery(userId: string, slug: string) {
       sources: true,
       chapters: {
         orderBy: { chapterNumber: "desc" },
+        take: 61,
       },
     },
   });
@@ -125,106 +139,29 @@ async function runDetailQuery(userId: string, slug: string) {
   });
   if (!tracked) return null;
 
-  const userChapters = await prisma.userChapter.findMany({
-    where: {
-      userId,
-      chapterId: { in: manga.chapters.map((chapter) => chapter.id) },
-    },
-  });
-
   return {
     sources: manga.sources.length,
     chapterRows: manga.chapters.length,
-    readRows: userChapters.length,
-    approxPayloadBytes: Buffer.byteLength(JSON.stringify({ manga, userChapters })),
+    lastReadChapterNumber: tracked.lastReadChapterNumber,
+    approxPayloadBytes: Buffer.byteLength(JSON.stringify({ manga, tracked })),
   };
 }
 
-async function runSingleReadWrite(userId: string, chapterId: string, isRead: boolean) {
+async function runProgressWrite(userId: string, mangaId: string, chapterNumber: number | null) {
   try {
     await prisma.$transaction(async (tx) => {
-      const chapter = await tx.chapter.findUnique({
-        where: { id: chapterId },
-        select: { id: true, mangaId: true },
-      });
-      if (!chapter) throw new Error("sample chapter missing");
-
-      const tracked = await tx.userManga.findUnique({
+      await tx.userManga.update({
         where: {
           userId_mangaId: {
             userId,
-            mangaId: chapter.mangaId,
+            mangaId,
           },
+        },
+        data: {
+          lastReadChapterNumber: chapterNumber,
+          lastReadAt: chapterNumber == null ? null : new Date(),
         },
       });
-      if (!tracked) throw new Error("sample manga not tracked");
-
-      await tx.userChapter.upsert({
-        where: {
-          userId_chapterId: {
-            userId,
-            chapterId: chapter.id,
-          },
-        },
-        update: {
-          isRead,
-          readAt: isRead ? new Date() : null,
-        },
-        create: {
-          userId,
-          chapterId: chapter.id,
-          isRead,
-          readAt: isRead ? new Date() : null,
-        },
-      });
-
-      throw ROLLBACK;
-    });
-  } catch (error) {
-    if (error !== ROLLBACK) throw error;
-  }
-}
-
-async function runBatchReadWrite(userId: string, chapterIds: string[], isRead: boolean) {
-  try {
-    await prisma.$transaction(async (tx) => {
-      const chapters = await tx.chapter.findMany({
-        where: { id: { in: chapterIds } },
-        select: { id: true, mangaId: true },
-      });
-      const mangaIds = [...new Set(chapters.map((chapter) => chapter.mangaId))];
-      const tracked = await tx.userManga.findMany({
-        where: {
-          userId,
-          mangaId: { in: mangaIds },
-        },
-        select: { mangaId: true },
-      });
-      const trackedMangaIds = new Set(tracked.map((entry) => entry.mangaId));
-      if (chapters.some((chapter) => !trackedMangaIds.has(chapter.mangaId))) {
-        throw new Error("sample batch contains untracked manga");
-      }
-
-      for (const chapter of chapters) {
-        await tx.userChapter.upsert({
-          where: {
-            userId_chapterId: {
-              userId,
-              chapterId: chapter.id,
-            },
-          },
-          update: {
-            isRead,
-            readAt: isRead ? new Date() : null,
-          },
-          create: {
-            userId,
-            chapterId: chapter.id,
-            isRead,
-            readAt: isRead ? new Date() : null,
-          },
-        });
-      }
 
       throw ROLLBACK;
     });
@@ -270,15 +207,18 @@ async function main() {
   const homeShape = await runHomeQuery(sampleUser.id);
   const detailShape = await runDetailQuery(sampleUser.id, sampleManga.manga.slug);
   const sampleChapterIds = sampleManga.manga.chapters.map((chapter) => chapter.id);
+  const latestChapterNumber = await prisma.chapter.aggregate({
+    where: { mangaId: sampleManga.manga.id },
+    _max: { chapterNumber: true },
+  });
   const coverUrl = sampleManga.manga.coverUrl
     ? `${baseUrl}/api/proxy/image?url=${encodeURIComponent(sampleManga.manga.coverUrl)}`
     : null;
 
   const measurements: Measurement[] = [];
-  measurements.push(await measure("db: home signed-in library query", () => runHomeQuery(sampleUser.id), 7, "Mirrors src/app/page.tsx data shape."));
-  measurements.push(await measure("db: manga detail query path", () => runDetailQuery(sampleUser.id, sampleManga.manga.slug), 7, "Mirrors src/app/manga/[slug]/page.tsx data shape."));
-  measurements.push(await measure("db: single chapter read write rollback", () => runSingleReadWrite(sampleUser.id, sampleChapterIds[0], true), 7, "Equivalent to one POST /api/manga/chapter/[id]/read without HTTP/session overhead."));
-  measurements.push(await measure("db: current caught-up write loop rollback", () => runBatchReadWrite(sampleUser.id, sampleChapterIds, true), 5, `Sequential rollback lower-bound for ${sampleChapterIds.length} chapter writes.`));
+  measurements.push(await measure("db: home signed-in summary query", () => runHomeQuery(sampleUser.id), 7, "Mirrors summary-based src/app/page.tsx data shape."));
+  measurements.push(await measure("db: manga detail paged query path", () => runDetailQuery(sampleUser.id, sampleManga.manga.slug), 7, "Mirrors src/app/manga/[slug]/page.tsx initial paged data shape."));
+  measurements.push(await measure("db: progress write rollback", () => runProgressWrite(sampleUser.id, sampleManga.manga.id, latestChapterNumber._max.chapterNumber), 7, "Equivalent to POST /api/manga/[slug]/progress without HTTP/session overhead."));
   measurements.push(await measureHttp("http: unauthenticated home shell", baseUrl, 5, "Production server smoke; signed-in HTTP requires browser session cookies."));
   measurements.push(await measureHttp("http: add manga search API", `${baseUrl}/api/manga/search?q=one%20piece`, 3, "Provider/network dependent."));
   if (coverUrl) {
@@ -301,7 +241,7 @@ async function main() {
     shapes: {
       home: homeShape,
       detail: detailShape,
-      caughtUpSampleChapterCount: sampleChapterIds.length,
+      priorCaughtUpSampleChapterCount: sampleChapterIds.length,
     },
     measurements,
   }, null, 2));

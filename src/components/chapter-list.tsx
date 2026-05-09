@@ -30,15 +30,17 @@ interface ChapterListProps {
     initialSources: Source[];
     initialChapters: Chapter[];
     initialNextCursor: number | null;
+    initialLastReadChapterNumber: number | null;
 }
 
 type ChapterMode = "best" | "all";
 
-export function ChapterList({ slug, initialSources, initialChapters, initialNextCursor }: ChapterListProps) {
+export function ChapterList({ slug, initialSources, initialChapters, initialNextCursor, initialLastReadChapterNumber }: ChapterListProps) {
     const [selectedSourceId, setSelectedSourceId] = useState<string | "all">("all");
     const [mode, setMode] = useState<ChapterMode>("best");
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
     const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
+    const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
     const [, setIsRefreshing] = useState(false);
     const autoRefreshAttempts = useRef<Set<string>>(new Set());
@@ -146,9 +148,14 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         alternativeCount,
     });
 
+    const progressDecoratedChapters = chapters.map((chapter) => ({
+        ...chapter,
+        isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
+    }));
+
     const filteredChapters = mode === "best" && selectedSourceId === "all"
         ? Array.from(
-            chapters.reduce((groups, chapter) => {
+            progressDecoratedChapters.reduce((groups, chapter) => {
                     const key = Number.isFinite(chapter.chapterNumber)
                         ? chapter.chapterNumber.toFixed(3)
                         : chapter.url;
@@ -156,7 +163,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                     return groups;
                 }, new Map<string, Chapter[]>()).values()
             ).map((group) => withSourceMetadata(pickBestChapter(group), group.length - 1))
-        : chapters
+        : progressDecoratedChapters
             .filter(c => selectedSourceId === "all" || c.sourceId === selectedSourceId)
             .map((chapter) => withSourceMetadata(chapter));
 
@@ -266,7 +273,12 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {sortedChapters.map((chapter) => (
-                        <ChapterItem key={chapter.id} chapter={chapter} />
+                        <ChapterItem
+                            key={chapter.id}
+                            slug={slug}
+                            chapter={chapter}
+                            onProgressChange={setLastReadChapterNumber}
+                        />
                     ))}
                 </div>
             )}

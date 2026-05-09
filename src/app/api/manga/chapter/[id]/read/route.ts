@@ -17,7 +17,7 @@ export async function POST(
 
         const chapter = await prisma.chapter.findUnique({
             where: { id },
-            select: { id: true, mangaId: true },
+            select: { id: true, mangaId: true, chapterNumber: true },
         });
         if (!chapter) {
             return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
@@ -53,6 +53,21 @@ export async function POST(
                 readAt: isRead ? new Date() : null,
             },
         });
+
+        if (isRead) {
+            await prisma.userManga.update({
+                where: {
+                    userId_mangaId: {
+                        userId,
+                        mangaId: chapter.mangaId,
+                    },
+                },
+                data: {
+                    lastReadChapterNumber: chapter.chapterNumber,
+                    lastReadAt: new Date(),
+                },
+            });
+        }
 
         return NextResponse.json(userChapter);
     } catch (error) {

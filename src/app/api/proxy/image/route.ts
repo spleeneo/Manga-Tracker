@@ -8,7 +8,11 @@ export async function GET(request: NextRequest) {
         return new Response('Missing URL parameter', { status: 400 });
     }
 
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
     try {
+        const controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), 8_000);
         const isNelo = url.includes('nelomanga.net') || url.includes('2xstorage.com') || url.includes('waitst.com');
         const headers: Record<string, string> = {
             'User-Agent': NELOMANGA_USER_AGENT,
@@ -21,7 +25,8 @@ export async function GET(request: NextRequest) {
             headers['Referer'] = new URL(url).origin;
         }
 
-        const response = await fetch(url, { headers });
+        const response = await fetch(url, { headers, signal: controller.signal });
+        if (timeout) clearTimeout(timeout);
 
         if (!response.ok) {
             console.error(`Proxy failed for ${url}: ${response.status}`);
@@ -40,5 +45,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Image proxy error:', error);
         return new Response('Failed to proxy image', { status: 500 });
+    } finally {
+        if (timeout) clearTimeout(timeout);
     }
 }

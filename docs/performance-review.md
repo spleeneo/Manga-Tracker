@@ -1,13 +1,13 @@
 # Performance Review
 
 Date: 2026-05-09
-Latest follow-up: 2026-05-09, after slimming the home query and making Prisma query logging opt-in.
+Latest follow-up: 2026-05-09, after moving read progress to `UserManga.lastReadChapterNumber`.
 
 ## Summary
 
 This review used a production build served locally on `http://localhost:3100` to avoid `next dev` noise. The current app is functional, but several paths can feel unresponsive because UI actions wait on network/database work and then trigger full route refreshes.
 
-The top issue is read-progress updates. A single read update already costs roughly one database write path, and "mark caught up" scales linearly with the number of unread chapters because the UI sends one request per chapter. Search and image loading are also visibly provider-bound, and the home/detail pages currently load full chapter histories even when the UI mostly needs summary data.
+The original top issue was read-progress updates: "mark caught up" scaled linearly with the number of unread chapters because the UI sent one request per chapter. That path now uses one progress update on `UserManga`. Search and image loading remain visibly provider-bound.
 
 ## Environment And Commands
 
@@ -31,43 +31,44 @@ The script measures authenticated data paths directly through Prisma because a t
 
 | Area | Median | Range | Notes |
 | --- | ---: | ---: | --- |
-| Signed-in home library DB query | 72 ms | 66-75 ms | Loads slim chapter fields for tracked manga; approx payload now 14.6 KB for the sampled library. |
-| Manga detail DB query path | 85 ms | 78-172 ms | Loads manga, all chapters, sources, ownership, and user read rows. |
-| Single chapter read write | 74 ms | 72-151 ms | Rollback benchmark equivalent to one read API DB path, excluding HTTP/session overhead. |
-| Current caught-up write loop | 860 ms | 845-892 ms | Rollback lower bound for 50 chapter writes. Current UI also adds many HTTP requests. |
-| Unauthenticated home HTTP shell | 47 ms | 39-490 ms | First request cold-started local production server. |
-| Add manga search API | 1254 ms | 965-1433 ms | Provider/network dependent. |
-| Proxied cover image | 306 ms | 279-494 ms | Provider/network dependent; route returns immutable cache headers. |
+| Signed-in home summary DB query | 38 ms | 37-48 ms | Loads manga summaries and one best row per distinct chapter; approx payload 9.9 KB for the sampled library. |
+| Manga detail paged DB query path | 60 ms | 56-77 ms | Loads manga, sources, ownership progress, and first 61 chapter rows. |
+| Progress write | 38 ms | 36-51 ms | Rollback benchmark equivalent to one `POST /api/manga/[slug]/progress` DB path, excluding HTTP/session overhead. |
+| Previous caught-up write loop | 860 ms | 845-892 ms | Historical lower bound for 50 per-chapter writes before the progress refactor. |
+| Unauthenticated home HTTP shell | 24 ms | 21-112 ms | Production server smoke; first request was warm-ish local production. |
+| Add manga search API | 1187 ms | 945-1382 ms | Provider/network dependent. |
+| Proxied cover image | 308 ms | 268-426 ms | Provider/network dependent; route returns immutable cache headers. |
 
 Loaded data shape:
 
 | Page/path | Current shape |
 | --- | --- |
-| Home | 1 tracked manga loaded 65 chapter rows, about 31.7 KB JSON in the sampled Prisma result. |
-| Detail | 3 sources, 65 chapter rows, 64 user read rows, about 45.5 KB JSON in the sampled Prisma result. |
+| Home | 1 tracked manga loaded 55 distinct best-chapter rows server-side, about 9.9 KB in the sampled summary result. |
+| Detail | 3 sources, first 61 chapter rows, and one ownership/progress row, about 27.9 KB in the sampled result. |
 
 ## Follow-up Delta
 
 - Home query payload dropped from about 31.7 KB to 14.6 KB for the sampled library after selecting only the fields used by the dashboard/card UI and dropping unused source data.
 - Prisma query logging is now opt-in with `PRISMA_QUERY_LOG=1`, removing default query-log noise from page transitions.
-- The next largest user-visible issue is still batch read progress: 50 sequential read writes measured 839 ms median in the latest rollback benchmark before HTTP/session overhead.
+- Read progress now lives on `UserManga.lastReadChapterNumber`; "mark caught up" uses one progress update instead of up to one request per unread chapter.
+- The latest benchmark shows home summary loading at 38 ms median and progress writes at 38 ms median.
 
 ## Findings
 
-1. **Batch read progress is the biggest responsiveness risk.**
-   - Current cards and dashboard call `POST /api/manga/chapter/[id]/read` once per chapter and then call `router.refresh()`.
-   - A 50-chapter rollback loop took about 860 ms before HTTP/session overhead. In the browser, parallel requests plus a full refresh will feel slower and jumpier.
-   - Impact: high. Effort: medium.
+1. **Read-progress writes are no longer the biggest responsiveness risk.**
+   - Cards, dashboard, and chapter items now use `POST /api/manga/[slug]/progress`.
+   - Read state is derived from chapter number, so "mark caught up" is one user-library row update.
+   - Impact: addressed.
 
-2. **Home page still scales with chapter history, though the payload is slimmer now.**
-   - `src/app/page.tsx` now selects only the fields rendered by the dashboard/cards, but it still fetches every chapter for each tracked manga.
-   - This is acceptable for the current library size, but summary-only server data is still the better long-term shape.
-   - Impact: medium/high as the library grows. Effort: medium/high.
+2. **Home page now sends summary data, but still computes distinct chapter summaries server-side.**
+   - The browser no longer receives full chapter arrays for cards/dashboard.
+   - At much larger scale, the next step is a persisted manga summary/progress cache or materialized latest-chapter table.
+   - Impact: medium at scale. Effort: medium/high.
 
-3. **Detail page uses multiple broad reads for chapter/read state.**
-   - `src/app/manga/[slug]/page.tsx` loads all chapters, then separately loads matching `UserChapter` rows.
-   - This is acceptable for one 65-chapter title, but can grow quickly for long series or duplicate provider chapters.
-   - Impact: medium. Effort: medium.
+3. **Detail page initial load is paged and progress-derived.**
+   - The first render loads one page of chapters and derives read state from `lastReadChapterNumber`.
+   - Provider tabs still do client grouping/scoring within the loaded page.
+   - Impact: improved; further gains are mostly UI/pagination polish.
 
 4. **Provider-bound operations need clearer loading/caching behavior.**
    - Search took about 1.25 s median and image proxy took about 306 ms median locally.
@@ -91,52 +92,39 @@ Loaded data shape:
 
 ## Recommended Backlog
 
-1. **Add a batch read-progress API.**
-   - Add `POST /api/manga/chapters/read` with `{ chapterIds: string[], isRead: boolean }`.
-   - Validate the user owns all affected manga before writing.
-   - Use a single transaction and bulk-friendly reads before upserts.
-   - Update dashboard/card/detail actions to call one endpoint for multi-chapter updates.
+1. **Persist or cache manga summary rows if libraries grow large.**
+   - Current summary generation is a good next shape for small/medium libraries.
+   - A larger library could benefit from precomputed latest/best chapter summaries.
 
-2. **Optimize perceived progress updates.**
-   - Apply optimistic local state updates for read/caught-up actions.
-   - Use `router.refresh()` only after the optimistic state is visible, or avoid it when local state is sufficient.
-   - Keep failure rollback/toast behavior simple.
-
-3. **Split home data into summary data and detail data.**
-   - Home should load manga card/dashboard summaries: latest chapter, unread count, latest unread, status, cover, slug.
-   - Avoid loading all chapter rows on the home page.
-   - Keep full chapter history on the detail page.
-
-4. **Tune detail query shape.**
-   - Select only fields the UI renders.
-   - Combine read-state decoration with fewer records transferred.
-   - Keep source and chapter data normalized for provider tabs.
-
-5. **Gate Prisma query logging.**
-   - Enable query logs only when a local env flag such as `PRISMA_QUERY_LOG=1` is set.
-   - Default production/development app runs should not log every query.
-
-6. **Improve external provider responsiveness.**
+2. **Improve external provider responsiveness.**
    - Add request timeouts to provider search/image paths.
    - Consider short-lived cache for search results.
    - Keep image proxy immutable caching, but consider `next/image` or an optimized image wrapper where feasible.
 
-7. **Keep the baseline script.**
+3. **Reduce refresh-heavy metadata/update flows.**
+   - Source add, manga add, metadata refresh, and check updates still use `router.refresh()`.
+   - Keep full refresh for now, but return updated fragments where practical.
+
+4. **Gate Prisma query logging.**
+   - Enable query logs only when a local env flag such as `PRISMA_QUERY_LOG=1` is set.
+   - Default production/development app runs should not log every query.
+
+5. **Keep the baseline script.**
    - Re-run `PERF_BASE_URL=http://localhost:3100 npx tsx scripts/perf-baseline.ts` before and after performance work.
    - Track the batch write and home query numbers as the main success metrics.
 
 ## Risks And Tradeoffs
 
-- A batch read endpoint changes API surface and needs tests for ownership, missing chapters, mixed tracked/untracked manga, and partial invalid input.
+- Progress-by-chapter-number means reading chapter 1182 marks chapter 1182 read across providers; per-provider read exceptions are intentionally not modeled.
 - Optimistic UI improves feel but must avoid hiding failed writes.
-- Home summary optimization may duplicate grouping logic unless summary helpers are shared carefully.
+- Home summary optimization now uses Postgres-specific `DISTINCT ON`, matching the deployed Neon target.
 - Provider caching can serve slightly stale search results, but that is acceptable for search suggestions if the TTL is short.
 - Image optimization must preserve provider headers/referers for sources like NeloManga.
 
 ## Acceptance Criteria For Implementation
 
-- Batch progress action for 50 chapters should use one client request instead of 50.
-- Home page should not transfer full chapter histories just to render the library grid.
+- Caught-up and next-read actions use one client request and one `UserManga` update.
+- Home page does not transfer full chapter histories just to render the library grid.
 - `PRISMA_QUERY_LOG` should be opt-in.
 - Existing tests pass: `npm run lint`, `npm run test`, `npm run build`.
 - Add tests for the batch read endpoint before replacing UI calls.

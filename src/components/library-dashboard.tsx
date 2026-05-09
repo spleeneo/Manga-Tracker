@@ -1,93 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { BookOpen, CheckCircle2, Clock3, Library, ListChecks, Loader2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 
 type LibraryFilter = "all" | "unread" | "caught-up" | "ongoing" | "completed";
-
-function getChapterGroups(manga: MangaCardData) {
-    const groups = new Map<string, MangaCardData["chapters"]>();
-    for (const chapter of manga.chapters) {
-        const key = Number.isFinite(chapter.chapterNumber)
-            ? chapter.chapterNumber.toFixed(3)
-            : chapter.id;
-        groups.set(key, [...(groups.get(key) ?? []), chapter]);
-    }
-
-    return Array.from(groups.values())
-        .map((group) => ({
-            chapterNumber: group[0].chapterNumber,
-            isRead: group.some((chapter) => chapter.isRead),
-            candidates: group,
-            best: [...group].sort((a, b) => {
-                const bTime = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
-                const aTime = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
-                return bTime - aTime;
-            })[0],
-        }))
-        .sort((a, b) => b.chapterNumber - a.chapterNumber);
-}
-
-function getMangaSummary(manga: MangaCardData) {
-    const groups = getChapterGroups(manga);
-    const latest = groups[0]?.best;
-    const unreadGroups = groups.filter((group) => !group.isRead);
-    const nextUnreadGroup = [...unreadGroups].sort((a, b) => a.chapterNumber - b.chapterNumber)[0];
-
-    return {
-        latest,
-        latestChapterNumber: latest?.chapterNumber,
-        readCount: groups.length - unreadGroups.length,
-        totalCount: groups.length,
-        unreadCount: unreadGroups.length,
-        nextUnread: nextUnreadGroup?.best ?? latest,
-        nextUnreadIds: nextUnreadGroup?.candidates.filter((chapter) => !chapter.isRead).map((chapter) => chapter.id) ?? [],
-        unreadChapterIds: groups.flatMap((group) => (
-            group.candidates
-                .filter((chapter) => !chapter.isRead)
-                .map((chapter) => chapter.id)
-        )),
-        isCaughtUp: groups.length > 0 && unreadGroups.length === 0,
-    };
-}
+type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
 
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
-    const router = useRouter();
+    const [items, setItems] = useState(mangas);
     const [filter, setFilter] = useState<LibraryFilter>("all");
-    const [progressAction, setProgressAction] = useState<"next" | "caught-up" | null>(null);
-    const summaries = useMemo(() => new Map(mangas.map((manga) => [manga.id, getMangaSummary(manga)])), [mangas]);
+    const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
 
     const stats = useMemo(() => {
-        const unreadTitles = mangas.filter((manga) => (summaries.get(manga.id)?.unreadCount ?? 0) > 0).length;
-        const unreadChapters = mangas.reduce((total, manga) => total + (summaries.get(manga.id)?.unreadCount ?? 0), 0);
-        const caughtUp = mangas.filter((manga) => summaries.get(manga.id)?.isCaughtUp).length;
-        const ongoing = mangas.filter((manga) => manga.status?.toUpperCase() === "ONGOING").length;
+        const unreadTitles = items.filter((manga) => manga.unreadChapters > 0).length;
+        const unreadChapters = items.reduce((total, manga) => total + manga.unreadChapters, 0);
+        const caughtUp = items.filter((manga) => manga.isCaughtUp).length;
+        const ongoing = items.filter((manga) => manga.status?.toUpperCase() === "ONGOING").length;
 
         return { unreadTitles, unreadChapters, caughtUp, ongoing };
-    }, [mangas, summaries]);
+    }, [items]);
 
     const continueManga = useMemo(() => (
-        [...mangas]
-            .filter((manga) => (summaries.get(manga.id)?.unreadCount ?? 0) > 0)
+        [...items]
+            .filter((manga) => manga.unreadChapters > 0)
             .sort((a, b) => {
-                const aChapter = summaries.get(a.id)?.nextUnread?.releaseDate;
-                const bChapter = summaries.get(b.id)?.nextUnread?.releaseDate;
+                const aChapter = a.nextUnreadChapter?.releaseDate;
+                const bChapter = b.nextUnreadChapter?.releaseDate;
                 return (bChapter ? new Date(bChapter).getTime() : 0) - (aChapter ? new Date(aChapter).getTime() : 0);
-            })[0] ?? mangas[0]
-    ), [mangas, summaries]);
+            })[0] ?? items[0]
+    ), [items]);
 
-    const continueSummary = continueManga ? summaries.get(continueManga.id) : undefined;
-
-    const filteredMangas = mangas.filter((manga) => {
-        const summary = summaries.get(manga.id);
+    const filteredMangas = items.filter((manga) => {
         switch (filter) {
             case "unread":
-                return (summary?.unreadCount ?? 0) > 0;
+                return manga.unreadChapters > 0;
             case "caught-up":
-                return Boolean(summary?.isCaughtUp);
+                return manga.isCaughtUp;
             case "ongoing":
                 return manga.status?.toUpperCase() === "ONGOING";
             case "completed":
@@ -98,26 +48,29 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     });
 
     const filters: Array<{ value: LibraryFilter; label: string; count: number }> = [
-        { value: "all", label: "All", count: mangas.length },
+        { value: "all", label: "All", count: items.length },
         { value: "unread", label: "Unread", count: stats.unreadTitles },
         { value: "caught-up", label: "Caught up", count: stats.caughtUp },
         { value: "ongoing", label: "Ongoing", count: stats.ongoing },
-        { value: "completed", label: "Completed", count: mangas.filter((manga) => manga.status?.toUpperCase() === "COMPLETED").length },
+        { value: "completed", label: "Completed", count: items.filter((manga) => manga.status?.toUpperCase() === "COMPLETED").length },
     ];
 
-    const markChaptersRead = async (chapterIds: string[], action: "next" | "caught-up") => {
-        if (chapterIds.length === 0) return;
+    const updateMangaSummary = (summary: MangaCardData) => {
+        setItems((current) => current.map((manga) => manga.id === summary.id ? summary : manga));
+    };
 
-        setProgressAction(action);
+    const markProgress = async (slug: string, action: ProgressAction) => {
+        setProgressAction({ slug, action });
         try {
-            await Promise.all(chapterIds.map((chapterId) => (
-                fetch(`/api/manga/chapter/${chapterId}/read`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ isRead: true }),
-                })
-            )));
-            router.refresh();
+            const apiAction = action === "next" ? "next" : "caught-up";
+            const res = await fetch(`/api/manga/${slug}/progress`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: apiAction }),
+            });
+            if (!res.ok) throw new Error(`Progress update failed: ${res.status}`);
+            const body = await res.json();
+            updateMangaSummary(body.summary);
         } catch (error) {
             console.error(error);
             alert("Failed to update reading progress");
@@ -134,23 +87,30 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                         <div className="flex-1">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-bold uppercase text-muted-foreground">
                                 <Sparkles className="h-3.5 w-3.5" />
-                                {continueSummary?.unreadCount ? "Continue reading" : "Up to date"}
+                                {continueManga?.unreadChapters ? "Continue reading" : "Up to date"}
                             </div>
                             <h2 className="text-2xl font-bold tracking-tight">{continueManga?.title ?? "Your library"}</h2>
-                            {continueManga && continueSummary?.nextUnread ? (
+                            {continueManga?.latestChapter ? (
                                 <p className="mt-2 text-sm text-muted-foreground">
-                                    {continueSummary.unreadCount > 0
-                                        ? `${continueSummary.unreadCount} unread chapter${continueSummary.unreadCount === 1 ? "" : "s"} waiting. Next up: chapter ${continueSummary.nextUnread.chapterNumber}.`
-                                        : `You are caught up. Latest chapter: ${continueSummary.latestChapterNumber}.`}
+                                    {continueManga.unreadChapters > 0 && continueManga.nextUnreadChapter
+                                        ? `${continueManga.unreadChapters} unread chapter${continueManga.unreadChapters === 1 ? "" : "s"} waiting. Next up: chapter ${continueManga.nextUnreadChapter.chapterNumber}.`
+                                        : `You are caught up. Latest chapter: ${continueManga.latestChapter.chapterNumber}.`}
                                 </p>
                             ) : (
                                 <p className="mt-2 text-sm text-muted-foreground">Add a manga to start building your reading queue.</p>
                             )}
                             <div className="mt-4 flex flex-wrap gap-2">
-                                {continueSummary?.nextUnread?.url && (
-                                    <a href={continueSummary.nextUnread.url} target="_blank" rel="noopener noreferrer" className="ui-button ui-button-primary">
+                                {(continueManga?.nextUnreadChapter ?? continueManga?.latestChapter)?.url && (
+                                    <a
+                                        href={(continueManga.nextUnreadChapter ?? continueManga.latestChapter)?.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ui-button ui-button-primary"
+                                    >
                                         <BookOpen className="h-4 w-4" />
-                                        {continueSummary.unreadCount > 0 ? `Read chapter ${continueSummary.nextUnread.chapterNumber}` : "Open latest"}
+                                        {continueManga.unreadChapters > 0 && continueManga.nextUnreadChapter
+                                            ? `Read chapter ${continueManga.nextUnreadChapter.chapterNumber}`
+                                            : "Open latest"}
                                     </a>
                                 )}
                                 {continueManga && (
@@ -158,26 +118,26 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                         View details
                                     </Link>
                                 )}
-                                {continueSummary && continueSummary.unreadCount > 0 && (
+                                {continueManga && continueManga.unreadChapters > 0 && (
                                     <>
                                         <button
                                             type="button"
-                                            onClick={() => void markChaptersRead(continueSummary.nextUnreadIds, "next")}
+                                            onClick={() => void markProgress(continueManga.slug, "next")}
                                             disabled={progressAction !== null}
                                             className="ui-button ui-button-secondary"
-                                            title={`Mark chapter ${continueSummary.nextUnread?.chapterNumber} as read`}
+                                            title={`Mark chapter ${continueManga.nextUnreadChapter?.chapterNumber} as read`}
                                         >
-                                            {progressAction === "next" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                            {progressAction?.slug === continueManga.slug && progressAction.action === "next" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                             Mark next read
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => void markChaptersRead(continueSummary.unreadChapterIds, "caught-up")}
+                                            onClick={() => void markProgress(continueManga.slug, "caught-up")}
                                             disabled={progressAction !== null}
                                             className="ui-button ui-button-primary"
                                             title="Mark all unread chapters as read"
                                         >
-                                            {progressAction === "caught-up" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
+                                            {progressAction?.slug === continueManga.slug && progressAction.action === "caught-up" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
                                             Mark caught up
                                         </button>
                                     </>
@@ -193,7 +153,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                             <Library className="h-4 w-4" />
                             Library
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{mangas.length}</p>
+                        <p className="mt-2 text-3xl font-bold">{items.length}</p>
                     </div>
                     <div className="surface rounded-lg p-4">
                         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
@@ -248,7 +208,12 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                 ) : (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {filteredMangas.map((manga) => (
-                            <MangaCard key={manga.id} manga={manga} />
+                            <MangaCard
+                                key={manga.id}
+                                manga={manga}
+                                loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
+                                onProgress={markProgress}
+                            />
                         ))}
                     </div>
                 )}

@@ -5,14 +5,12 @@ const {
   getCurrentUserIdMock,
   mangaFindUniqueMock,
   sourceFindFirstMock,
-  userChapterFindManyMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
   chapterFindManyMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   sourceFindFirstMock: vi.fn(),
-  userChapterFindManyMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
 }));
 
@@ -25,7 +23,6 @@ vi.mock("@/lib/db", () => ({
     chapter: { findMany: chapterFindManyMock },
     manga: { findUnique: mangaFindUniqueMock },
     source: { findFirst: sourceFindFirstMock },
-    userChapter: { findMany: userChapterFindManyMock },
     userManga: { findUnique: userMangaFindUniqueMock },
   },
 }));
@@ -37,9 +34,8 @@ describe("GET /api/manga/[slug]/chapters", () => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
     mangaFindUniqueMock.mockResolvedValue({ id: "m1" });
-    userMangaFindUniqueMock.mockResolvedValue({ id: "um1" });
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 1 });
     sourceFindFirstMock.mockResolvedValue({ id: "s1" });
-    userChapterFindManyMock.mockResolvedValue([{ chapterId: "c2", isRead: true }]);
   });
 
   it("requires ownership before returning chapter pages", async () => {
