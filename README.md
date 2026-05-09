@@ -121,6 +121,7 @@ This will execute a script to delete all entries from the configured Postgres da
 - [Architecture](docs/architecture.md): shared manga data, per-user library state, request/update flows.
 - [Providers](docs/providers.md): scraper registry, provider capabilities, ranking and readability limitations.
 - [Operations](docs/ops.md): local setup, Vercel/Neon deploy, OAuth, cron, routine checks.
+- [Performance Review](docs/performance-review.md): production-like baseline measurements and ranked performance backlog.
 - [Security](docs/security.md): auth, ownership rules, secret handling, hardening notes.
 - [Product Notes](docs/product-notes.md): UX principles, readability detection, backlog.
 
