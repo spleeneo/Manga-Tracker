@@ -128,6 +128,9 @@ export async function POST(request: Request) {
                     console.error(`[API] Failed to add source ${name}:`, e);
                 }
             }
+
+            const { checkForUpdates } = await import("@/lib/manga-updater");
+            await checkForUpdates(mangaId);
         }
 
         // Return the manga with updated data

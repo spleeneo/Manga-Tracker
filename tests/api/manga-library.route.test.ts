@@ -1,0 +1,81 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  deleteUserMangaMock,
+  getCurrentUserIdMock,
+  mangaFindUniqueMock,
+  userMangaFindUniqueMock,
+} = vi.hoisted(() => ({
+  deleteUserMangaMock: vi.fn(),
+  getCurrentUserIdMock: vi.fn(),
+  mangaFindUniqueMock: vi.fn(),
+  userMangaFindUniqueMock: vi.fn(),
+}));
+
+vi.mock("@/lib/session", () => ({
+  getCurrentUserId: getCurrentUserIdMock,
+}));
+
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    manga: {
+      findUnique: mangaFindUniqueMock,
+    },
+    userManga: {
+      delete: deleteUserMangaMock,
+      findUnique: userMangaFindUniqueMock,
+    },
+  },
+}));
+
+import { DELETE } from "@/app/api/manga/[slug]/library/route";
+
+describe("DELETE /api/manga/[slug]/library", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUserIdMock.mockResolvedValue("u1");
+    mangaFindUniqueMock.mockResolvedValue({ id: "m1" });
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1" });
+    deleteUserMangaMock.mockResolvedValue({ id: "um1" });
+  });
+
+  it("requires authentication", async () => {
+    getCurrentUserIdMock.mockResolvedValue(null);
+
+    const res = await DELETE(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+
+    expect(res.status).toBe(401);
+    expect(deleteUserMangaMock).not.toHaveBeenCalled();
+  });
+
+  it("removes only the signed-in user's library entry", async () => {
+    const res = await DELETE(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(deleteUserMangaMock).toHaveBeenCalledWith({
+      where: {
+        userId_mangaId: {
+          userId: "u1",
+          mangaId: "m1",
+        },
+      },
+    });
+  });
+
+  it("returns 404 when manga is not tracked", async () => {
+    userMangaFindUniqueMock.mockResolvedValue(null);
+
+    const res = await DELETE(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(deleteUserMangaMock).not.toHaveBeenCalled();
+  });
+});

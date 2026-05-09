@@ -12,6 +12,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
     const [filter, setFilter] = useState<LibraryFilter>("all");
     const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
+    const [removingSlug, setRemovingSlug] = useState<string | null>(null);
 
     const stats = useMemo(() => {
         const unreadTitles = items.filter((manga) => manga.unreadChapters > 0).length;
@@ -76,6 +77,26 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             alert("Failed to update reading progress");
         } finally {
             setProgressAction(null);
+        }
+    };
+
+    const deleteManga = async (slug: string, title: string) => {
+        if (!window.confirm(`Remove "${title}" from your library? Your shared manga data and sources will stay available if you track it again later.`)) {
+            return;
+        }
+
+        setRemovingSlug(slug);
+        try {
+            const res = await fetch(`/api/manga/${slug}/library`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error(`Remove failed: ${res.status}`);
+            setItems((current) => current.filter((manga) => manga.slug !== slug));
+        } catch (error) {
+            console.error(error);
+            alert("Failed to remove manga");
+        } finally {
+            setRemovingSlug(null);
         }
     };
 
@@ -212,6 +233,8 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                 key={manga.id}
                                 manga={manga}
                                 loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
+                                removing={removingSlug === manga.slug}
+                                onDelete={deleteManga}
                                 onProgress={markProgress}
                             />
                         ))}

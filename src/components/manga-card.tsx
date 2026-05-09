@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, CheckCircle2, ExternalLink, ListChecks, Loader2, Play } from "lucide-react";
+import { BookOpen, CheckCircle2, ExternalLink, ListChecks, Loader2, Play, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 
 export type MangaCardData = LibraryMangaSummary;
@@ -9,10 +9,14 @@ export type MangaCardData = LibraryMangaSummary;
 export function MangaCard({
     manga,
     loadingAction,
+    removing,
+    onDelete,
     onProgress,
 }: {
     manga: MangaCardData;
     loadingAction?: "latest" | "catch-up" | null;
+    removing?: boolean;
+    onDelete: (slug: string, title: string) => void;
     onProgress: (slug: string, action: "latest" | "catch-up") => void;
 }) {
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
@@ -20,22 +24,24 @@ export function MangaCard({
 
     return (
         <div className="interactive-surface group flex flex-col overflow-hidden rounded-lg">
-            <Link
-                href={`/manga/${manga.slug}`}
-                className="relative block aspect-[2/3] w-full overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Open ${manga.title} details`}
-            >
-                {manga.coverUrl ? (
-                    <img
-                        src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
-                        alt={manga.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <BookOpen className="h-12 w-12 opacity-20" />
-                    </div>
-                )}
+            <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
+                <Link
+                    href={`/manga/${manga.slug}`}
+                    className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Open ${manga.title} details`}
+                >
+                    {manga.coverUrl ? (
+                        <img
+                            src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                            alt={manga.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                    ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <BookOpen className="h-12 w-12 opacity-20" />
+                        </div>
+                    )}
+                </Link>
 
                 {manga.status && (
                     <div className="absolute left-2 top-2">
@@ -44,6 +50,20 @@ export function MangaCard({
                         </span>
                     </div>
                 )}
+
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onDelete(manga.slug, manga.title);
+                    }}
+                    disabled={removing}
+                    className="absolute bottom-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_0_hsl(var(--border))] transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-muted"
+                    aria-label={`Remove ${manga.title} from library`}
+                    title={`Remove ${manga.title}`}
+                >
+                    {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-4 w-4" />}
+                </button>
 
                 {manga.unreadChapters > 0 && (
                     <div className="absolute right-2 top-2">
@@ -56,7 +76,7 @@ export function MangaCard({
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
                     <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
-            </Link>
+            </div>
 
             <div className="flex flex-1 flex-col p-3.5">
                 <Link
