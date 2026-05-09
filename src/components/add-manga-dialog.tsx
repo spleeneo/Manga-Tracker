@@ -23,6 +23,7 @@ export function AddMangaDialog() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [trackingKey, setTrackingKey] = useState<string | null>(null);
     const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
     const router = useRouter();
 
@@ -66,17 +67,48 @@ export function AddMangaDialog() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    const getMangaFormData = (manga: SearchResult, initialSourceUrl?: string) => ({
+        title: manga.title,
+        slug: manga.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        coverUrl: manga.coverUrl || "",
+        status: manga.status || "ONGOING",
+        description: manga.description || "",
+        sourceUrl: initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "",
+        sources: manga.sources || [],
+    });
+
     const selectManga = (manga: SearchResult, initialSourceUrl?: string) => {
-        setFormData({
-            title: manga.title,
-            slug: manga.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-            coverUrl: manga.coverUrl || "",
-            status: manga.status || "ONGOING",
-            description: manga.description || "",
-            sourceUrl: initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "",
-            sources: manga.sources || [],
-        });
+        setFormData(getMangaFormData(manga, initialSourceUrl));
         setMode("MANUAL");
+    };
+
+    const trackSearchResult = async (manga: SearchResult, initialSourceUrl?: string) => {
+        const key = `${manga.title}:${initialSourceUrl || "all"}`;
+        setTrackingKey(key);
+        setLoading(true);
+
+        try {
+            const res = await fetch("/api/manga", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(getMangaFormData(manga, initialSourceUrl)),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to track manga");
+            }
+
+            setIsOpen(false);
+            resetForm();
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : "Failed to track manga");
+        } finally {
+            setLoading(false);
+            setTrackingKey(null);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -208,10 +240,14 @@ export function AddMangaDialog() {
                                             <div className="flex-1 min-w-0 py-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => selectManga(manga)}
+                                                    onClick={() => void trackSearchResult(manga)}
+                                                    disabled={loading}
                                                     className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                 >
-                                                    <h3 className="truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">{manga.title}</h3>
+                                                    <h3 className="flex items-center gap-2 truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">
+                                                        {trackingKey === `${manga.title}:all` && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+                                                        <span className="truncate">{manga.title}</span>
+                                                    </h3>
                                                 </button>
                                                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1 mb-2">{manga.description}</p>
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -220,9 +256,11 @@ export function AddMangaDialog() {
                                                             <button
                                                                 type="button"
                                                                 key={source.url || sourceIdx}
-                                                                onClick={() => selectManga(manga, source.url)}
+                                                                onClick={() => void trackSearchResult(manga, source.url)}
+                                                                disabled={loading}
                                                                 className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                             >
+                                                                {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
                                                                 {source.name}
                                                             </button>
                                                         ))
@@ -230,6 +268,23 @@ export function AddMangaDialog() {
                                                         <span className="text-xs text-red-500">No sources</span>
                                                     )}
                                                     <span className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{manga.status}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void trackSearchResult(manga)}
+                                                        disabled={loading}
+                                                        className="inline-flex items-center gap-1.5 rounded border bg-primary px-2 py-1 text-[10px] font-bold uppercase text-primary-foreground transition-colors hover:bg-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+                                                    >
+                                                        {trackingKey === `${manga.title}:all` && <Loader2 className="h-3 w-3 animate-spin" />}
+                                                        {trackingKey === `${manga.title}:all` ? "Tracking" : "Track"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => selectManga(manga)}
+                                                        disabled={loading}
+                                                        className="rounded border bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                    >
+                                                        Edit
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
