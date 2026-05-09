@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { ChapterItem } from "./chapter-item";
-import { CheckUpdatesButton } from "./check-updates-button";
-import { RefreshMetadataButton } from "./refresh-metadata-button";
 import { ExternalLink, Loader2 } from "lucide-react";
 
 interface Source {
@@ -199,10 +197,6 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                     ))}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                    <CheckUpdatesButton slug={slug} />
-                    <RefreshMetadataButton slug={slug} />
-                </div>
                 </div>
             </div>
 
