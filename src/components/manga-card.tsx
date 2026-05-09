@@ -106,7 +106,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                 {/* Status Badge */}
                 {manga.status && (
                     <div className="absolute left-2 top-2">
-                        <span className="status-pill border-border bg-card text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
+                        <span className="status-pill cover-status-pill">
                             {manga.status}
                         </span>
                     </div>

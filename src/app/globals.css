@@ -303,6 +303,20 @@
     @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase;
   }
 
+  .cover-status-pill {
+    border-color: hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    box-shadow:
+      0 2px 0 hsl(var(--border)),
+      0 1px 10px hsl(0 0% 0% / 0.22);
+  }
+
+  .dark .cover-status-pill {
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+
   .dialog-overlay {
     position: fixed;
     inset: 0;
