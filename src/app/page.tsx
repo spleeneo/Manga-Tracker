@@ -4,6 +4,7 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { LibraryDashboard } from "@/components/library-dashboard";
 import { ThemeSelector } from "@/components/theme-selector";
+import { UpdateLibraryButton } from "@/components/update-library-button";
 import { getLibraryMangaSummaries, type LibraryMangaSummary } from "@/lib/library-summary";
 import { auth } from "../../auth";
 
@@ -53,6 +54,7 @@ export default async function Home() {
           <BrandLink />
           <div className="flex min-w-0 items-center gap-3">
             {session?.user && <AddMangaDialog />}
+            {session?.user && <UpdateLibraryButton />}
             <ThemeSelector />
             <AuthButton />
           </div>

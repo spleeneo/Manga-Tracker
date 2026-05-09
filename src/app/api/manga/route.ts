@@ -87,7 +87,6 @@ export async function POST(request: Request) {
         // Process all sources
         if (sourcesToProcess.length > 0) {
             console.log(`[API] Processing ${sourcesToProcess.length} sources for manga ${finalMangaData.title}`);
-            const { checkForUpdates } = await import("@/lib/manga-updater");
 
             for (const source of sourcesToProcess) {
                 const url = source.url || source.sourceUrl; // handle different naming
@@ -124,9 +123,6 @@ export async function POST(request: Request) {
                         });
                         console.log(`[API] Added source ${name}`);
                     }
-
-                    // Trigger update (async, don't wait)
-                    checkForUpdates(mangaId).catch(e => console.error(`Failed to update source ${name}:`, e));
 
                 } catch (e) {
                     console.error(`[API] Failed to add source ${name}:`, e);

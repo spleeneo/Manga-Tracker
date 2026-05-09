@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ChapterItem } from "./chapter-item";
 import { CheckUpdatesButton } from "./check-updates-button";
 import { RefreshMetadataButton } from "./refresh-metadata-button";
@@ -42,8 +42,6 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
     const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
-    const [, setIsRefreshing] = useState(false);
-    const autoRefreshAttempts = useRef<Set<string>>(new Set());
 
     const loadChapterPage = useCallback(async ({
         reset,
@@ -80,37 +78,6 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             setIsLoadingPage(false);
         }
     }, [mode, selectedSourceId, slug]);
-
-    const handleRefresh = useCallback(async () => {
-        setIsRefreshing(true);
-        try {
-            const res = await fetch(`/api/manga/${slug}/check-updates`, {
-                method: 'POST'
-            });
-            if (res.ok) {
-                await loadChapterPage({ reset: true, nextMode: mode, nextSourceId: selectedSourceId });
-            }
-        } catch (e) {
-            console.error("Failed to auto-refetch chapters:", e);
-        } finally {
-            setIsRefreshing(false);
-        }
-    }, [loadChapterPage, mode, selectedSourceId, slug]);
-
-    // Auto-fetch if no chapters for selected source
-    useEffect(() => {
-        if (selectedSourceId === "all" || isLoadingPage) return;
-
-        const sourceChapters = chapters.filter(c => c.sourceId === selectedSourceId);
-        if (sourceChapters.length > 0 || autoRefreshAttempts.current.has(selectedSourceId)) return;
-
-        autoRefreshAttempts.current.add(selectedSourceId);
-        const timeoutId = window.setTimeout(() => {
-            void handleRefresh();
-        }, 0);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [chapters, handleRefresh, isLoadingPage, selectedSourceId]);
 
     const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
 
