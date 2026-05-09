@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search, Link2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/toast-provider";
 
 interface SearchSource {
     name: string;
@@ -26,6 +27,7 @@ export function AddMangaDialog() {
     const [trackingKey, setTrackingKey] = useState<string | null>(null);
     const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
     const router = useRouter();
+    const { showToast, updateToast } = useToast();
 
     const [formData, setFormData] = useState<{
         title: string;
@@ -84,14 +86,23 @@ export function AddMangaDialog() {
 
     const trackSearchResult = async (manga: SearchResult, initialSourceUrl?: string) => {
         const key = `${manga.title}:${initialSourceUrl || "all"}`;
+        const payload = getMangaFormData(manga, initialSourceUrl);
+        const toastId = showToast({
+            type: "loading",
+            title: `Tracking ${manga.title}`,
+            description: "Fetching sources and chapters in the background.",
+        });
+
         setTrackingKey(key);
-        setLoading(true);
+        setLoading(false);
+        setIsOpen(false);
+        resetForm();
 
         try {
             const res = await fetch("/api/manga", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(getMangaFormData(manga, initialSourceUrl)),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
@@ -99,12 +110,20 @@ export function AddMangaDialog() {
                 throw new Error(data.error || "Failed to track manga");
             }
 
-            setIsOpen(false);
-            resetForm();
+            updateToast(toastId, {
+                type: "success",
+                title: `${manga.title} is tracked`,
+                description: "Your library has been updated.",
+            });
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert(error instanceof Error ? error.message : "Failed to track manga");
+            updateToast(toastId, {
+                type: "error",
+                title: `Could not track ${manga.title}`,
+                description: error instanceof Error ? error.message : "Failed to track manga",
+                durationMs: 7000,
+            });
         } finally {
             setLoading(false);
             setTrackingKey(null);
@@ -113,13 +132,22 @@ export function AddMangaDialog() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        const payload = formData;
+        const toastId = showToast({
+            type: "loading",
+            title: `Tracking ${payload.title}`,
+            description: "Fetching sources and chapters in the background.",
+        });
+
+        setLoading(false);
+        setIsOpen(false);
+        resetForm();
 
         try {
             const res = await fetch("/api/manga", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
@@ -127,12 +155,20 @@ export function AddMangaDialog() {
                 throw new Error(data.error || "Failed to create manga");
             }
 
-            setIsOpen(false);
-            resetForm();
+            updateToast(toastId, {
+                type: "success",
+                title: `${payload.title} is tracked`,
+                description: "Your library has been updated.",
+            });
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert(error instanceof Error ? error.message : "Failed to create manga");
+            updateToast(toastId, {
+                type: "error",
+                title: `Could not track ${payload.title}`,
+                description: error instanceof Error ? error.message : "Failed to create manga",
+                durationMs: 7000,
+            });
         } finally {
             setLoading(false);
         }
