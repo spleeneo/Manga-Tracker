@@ -304,17 +304,27 @@
   }
 
   .cover-status-pill {
-    border-color: hsl(var(--border));
-    background: hsl(var(--card));
+    border: 2px solid hsl(var(--foreground));
+    background: hsl(var(--background));
     color: hsl(var(--foreground));
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0;
     box-shadow:
-      0 2px 0 hsl(var(--border)),
-      0 1px 10px hsl(0 0% 0% / 0.22);
+      0 0 0 2px hsl(var(--background)),
+      0 2px 0 hsl(var(--foreground)),
+      0 6px 14px hsl(0 0% 0% / 0.3);
   }
 
   .dark .cover-status-pill {
+    border-color: hsl(var(--foreground));
     background: hsl(var(--secondary));
-    color: hsl(var(--secondary-foreground));
+    color: hsl(var(--foreground));
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 2px 0 hsl(var(--foreground)),
+      0 6px 14px hsl(0 0% 0% / 0.42);
   }
 
   .dialog-overlay {
