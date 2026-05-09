@@ -51,6 +51,20 @@ export function MangaCard({
                     </div>
                 )}
 
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onDelete(manga.slug, manga.title);
+                    }}
+                    disabled={removing}
+                    className="absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-md border-2 border-background bg-foreground text-background shadow-[0_2px_0_hsl(var(--background)),0_8px_24px_hsl(0_0%_0%/0.35)] transition-all hover:-translate-y-0.5 hover:border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+                    aria-label={`Remove ${manga.title} from library`}
+                    title={`Untrack ${manga.title}`}
+                >
+                    {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-5 w-5" />}
+                </button>
+
                 {manga.unreadChapters > 0 && (
                     <div className="absolute bottom-3 right-2">
                         <span className="rounded-full border border-border bg-card px-2 py-1 text-[11px] font-bold text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
@@ -65,25 +79,13 @@ export function MangaCard({
             </div>
 
             <div className="flex flex-1 flex-col p-3.5">
-                <div className="mb-1 flex items-start gap-2">
-                    <Link
-                        href={`/manga/${manga.slug}`}
-                        className="min-w-0 flex-1 rounded-sm text-base font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        title={manga.title}
-                    >
-                        <span className="line-clamp-2">{manga.title}</span>
-                    </Link>
-                    <button
-                        type="button"
-                        onClick={() => onDelete(manga.slug, manga.title)}
-                        disabled={removing}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-[0_2px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-destructive hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
-                        aria-label={`Remove ${manga.title} from library`}
-                        title={`Untrack ${manga.title}`}
-                    >
-                        {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-4 w-4" />}
-                    </button>
-                </div>
+                <Link
+                    href={`/manga/${manga.slug}`}
+                    className="mb-1 line-clamp-2 rounded-sm text-base font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={manga.title}
+                >
+                    {manga.title}
+                </Link>
 
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex items-center gap-1">
