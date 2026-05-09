@@ -86,7 +86,11 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
 
     return (
         <div className="interactive-surface group flex flex-col overflow-hidden rounded-lg">
-            <div className="aspect-[2/3] w-full overflow-hidden bg-muted relative">
+            <Link
+                href={`/manga/${manga.slug}`}
+                className="relative block aspect-[2/3] w-full overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Open ${manga.title} details`}
+            >
                 {manga.coverUrl ? (
                     <img
                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
@@ -123,7 +127,7 @@ export function MangaCard({ manga }: { manga: MangaCardData }) {
                         style={{ width: `${progress}%` }}
                     />
                 </div>
-            </div>
+            </Link>
 
             <div className="flex flex-1 flex-col p-3.5">
                 <Link
