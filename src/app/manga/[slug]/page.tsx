@@ -7,22 +7,13 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChapterList } from "@/components/chapter-list";
 import { ThemeSelector } from "@/components/theme-selector";
+import { CHAPTER_PAGE_SIZE, getMangaChapterPage, type ChapterView } from "@/lib/chapters";
 import { auth } from "../../../../auth";
 
 interface PageProps {
     params: Promise<{
         slug: string;
     }>;
-}
-
-interface ChapterView {
-    id: string;
-    chapterNumber: number;
-    title: string | null;
-    url: string;
-    releaseDate: Date | null;
-    isRead: boolean;
-    sourceId: string | null;
 }
 
 async function getManga(slug: string, userId: string) {
@@ -32,9 +23,6 @@ async function getManga(slug: string, userId: string) {
         where: { slug: slug },
         include: {
             sources: true,
-            chapters: {
-                orderBy: { chapterNumber: 'desc' },
-            }
         }
     });
 
@@ -50,20 +38,16 @@ async function getManga(slug: string, userId: string) {
     });
     if (!tracked) return null;
 
-    const userChapters = await prisma.userChapter.findMany({
-        where: {
-            userId,
-            chapterId: { in: manga.chapters.map((chapter) => chapter.id) },
-        },
+    const chapterPage = await getMangaChapterPage({
+        mangaId: manga.id,
+        userId,
+        limit: CHAPTER_PAGE_SIZE,
     });
-    const readByChapterId = new Map(userChapters.map((entry) => [entry.chapterId, entry.isRead]));
 
     return {
         ...manga,
-        chapters: manga.chapters.map((chapter) => ({
-            ...chapter,
-            isRead: readByChapterId.get(chapter.id) ?? false,
-        })),
+        chapters: chapterPage.chapters,
+        nextChapterCursor: chapterPage.nextCursor,
     };
 }
 
@@ -190,6 +174,7 @@ export default async function MangaPage({ params }: PageProps) {
                                 slug={manga.slug}
                                 initialSources={manga.sources}
                                 initialChapters={manga.chapters as ChapterView[]}
+                                initialNextCursor={manga.nextChapterCursor}
                             />
                         </div>
                     </div>

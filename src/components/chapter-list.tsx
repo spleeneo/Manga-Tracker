@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { ChapterItem } from "./chapter-item";
 import { CheckUpdatesButton } from "./check-updates-button";
 import { RefreshMetadataButton } from "./refresh-metadata-button";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 
 interface Source {
     id: string;
@@ -29,15 +29,55 @@ interface ChapterListProps {
     slug: string;
     initialSources: Source[];
     initialChapters: Chapter[];
+    initialNextCursor: number | null;
 }
 
-export function ChapterList({ slug, initialSources, initialChapters }: ChapterListProps) {
-    const [selectedSourceId, setSelectedSourceId] = useState<string | "all">(
-        "all"
-    );
+type ChapterMode = "best" | "all";
+
+export function ChapterList({ slug, initialSources, initialChapters, initialNextCursor }: ChapterListProps) {
+    const [selectedSourceId, setSelectedSourceId] = useState<string | "all">("all");
+    const [mode, setMode] = useState<ChapterMode>("best");
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
+    const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
+    const [isLoadingPage, setIsLoadingPage] = useState(false);
     const [, setIsRefreshing] = useState(false);
     const autoRefreshAttempts = useRef<Set<string>>(new Set());
+
+    const loadChapterPage = useCallback(async ({
+        reset,
+        cursor,
+        nextMode = mode,
+        nextSourceId = selectedSourceId,
+    }: {
+        reset: boolean;
+        cursor?: number | null;
+        nextMode?: ChapterMode;
+        nextSourceId?: string | "all";
+    }) => {
+        setIsLoadingPage(true);
+        try {
+            const params = new URLSearchParams({
+                mode: nextMode,
+            });
+            if (typeof cursor === "number") {
+                params.set("cursor", String(cursor));
+            }
+            if (nextSourceId !== "all") {
+                params.set("sourceId", nextSourceId);
+            }
+
+            const res = await fetch(`/api/manga/${slug}/chapters?${params.toString()}`);
+            if (!res.ok) throw new Error(`Failed to load chapters: ${res.status}`);
+            const data = await res.json();
+            setChapters((current) => reset ? data.chapters : [...current, ...data.chapters]);
+            setNextCursor(data.nextCursor ?? null);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to load chapters");
+        } finally {
+            setIsLoadingPage(false);
+        }
+    }, [mode, selectedSourceId, slug]);
 
     const handleRefresh = useCallback(async () => {
         setIsRefreshing(true);
@@ -46,23 +86,18 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                 method: 'POST'
             });
             if (res.ok) {
-                // Refresh data from server
-                const dataRes = await fetch(`/api/manga/get?slug=${slug}`);
-                const data = await dataRes.json();
-                if (data.chapters) {
-                    setChapters(data.chapters);
-                }
+                await loadChapterPage({ reset: true, nextMode: mode, nextSourceId: selectedSourceId });
             }
         } catch (e) {
             console.error("Failed to auto-refetch chapters:", e);
         } finally {
             setIsRefreshing(false);
         }
-    }, [slug]);
+    }, [loadChapterPage, mode, selectedSourceId, slug]);
 
     // Auto-fetch if no chapters for selected source
     useEffect(() => {
-        if (selectedSourceId === "all") return;
+        if (selectedSourceId === "all" || isLoadingPage) return;
 
         const sourceChapters = chapters.filter(c => c.sourceId === selectedSourceId);
         if (sourceChapters.length > 0 || autoRefreshAttempts.current.has(selectedSourceId)) return;
@@ -73,9 +108,9 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
         }, 0);
 
         return () => window.clearTimeout(timeoutId);
-    }, [chapters, handleRefresh, selectedSourceId]);
+    }, [chapters, handleRefresh, isLoadingPage, selectedSourceId]);
 
-    const sourceById = new Map(initialSources.map((source) => [source.id, source]));
+    const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
 
     const getSourceRank = (sourceName?: string) => {
         switch (sourceName?.toLowerCase()) {
@@ -111,24 +146,41 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
         alternativeCount,
     });
 
-    const filteredChapters = selectedSourceId === "all"
+    const filteredChapters = mode === "best" && selectedSourceId === "all"
         ? Array.from(
             chapters.reduce((groups, chapter) => {
-                const key = Number.isFinite(chapter.chapterNumber)
-                    ? chapter.chapterNumber.toFixed(3)
-                    : chapter.url;
-                groups.set(key, [...(groups.get(key) ?? []), chapter]);
-                return groups;
-            }, new Map<string, Chapter[]>()).values()
-        ).map((group) => withSourceMetadata(pickBestChapter(group), group.length - 1))
+                    const key = Number.isFinite(chapter.chapterNumber)
+                        ? chapter.chapterNumber.toFixed(3)
+                        : chapter.url;
+                    groups.set(key, [...(groups.get(key) ?? []), chapter]);
+                    return groups;
+                }, new Map<string, Chapter[]>()).values()
+            ).map((group) => withSourceMetadata(pickBestChapter(group), group.length - 1))
         : chapters
-            .filter(c => c.sourceId === selectedSourceId)
+            .filter(c => selectedSourceId === "all" || c.sourceId === selectedSourceId)
             .map((chapter) => withSourceMetadata(chapter));
 
     const selectedSource = initialSources.find(s => s.id === selectedSourceId);
 
-    // Sort chapters by number desc
     const sortedChapters = [...filteredChapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
+
+    const selectBest = () => {
+        setMode("best");
+        setSelectedSourceId("all");
+        void loadChapterPage({ reset: true, nextMode: "best", nextSourceId: "all" });
+    };
+
+    const selectAll = () => {
+        setMode("all");
+        setSelectedSourceId("all");
+        void loadChapterPage({ reset: true, nextMode: "all", nextSourceId: "all" });
+    };
+
+    const selectSource = (sourceId: string) => {
+        setMode("all");
+        setSelectedSourceId(sourceId);
+        void loadChapterPage({ reset: true, nextMode: "all", nextSourceId: sourceId });
+    };
 
     return (
         <div className="space-y-5">
@@ -136,24 +188,37 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={() => setSelectedSourceId("all")}
-                        className={`ui-tab whitespace-nowrap ${selectedSourceId === "all"
+                        onClick={selectBest}
+                        disabled={isLoadingPage}
+                        className={`ui-tab whitespace-nowrap ${mode === "best" && selectedSourceId === "all"
                             ? "ui-tab-active"
                             : "bg-card"
                             }`}
-                        aria-pressed={selectedSourceId === "all"}
+                        aria-pressed={mode === "best" && selectedSourceId === "all"}
                     >
                         Best Available
+                    </button>
+                    <button
+                        onClick={selectAll}
+                        disabled={isLoadingPage}
+                        className={`ui-tab whitespace-nowrap ${mode === "all" && selectedSourceId === "all"
+                            ? "ui-tab-active"
+                            : "bg-card"
+                            }`}
+                        aria-pressed={mode === "all" && selectedSourceId === "all"}
+                    >
+                        All Available
                     </button>
                     {initialSources.map((source) => (
                         <button
                             key={source.id}
-                            onClick={() => setSelectedSourceId(source.id)}
-                            className={`ui-tab whitespace-nowrap ${selectedSourceId === source.id
+                            onClick={() => selectSource(source.id)}
+                            disabled={isLoadingPage}
+                            className={`ui-tab whitespace-nowrap ${mode === "all" && selectedSourceId === source.id
                                 ? "ui-tab-active"
                                 : "bg-card"
                                 }`}
-                            aria-pressed={selectedSourceId === source.id}
+                            aria-pressed={mode === "all" && selectedSourceId === source.id}
                         >
                             {source.sourceName}
                         </button>
@@ -182,9 +247,15 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                 </div>
             )}
 
-            {selectedSourceId === "all" && chapters.length !== sortedChapters.length && (
+            {mode === "best" && selectedSourceId === "all" && chapters.length !== sortedChapters.length && (
                 <p className="rounded-md border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
                     Showing one best chapter per chapter number. Source-specific duplicates are still available from the provider tabs.
+                </p>
+            )}
+
+            {mode === "all" && selectedSourceId === "all" && (
+                <p className="rounded-md border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+                    Showing every available chapter from every source. Duplicates are expected when multiple providers have the same chapter.
                 </p>
             )}
 
@@ -197,6 +268,20 @@ export function ChapterList({ slug, initialSources, initialChapters }: ChapterLi
                     {sortedChapters.map((chapter) => (
                         <ChapterItem key={chapter.id} chapter={chapter} />
                     ))}
+                </div>
+            )}
+
+            {nextCursor !== null && (
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={() => void loadChapterPage({ reset: false, cursor: nextCursor })}
+                        disabled={isLoadingPage}
+                        className="ui-button ui-button-secondary min-w-[180px]"
+                    >
+                        {isLoadingPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Load more chapters
+                    </button>
                 </div>
             )}
         </div>
