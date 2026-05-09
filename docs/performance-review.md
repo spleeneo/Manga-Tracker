@@ -1,6 +1,7 @@
 # Performance Review
 
 Date: 2026-05-09
+Latest follow-up: 2026-05-09, after slimming the home query and making Prisma query logging opt-in.
 
 ## Summary
 
@@ -30,7 +31,7 @@ The script measures authenticated data paths directly through Prisma because a t
 
 | Area | Median | Range | Notes |
 | --- | ---: | ---: | --- |
-| Signed-in home library DB query | 78 ms | 75-101 ms | Loads full chapters and sources for tracked manga. |
+| Signed-in home library DB query | 72 ms | 66-75 ms | Loads slim chapter fields for tracked manga; approx payload now 14.6 KB for the sampled library. |
 | Manga detail DB query path | 85 ms | 78-172 ms | Loads manga, all chapters, sources, ownership, and user read rows. |
 | Single chapter read write | 74 ms | 72-151 ms | Rollback benchmark equivalent to one read API DB path, excluding HTTP/session overhead. |
 | Current caught-up write loop | 860 ms | 845-892 ms | Rollback lower bound for 50 chapter writes. Current UI also adds many HTTP requests. |
@@ -45,6 +46,12 @@ Loaded data shape:
 | Home | 1 tracked manga loaded 65 chapter rows, about 31.7 KB JSON in the sampled Prisma result. |
 | Detail | 3 sources, 65 chapter rows, 64 user read rows, about 45.5 KB JSON in the sampled Prisma result. |
 
+## Follow-up Delta
+
+- Home query payload dropped from about 31.7 KB to 14.6 KB for the sampled library after selecting only the fields used by the dashboard/card UI and dropping unused source data.
+- Prisma query logging is now opt-in with `PRISMA_QUERY_LOG=1`, removing default query-log noise from page transitions.
+- The next largest user-visible issue is still batch read progress: 50 sequential read writes measured 839 ms median in the latest rollback benchmark before HTTP/session overhead.
+
 ## Findings
 
 1. **Batch read progress is the biggest responsiveness risk.**
@@ -52,10 +59,10 @@ Loaded data shape:
    - A 50-chapter rollback loop took about 860 ms before HTTP/session overhead. In the browser, parallel requests plus a full refresh will feel slower and jumpier.
    - Impact: high. Effort: medium.
 
-2. **Home page loads more chapter data than it needs.**
-   - `src/app/page.tsx` fetches all chapters for every tracked manga, including `userChapters`, then summary grouping happens in client components.
-   - This is fine with one title, but it scales poorly with a larger library.
-   - Impact: high as the library grows. Effort: medium/high.
+2. **Home page still scales with chapter history, though the payload is slimmer now.**
+   - `src/app/page.tsx` now selects only the fields rendered by the dashboard/cards, but it still fetches every chapter for each tracked manga.
+   - This is acceptable for the current library size, but summary-only server data is still the better long-term shape.
+   - Impact: medium/high as the library grows. Effort: medium/high.
 
 3. **Detail page uses multiple broad reads for chapter/read state.**
    - `src/app/manga/[slug]/page.tsx` loads all chapters, then separately loads matching `UserChapter` rows.
@@ -67,10 +74,9 @@ Loaded data shape:
    - These depend on external providers, so they need UI feedback, caching, and maybe provider-level timeouts rather than pure query optimization.
    - Impact: medium. Effort: medium.
 
-5. **Prisma query logging is enabled unconditionally.**
-   - `src/lib/db.ts` creates Prisma with `log: ["query"]`.
-   - This is useful while debugging but noisy and potentially expensive in production/serverless logs.
-   - Impact: low/medium. Effort: low.
+5. **Prisma query logging used to be enabled unconditionally.**
+   - This has been changed to `PRISMA_QUERY_LOG=1`.
+   - Impact: addressed as a quick win.
 
 6. **Current indexes mostly support ownership, but one common chapter query plan is weak on the sampled DB.**
    - `UserManga_userId_mangaId_key` supports ownership and user-library lookup.

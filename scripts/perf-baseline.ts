@@ -70,10 +70,19 @@ async function runHomeQuery(userId: string) {
     orderBy: { updatedAt: "desc" },
     include: {
       manga: {
-        include: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          coverUrl: true,
+          status: true,
           chapters: {
             orderBy: { chapterNumber: "desc" },
-            include: {
+            select: {
+              id: true,
+              chapterNumber: true,
+              url: true,
+              releaseDate: true,
               userChapters: {
                 where: { userId },
                 select: { isRead: true },

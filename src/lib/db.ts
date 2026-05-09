@@ -7,7 +7,7 @@ export const isDatabaseConfigured = Boolean(process.env.DATABASE_URL);
 export const prisma =
     globalForPrisma.prisma ||
     new PrismaClient({
-        log: ["query"],
+        log: process.env.PRISMA_QUERY_LOG === "1" ? ["query"] : [],
     });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

@@ -46,26 +46,37 @@ export default async function Home() {
         orderBy: { updatedAt: "desc" },
         include: {
           manga: {
-            include: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              coverUrl: true,
+              status: true,
               chapters: {
                 orderBy: { chapterNumber: 'desc' },
-                include: {
+                select: {
+                  id: true,
+                  chapterNumber: true,
+                  url: true,
+                  releaseDate: true,
                   userChapters: {
                     where: { userId: session.user.id },
                     select: { isRead: true },
                   },
                 },
               },
-              sources: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       mangas = library.map((entry) => ({
         ...entry.manga,
         chapters: entry.manga.chapters.map((chapter) => ({
-          ...chapter,
+          id: chapter.id,
+          chapterNumber: chapter.chapterNumber,
+          url: chapter.url,
+          releaseDate: chapter.releaseDate,
           isRead: chapter.userChapters[0]?.isRead ?? false,
         })),
       }));
