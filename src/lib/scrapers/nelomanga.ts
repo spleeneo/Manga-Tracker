@@ -9,6 +9,18 @@ interface NeloChapterApiItem {
     updated_at?: string;
 }
 
+interface NeloChapterApiResponse {
+    success?: boolean;
+    data?: {
+        chapters?: NeloChapterApiItem[];
+        pagination?: {
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+        };
+    };
+}
+
 export class NeloMangaScraper implements Scraper {
     name = "NeloManga";
     capabilities = { search: true, metadata: true, chapters: true };
@@ -40,33 +52,56 @@ export class NeloMangaScraper implements Scraper {
 
         console.log(`[NeloManga] Fetching chapters via API for: ${slug}`);
         const apiUrl = `${NELOMANGA_BASE}/api/manga/${slug}/chapters`;
-
-        let res: Response;
-        try {
-            res = await fetchWithRetry(apiUrl, { headers: this.getHeaders() });
-        } catch (error) {
-            if (error instanceof ScraperRequestError) {
-                console.error(`[NeloManga] API chapters failed (${error.kind})`);
-            }
-            // Fallback to HTML scraping if API fails
-            return this.fetchChaptersFromHtml(url);
-        }
+        const chapters: ScrapedChapter[] = [];
+        const seenProviderIds = new Set<string>();
+        let offset = 0;
+        let pageCount = 0;
 
         try {
-            const result = await res.json();
-            if (!result.success || !result.data?.chapters) {
-                return this.fetchChaptersFromHtml(url);
+            while (pageCount < 20) {
+                const pageUrl = offset === 0 ? apiUrl : `${apiUrl}?offset=${offset}`;
+                const res = await fetchWithRetry(pageUrl, { headers: this.getHeaders() });
+                const result = await res.json() as NeloChapterApiResponse;
+                const apiChapters = result.data?.chapters;
+
+                if (!result.success || !Array.isArray(apiChapters)) {
+                    if (chapters.length > 0) break;
+                    return this.fetchChaptersFromHtml(url);
+                }
+
+                for (const ch of apiChapters) {
+                    if (seenProviderIds.has(ch.chapter_slug)) continue;
+                    seenProviderIds.add(ch.chapter_slug);
+                    chapters.push({
+                        providerChapterId: ch.chapter_slug,
+                        url: `https://www.nelomanga.net/manga/${slug}/${ch.chapter_slug}`,
+                        chapterNumber: ch.chapter_num,
+                        title: ch.chapter_name,
+                        releaseDate: ch.updated_at ? new Date(ch.updated_at) : new Date(),
+                    });
+                }
+
+                pageCount++;
+                const pagination = result.data?.pagination;
+                const hasMore = pagination?.has_more ?? apiChapters.length > 0;
+                if (!hasMore || apiChapters.length === 0) break;
+
+                const nextOffset = typeof pagination?.offset === "number" && typeof pagination?.limit === "number"
+                    ? pagination.offset + pagination.limit
+                    : offset + apiChapters.length;
+
+                if (nextOffset <= offset) break;
+                offset = nextOffset;
             }
 
-            return (result.data.chapters as NeloChapterApiItem[]).map((ch) => ({
-                providerChapterId: ch.chapter_slug,
-                url: `https://www.nelomanga.net/manga/${slug}/${ch.chapter_slug}`,
-                chapterNumber: ch.chapter_num,
-                title: ch.chapter_name,
-                releaseDate: ch.updated_at ? new Date(ch.updated_at) : new Date(),
-            }));
+            return chapters.length > 0 ? chapters : this.fetchChaptersFromHtml(url);
         } catch (e) {
-            console.error("[NeloManga] Failed to parse chapters API", e);
+            if (e instanceof ScraperRequestError) {
+                console.error(`[NeloManga] API chapters failed (${e.kind})`);
+            } else {
+                console.error("[NeloManga] Failed to parse chapters API", e);
+            }
+            if (chapters.length > 0) return chapters;
             return this.fetchChaptersFromHtml(url);
         }
     }

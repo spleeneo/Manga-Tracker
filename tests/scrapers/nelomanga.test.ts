@@ -1,0 +1,64 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { fetchWithRetryMock } = vi.hoisted(() => ({
+  fetchWithRetryMock: vi.fn(),
+}));
+
+vi.mock("@/lib/scrapers/http", () => ({
+  fetchWithRetry: fetchWithRetryMock,
+  ScraperRequestError: class ScraperRequestError extends Error {
+    constructor(
+      message: string,
+      public kind: string,
+      public status?: number,
+    ) {
+      super(message);
+      this.name = "ScraperRequestError";
+    }
+  },
+}));
+
+import { NeloMangaScraper } from "@/lib/scrapers/nelomanga";
+
+function jsonResponse(body: unknown) {
+  return {
+    json: vi.fn().mockResolvedValue(body),
+  };
+}
+
+describe("NeloMangaScraper", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fetches all paginated chapter offsets", async () => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce(jsonResponse({
+        success: true,
+        data: {
+          chapters: [
+            { chapter_slug: "chapter-96", chapter_num: 96, chapter_name: "Chapter 96", updated_at: "2026-05-06T04:27:43.000000Z" },
+            { chapter_slug: "chapter-95", chapter_num: 95, chapter_name: "Chapter 95", updated_at: "2026-04-04T04:27:43.000000Z" },
+          ],
+          pagination: { total: 3, limit: 2, offset: 0, has_more: true },
+        },
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        success: true,
+        data: {
+          chapters: [
+            { chapter_slug: "chapter-1", chapter_num: 1, chapter_name: "Chapter 1", updated_at: "2025-01-01T04:27:43.000000Z" },
+          ],
+          pagination: { total: 3, limit: 2, offset: 2, has_more: false },
+        },
+      }));
+
+    const scraper = new NeloMangaScraper();
+    const chapters = await scraper.fetchChapters("https://www.nelomanga.net/manga/tongari-boushi-no-atelier");
+
+    expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([96, 95, 1]);
+    expect(fetchWithRetryMock).toHaveBeenCalledTimes(2);
+    expect(fetchWithRetryMock.mock.calls[0][0]).toBe("https://www.nelomanga.net/api/manga/tongari-boushi-no-atelier/chapters");
+    expect(fetchWithRetryMock.mock.calls[1][0]).toBe("https://www.nelomanga.net/api/manga/tongari-boushi-no-atelier/chapters?offset=2");
+  });
+});
