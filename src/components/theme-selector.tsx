@@ -27,7 +27,10 @@ export function ThemeSelector() {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const selectedTheme = getStoredTheme() ?? getSystemTheme();
+    const domTheme = document.documentElement.dataset.theme;
+    const selectedTheme = domTheme === "light" || domTheme === "dark"
+      ? domTheme
+      : getStoredTheme() ?? getSystemTheme();
     applyTheme(selectedTheme);
     window.queueMicrotask(() => setTheme(selectedTheme));
 
