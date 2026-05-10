@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findManyManga, findFirstChapter, createChapter, updateManga, scrapeChapters } = vi.hoisted(() => ({
+const { findManyManga, findManyChapter, createManyChapter, updateManga, updateSource, scrapeChapters } = vi.hoisted(() => ({
   findManyManga: vi.fn(),
-  findFirstChapter: vi.fn(),
-  createChapter: vi.fn(),
+  findManyChapter: vi.fn(),
+  createManyChapter: vi.fn(),
   updateManga: vi.fn(),
+  updateSource: vi.fn(),
   scrapeChapters: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     manga: { findMany: findManyManga, update: updateManga },
-    chapter: { findFirst: findFirstChapter, create: createChapter },
+    chapter: { findMany: findManyChapter, createMany: createManyChapter },
+    source: { update: updateSource },
   },
 }));
 
@@ -24,6 +26,9 @@ import { checkForUpdates } from "@/lib/manga-updater";
 describe("checkForUpdates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findManyChapter.mockResolvedValue([]);
+    createManyChapter.mockResolvedValue({ count: 0 });
+    updateSource.mockResolvedValue({});
   });
 
   it("reports manga with no sources", async () => {
@@ -48,12 +53,14 @@ describe("checkForUpdates", () => {
       { chapterNumber: 1100, url: "u1", title: "A", releaseDate: new Date() },
       { chapterNumber: 1101, url: "u2", title: "B", releaseDate: new Date() },
     ]);
-    findFirstChapter
-      .mockResolvedValueOnce({ id: "existing" })
-      .mockResolvedValueOnce(null);
+    findManyChapter.mockResolvedValue([{ providerChapterId: null, chapterNumber: 1100 }]);
+    createManyChapter.mockResolvedValue({ count: 1 });
 
     await checkForUpdates("m1");
-    expect(createChapter).toHaveBeenCalledTimes(1);
+    expect(createManyChapter).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ chapterNumber: 1101 })],
+      skipDuplicates: true,
+    }));
     expect(updateManga).toHaveBeenCalledTimes(1);
   });
 
@@ -72,10 +79,14 @@ describe("checkForUpdates", () => {
     scrapeChapters
       .mockRejectedValueOnce(new Error("bad source"))
       .mockResolvedValueOnce([{ chapterNumber: 1, url: "good", title: "c1", releaseDate: new Date() }]);
-    findFirstChapter.mockResolvedValue(null);
+    createManyChapter.mockResolvedValue({ count: 1 });
 
     const results = await checkForUpdates("m1");
-    expect(createChapter).toHaveBeenCalledTimes(1);
+    expect(createManyChapter).toHaveBeenCalledTimes(1);
+    expect(updateSource).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "s1" },
+      data: expect.objectContaining({ failureCount: { increment: 1 } }),
+    }));
     expect(results[0].manga).toBe("Multi");
   });
 });

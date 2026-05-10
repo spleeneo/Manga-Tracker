@@ -111,4 +111,33 @@ describe("POST /api/manga", () => {
       create: expect.objectContaining({ syncStatus: "SYNCING" }),
     }));
   });
+
+  it("attaches an already cached manga without scheduling another scrape", async () => {
+    mangaFindUnique.mockResolvedValue({ id: "m1", _count: { chapters: 42 } });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+    sourceFindUnique.mockResolvedValue({ id: "s1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "One Piece",
+        slug: "one-piece",
+        sources: [{ name: "MangaDex", url: "https://mangadex.org/title/x" }],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.syncStatus).toBe("UPDATED");
+    expect(mangaCreate).not.toHaveBeenCalled();
+    expect(sourceCreate).not.toHaveBeenCalled();
+    expect(afterMock).not.toHaveBeenCalled();
+    expect(userMangaUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      update: expect.objectContaining({ syncStatus: "UPDATED" }),
+      create: expect.objectContaining({ syncStatus: "UPDATED" }),
+    }));
+  });
 });

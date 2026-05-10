@@ -58,6 +58,11 @@ export async function POST(request: Request) {
         // Check for existing manga
         const existingManga = await prisma.manga.findUnique({
             where: { slug: finalMangaData.slug },
+            include: {
+                _count: {
+                    select: { chapters: true },
+                },
+            },
         });
 
         const mangaId = existingManga ? existingManga.id : (await prisma.manga.create({
@@ -70,31 +75,9 @@ export async function POST(request: Request) {
             }
         })).id;
 
-        const hasSources = sourcesToProcess.length > 0;
-        await prisma.userManga.upsert({
-            where: {
-                    userId_mangaId: {
-                    userId,
-                    mangaId,
-                },
-            },
-            update: {
-                status: "READING",
-                syncStatus: hasSources ? "SYNCING" : "IDLE",
-                syncStartedAt: hasSources ? new Date() : null,
-                syncFinishedAt: null,
-                syncError: null,
-            },
-            create: {
-                userId,
-                mangaId,
-                status: "READING",
-                syncStatus: hasSources ? "SYNCING" : "IDLE",
-                syncStartedAt: hasSources ? new Date() : null,
-            },
-        });
-
         // Process all sources
+        const hasSources = sourcesToProcess.length > 0;
+        let addedSource = false;
         if (sourcesToProcess.length > 0) {
             console.log(`[API] Processing ${sourcesToProcess.length} sources for manga ${finalMangaData.title}`);
 
@@ -131,6 +114,7 @@ export async function POST(request: Request) {
                                 sourceUrl: url
                             }
                         });
+                        addedSource = true;
                         console.log(`[API] Added source ${name}`);
                     }
 
@@ -138,7 +122,38 @@ export async function POST(request: Request) {
                     console.error(`[API] Failed to add source ${name}:`, e);
                 }
             }
+        }
 
+        const shouldScrape = hasSources && (!existingManga || existingManga._count.chapters === 0 || addedSource);
+        const syncStartedAt = shouldScrape ? new Date() : null;
+        const syncFinishedAt = hasSources && !shouldScrape ? new Date() : null;
+        const syncStatus = hasSources ? (shouldScrape ? "SYNCING" : "UPDATED") : "IDLE";
+
+        await prisma.userManga.upsert({
+            where: {
+                    userId_mangaId: {
+                    userId,
+                    mangaId,
+                },
+            },
+            update: {
+                status: "READING",
+                syncStatus,
+                syncStartedAt,
+                syncFinishedAt,
+                syncError: null,
+            },
+            create: {
+                userId,
+                mangaId,
+                status: "READING",
+                syncStatus,
+                syncStartedAt,
+                syncFinishedAt,
+            },
+        });
+
+        if (shouldScrape) {
             after(async () => {
                 try {
                     const { checkForUpdates } = await import("@/lib/manga-updater");
@@ -179,7 +194,7 @@ export async function POST(request: Request) {
             id: mangaId,
             title: finalMangaData.title,
             slug: finalMangaData.slug,
-            syncStatus: hasSources ? "SYNCING" : "IDLE",
+            syncStatus,
         });
 
     } catch (error) {
