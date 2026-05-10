@@ -105,15 +105,15 @@ export default async function MangaPage({ params }: PageProps) {
                 </div>
             </div>
 
-            <div className="page-wrap relative z-10 py-5 md:-mt-28 md:py-0">
+            <div className="page-wrap relative z-10 py-5 md:-mt-20 md:py-0">
                 <div className="grid gap-6 md:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr]">
                     <div className="order-2 flex w-full flex-col gap-4 md:order-1 md:mx-0 md:max-w-[260px] xl:max-w-[280px]">
-                        <div className="surface group relative mx-auto hidden aspect-[2/3] w-full max-w-[220px] overflow-hidden rounded-lg md:block md:max-w-none">
+                        <div className="surface relative mx-auto hidden aspect-[2/3] w-full max-w-[220px] overflow-hidden rounded-lg md:block md:max-w-none">
                             {manga.coverUrl ? (
                                 <img
                                     src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                                     alt={manga.title}
-                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    className="h-full w-full object-cover"
                                 />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
@@ -152,7 +152,7 @@ export default async function MangaPage({ params }: PageProps) {
                     <div className="order-1 min-w-0 space-y-5 md:order-2 md:pt-28">
                         <div className="grid gap-4 min-[460px]:grid-cols-[96px_1fr] md:block">
                             {manga.coverUrl && (
-                                <div className="surface group relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[460px]:block md:hidden">
+                                <div className="surface relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[460px]:block md:hidden">
                                     <img
                                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                                         alt={manga.title}
