@@ -25,7 +25,7 @@ export function MangaCard({
 
     return (
         <>
-        <div className="interactive-surface group relative flex overflow-visible rounded-lg sm:hidden">
+        <div className="interactive-surface manga-card-surface group relative flex overflow-visible rounded-lg sm:hidden">
             <Link
                 href={`/manga/${manga.slug}`}
                 className="relative block h-32 w-20 shrink-0 overflow-hidden rounded-l-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -63,7 +63,7 @@ export function MangaCard({
             </button>
 
             <div className="flex min-w-0 flex-1 flex-col p-3">
-                <div className="flex items-start justify-between gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                     <div className="min-w-0">
                         {isSyncing ? (
                             <span className="mb-1 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-foreground">
@@ -76,7 +76,7 @@ export function MangaCard({
                         ) : null}
                         <Link
                             href={`/manga/${manga.slug}`}
-                            className="line-clamp-2 rounded-sm text-sm font-bold leading-5 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="line-clamp-2 min-h-10 rounded-sm text-sm font-bold leading-5 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title={manga.title}
                         >
                             {manga.title}
@@ -96,7 +96,7 @@ export function MangaCard({
                     ) : null}
                 </div>
 
-                <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-[11px] font-bold uppercase text-muted-foreground">
+                <div className="mt-auto flex min-h-6 items-center justify-between gap-2 pt-3 text-[11px] font-bold uppercase text-muted-foreground">
                     <span>
                         {manga.isCaughtUp ? "Caught up" : `${manga.readChapters} / ${manga.totalChapters} read`}
                     </span>
@@ -126,7 +126,7 @@ export function MangaCard({
             </div>
         </div>
 
-        <div className="interactive-surface group relative hidden flex-col overflow-visible rounded-lg sm:flex">
+        <div className="interactive-surface manga-card-surface group relative hidden flex-col overflow-visible rounded-lg sm:flex">
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-t-lg bg-muted">
                 <Link
                     href={`/manga/${manga.slug}`}
@@ -182,17 +182,17 @@ export function MangaCard({
                 {removing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-3 w-3" />}
             </button>
 
-            <div className="flex flex-1 flex-col p-3.5">
+            <div className="flex min-h-[150px] flex-1 flex-col p-3.5">
                 <Link
                     href={`/manga/${manga.slug}`}
-                    className="mb-1 line-clamp-2 rounded-sm text-base font-bold tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="mb-2 line-clamp-2 min-h-12 rounded-sm text-base font-bold leading-6 tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     title={manga.title}
                 >
                     {manga.title}
                 </Link>
 
-                <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-muted-foreground">
-                    <div className="flex items-center gap-1">
+                <div className="grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-[11px] font-bold uppercase text-muted-foreground">
+                    <div className="flex min-w-0 items-center gap-1">
                         {manga.isCaughtUp ? (
                             <span className="flex items-center gap-1 text-foreground">
                                 <CheckCircle2 className="h-3 w-3" />
@@ -215,24 +215,26 @@ export function MangaCard({
                     ) : null}
                 </div>
 
-                {manga.latestChapter && !manga.isCaughtUp ? (
-                    <button
-                        type="button"
-                        onClick={() => onProgress(manga.slug, "catch-up")}
-                        disabled={Boolean(loadingAction)}
-                        className="ui-button ui-button-secondary mt-3 min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
-                        title="Mark every available chapter as read"
-                    >
-                        {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                        Mark caught up
-                    </button>
-                ) : null}
-
-                {!manga.latestChapter ? (
-                    <div className="mt-3 min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
+                <div className="mt-auto pt-3">
+                    {manga.latestChapter && !manga.isCaughtUp ? (
+                        <button
+                            type="button"
+                            onClick={() => onProgress(manga.slug, "catch-up")}
+                            disabled={Boolean(loadingAction)}
+                            className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
+                            title="Mark every available chapter as read"
+                        >
+                            {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                            Mark caught up
+                        </button>
+                    ) : !manga.latestChapter ? (
+                        <div className="min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
                         No chapters yet
-                    </div>
-                ) : null}
+                        </div>
+                    ) : (
+                        <div className="min-h-8" aria-hidden="true" />
+                    )}
+                </div>
             </div>
         </div>
         </>

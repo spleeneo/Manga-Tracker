@@ -23,6 +23,9 @@ interface ChapterItemProps {
 export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onProgressChange }: ChapterItemProps) {
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
+    const openChapter = () => {
+        window.open(chapter.url, "_blank", "noopener,noreferrer");
+    };
 
     const toggleRead = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -60,18 +63,21 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
     };
 
     return (
-        <div
+        <article
             className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${chapter.isRead ? 'bg-muted/35 opacity-70' : ''}`}
         >
+            <button
+                type="button"
+                onClick={openChapter}
+                className="absolute inset-0 z-0 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Open chapter ${chapter.chapterNumber}`}
+            />
             <div className="flex items-center justify-between mb-1">
-                <a
-                    href={chapter.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`rounded-sm font-bold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${chapter.isRead ? 'text-muted-foreground' : 'text-foreground'}`}
+                <span
+                    className={`pointer-events-none relative z-10 rounded-sm font-bold transition-colors group-hover:text-primary ${chapter.isRead ? 'text-muted-foreground' : 'text-foreground'}`}
                 >
                     Chapter {chapter.chapterNumber}
-                </a>
+                </span>
                 <button
                     onClick={toggleRead}
                     disabled={loading}
@@ -89,10 +95,10 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             </div>
 
             {chapter.title && (
-                <span className="mb-2 line-clamp-1 text-sm text-muted-foreground">{chapter.title}</span>
+                <span className="pointer-events-none relative z-10 mb-2 line-clamp-1 text-sm text-muted-foreground">{chapter.title}</span>
             )}
 
-            <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+            <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-2">
                 {chapter.sourceName && (
                     <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
                         {chapter.sourceName}
@@ -111,6 +117,6 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             </div>
 
             {chapter.isRead && <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-muted-foreground/20" />}
-        </div>
+        </article>
     );
 }

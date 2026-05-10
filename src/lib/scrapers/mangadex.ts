@@ -28,6 +28,13 @@ interface MangaDexChapterItem {
     };
 }
 
+interface MangaDexFeedResponse {
+    data: MangaDexChapterItem[];
+    limit?: number;
+    offset?: number;
+    total?: number;
+}
+
 export class MangaDexScraper implements Scraper {
     name = "MangaDex";
     capabilities = { search: true, metadata: true, chapters: true };
@@ -58,17 +65,31 @@ export class MangaDexScraper implements Scraper {
         const mangaId = this.extractId(url);
         if (!mangaId) throw new Error("Could not extract MangaDex ID from URL");
 
-        const res = await fetchWithRetry(`https://api.mangadex.org/manga/${mangaId}/feed?translatedLanguage[]=en&order[chapter]=desc&limit=100`);
+        const limit = 100;
+        let offset = 0;
+        const chapters: ScrapedChapter[] = [];
 
-        const data = await res.json();
+        while (true) {
+            const feedUrl = `https://api.mangadex.org/manga/${mangaId}/feed?translatedLanguage[]=en&order[chapter]=desc&limit=${limit}&offset=${offset}`;
+            const res = await fetchWithRetry(feedUrl);
+            const data = await res.json() as MangaDexFeedResponse;
+            const page = data.data ?? [];
 
-        return (data.data as MangaDexChapterItem[]).map((item) => ({
-            providerChapterId: item.id,
-            chapterNumber: parseFloat(item.attributes.chapter),
-            title: item.attributes.title || `Chapter ${item.attributes.chapter}`,
-            url: `https://mangadex.org/chapter/${item.id}`,
-            releaseDate: new Date(item.attributes.publishAt),
-        }));
+            chapters.push(...page.map((item) => ({
+                providerChapterId: item.id,
+                chapterNumber: parseFloat(item.attributes.chapter),
+                title: item.attributes.title || `Chapter ${item.attributes.chapter}`,
+                url: `https://mangadex.org/chapter/${item.id}`,
+                releaseDate: new Date(item.attributes.publishAt),
+            })).filter((chapter) => Number.isFinite(chapter.chapterNumber)));
+
+            const nextOffset = offset + (data.limit ?? limit);
+            const total = data.total ?? chapters.length;
+            if (page.length === 0 || nextOffset >= total) break;
+            offset = nextOffset;
+        }
+
+        return chapters;
     }
 
     async fetchMetadata(url: string): Promise<MangaMetadata> {
