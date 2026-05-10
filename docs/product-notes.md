@@ -18,6 +18,7 @@ Mangateo is a personal manga library:
 - Every interactive element should have visible hover, active, selected, disabled, and focus states.
 - Dialogs should use the same solid surface treatment.
 - Avoid nested interactive elements; clickable areas should be keyboard-friendly.
+- Treat desktop and mobile as paired surfaces: every UI change should update and verify both responsive versions.
 
 ## Near-Term Improvements
 

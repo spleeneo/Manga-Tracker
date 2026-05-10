@@ -215,7 +215,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                         <p className="mt-2 max-w-md text-sm text-muted-foreground">Try another filter or track a new manga.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {filteredMangas.map((manga) => (
                             <MangaCard
                                 key={manga.id}
