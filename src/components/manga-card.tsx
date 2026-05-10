@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BookOpen, CheckCircle2, Loader2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 
 export type MangaCardData = LibraryMangaSummary;
+
+function UpdateLight({ className = "" }: { className?: string }) {
+    return (
+        <span
+            className={`inline-flex h-3 w-3 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background)),0_0_16px_hsl(142_71%_45%/0.8)] ${className}`}
+            aria-label="Unread chapters available"
+            title="Unread chapters available"
+        />
+    );
+}
 
 export function MangaCard({
     manga,
@@ -19,13 +30,19 @@ export function MangaCard({
     onDelete: (slug: string, title: string) => void;
     onProgress: (slug: string, action: "latest" | "catch-up") => void;
 }) {
+    const router = useRouter();
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
     const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
     const isSyncing = manga.syncStatus === "SYNCING";
+    const hasUnread = manga.unreadChapters > 0;
+    const openManga = () => router.push(`/manga/${manga.slug}`);
 
     return (
         <>
-        <div className="interactive-surface manga-card-surface group relative flex overflow-visible rounded-lg sm:hidden">
+        <div
+            className="interactive-surface manga-card-surface group relative flex h-32 cursor-pointer overflow-visible rounded-lg sm:hidden"
+            onClick={openManga}
+        >
             <Link
                 href={`/manga/${manga.slug}`}
                 className="relative block w-20 shrink-0 self-stretch overflow-hidden rounded-l-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -35,7 +52,7 @@ export function MangaCard({
                     <img
                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                         alt={manga.title}
-                        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -45,13 +62,6 @@ export function MangaCard({
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
                     <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
-                {manga.unreadChapters > 0 ? (
-                    <span
-                        className="absolute right-2 top-2 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background)),0_0_16px_hsl(142_71%_45%/0.8)]"
-                        aria-label="Unread chapters available"
-                        title="Unread chapters available"
-                    />
-                ) : null}
             </Link>
 
             <button
@@ -81,13 +91,16 @@ export function MangaCard({
                                 {manga.status}
                             </span>
                         ) : null}
-                        <Link
-                            href={`/manga/${manga.slug}`}
-                            className="line-clamp-2 min-h-10 rounded-sm text-sm font-bold leading-5 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            title={manga.title}
-                        >
-                            {manga.title}
-                        </Link>
+                        <div className="flex items-start gap-2">
+                            <Link
+                                href={`/manga/${manga.slug}`}
+                                className="line-clamp-2 min-h-10 min-w-0 rounded-sm text-sm font-bold leading-5 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                title={manga.title}
+                            >
+                                {manga.title}
+                            </Link>
+                            {hasUnread ? <UpdateLight className="mt-1" /> : null}
+                        </div>
                     </div>
 
                     {readTarget ? (
@@ -95,6 +108,7 @@ export function MangaCard({
                             href={readTarget.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(event) => event.stopPropagation()}
                             className="shrink-0 rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold uppercase text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
                             title={`Read chapter ${readTarget.chapterNumber}`}
                         >
@@ -111,29 +125,29 @@ export function MangaCard({
                         <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
                             syncing
                         </span>
-                    ) : manga.unreadChapters > 0 ? (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
-                            {manga.unreadChapters} unread
-                        </span>
+                    ) : manga.latestChapter && !manga.isCaughtUp ? (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onProgress(manga.slug, "catch-up");
+                            }}
+                            disabled={Boolean(loadingAction)}
+                            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2 text-[10px] font-bold uppercase text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+                            title="Mark every available chapter as read"
+                        >
+                            {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                            Catch up
+                        </button>
                     ) : null}
                 </div>
-
-                {manga.latestChapter && !manga.isCaughtUp ? (
-                    <button
-                        type="button"
-                        onClick={() => onProgress(manga.slug, "catch-up")}
-                        disabled={Boolean(loadingAction)}
-                        className="ui-button ui-button-secondary mt-2 min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
-                        title="Mark every available chapter as read"
-                    >
-                        {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                        Mark caught up
-                    </button>
-                ) : null}
             </div>
         </div>
 
-        <div className="interactive-surface manga-card-surface group relative hidden flex-col overflow-visible rounded-lg sm:flex">
+        <div
+            className="interactive-surface manga-card-surface group relative hidden cursor-pointer flex-col overflow-visible rounded-lg sm:flex"
+            onClick={openManga}
+        >
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-t-lg bg-muted">
                 <Link
                     href={`/manga/${manga.slug}`}
@@ -144,7 +158,7 @@ export function MangaCard({
                         <img
                             src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                             alt={manga.title}
-                            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                     ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -153,20 +167,11 @@ export function MangaCard({
                     )}
                 </Link>
 
-                {(isSyncing || manga.unreadChapters > 0) && (
+                {isSyncing && (
                     <div className="absolute left-2 top-2 flex items-center gap-2">
-                        {isSyncing ? (
-                            <span className="rounded-full border border-border bg-background px-2 py-1 text-[10px] font-bold uppercase text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-card">
-                                Syncing
-                            </span>
-                        ) : null}
-                        {manga.unreadChapters > 0 ? (
-                            <span
-                                className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background)),0_0_16px_hsl(142_71%_45%/0.8)]"
-                                aria-label="Unread chapters available"
-                                title="Unread chapters available"
-                            />
-                        ) : null}
+                        <span className="rounded-full border border-border bg-background px-2 py-1 text-[10px] font-bold uppercase text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-card">
+                            Syncing
+                        </span>
                     </div>
                 )}
 
@@ -191,13 +196,16 @@ export function MangaCard({
             </button>
 
             <div className="flex min-h-[150px] flex-1 flex-col p-3.5">
-                <Link
-                    href={`/manga/${manga.slug}`}
-                    className="mb-2 line-clamp-2 min-h-12 rounded-sm text-base font-bold leading-6 tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title={manga.title}
-                >
-                    {manga.title}
-                </Link>
+                <div className="mb-2 flex min-h-12 items-start gap-2">
+                    <Link
+                        href={`/manga/${manga.slug}`}
+                        className="line-clamp-2 min-w-0 rounded-sm text-base font-bold leading-6 tracking-tight transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        title={manga.title}
+                    >
+                        {manga.title}
+                    </Link>
+                    {hasUnread ? <UpdateLight className="mt-1.5" /> : null}
+                </div>
 
                 <div className="grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-[11px] font-bold uppercase text-muted-foreground">
                     <div className="flex min-w-0 items-center gap-1">
@@ -215,6 +223,7 @@ export function MangaCard({
                             href={readTarget.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(event) => event.stopPropagation()}
                             className="rounded-full border border-border bg-background px-2 py-1 text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
                             title={`Read chapter ${readTarget.chapterNumber}`}
                         >
@@ -227,7 +236,10 @@ export function MangaCard({
                     {manga.latestChapter && !manga.isCaughtUp ? (
                         <button
                             type="button"
-                            onClick={() => onProgress(manga.slug, "catch-up")}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onProgress(manga.slug, "catch-up");
+                            }}
                             disabled={Boolean(loadingAction)}
                             className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
                             title="Mark every available chapter as read"

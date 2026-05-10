@@ -27,6 +27,12 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
         window.open(chapter.url, "_blank", "noopener,noreferrer");
     };
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openChapter();
+    };
+
     const toggleRead = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -64,14 +70,13 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
 
     return (
         <article
-            className={`interactive-surface group relative flex min-h-[132px] flex-col rounded-lg p-4 ${chapter.isRead ? 'bg-muted/35 opacity-70' : ''}`}
+            className={`interactive-surface group relative flex min-h-[132px] cursor-pointer flex-col rounded-lg p-4 ${chapter.isRead ? 'bg-muted/35 opacity-70' : ''}`}
+            onClick={openChapter}
+            onKeyDown={handleKeyDown}
+            role="link"
+            tabIndex={0}
+            aria-label={`Open chapter ${chapter.chapterNumber}`}
         >
-            <button
-                type="button"
-                onClick={openChapter}
-                className="absolute inset-0 z-0 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Open chapter ${chapter.chapterNumber}`}
-            />
             <div className="flex items-center justify-between mb-1">
                 <span
                     className={`pointer-events-none relative z-10 rounded-sm font-bold transition-colors group-hover:text-primary ${chapter.isRead ? 'text-muted-foreground' : 'text-foreground'}`}

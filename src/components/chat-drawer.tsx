@@ -59,6 +59,12 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
     typingChannel: { unsubscribe: () => void; publish: (name: string, data: unknown) => Promise<unknown> };
   } | null>(null);
   const typingTimerRef = useRef<number | null>(null);
+  const scrollToLatest = (behavior: ScrollBehavior = "smooth") => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior });
+    });
+  };
 
   const activeTypingNames = useMemo(() => {
     return Array.from(typingUsers.entries())
@@ -73,7 +79,10 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
         if (!res.ok) throw new Error(`Chat load failed: ${res.status}`);
         return res.json();
       })
-      .then((data) => setMessages(data.messages ?? []))
+      .then((data) => {
+        setMessages(data.messages ?? []);
+        scrollToLatest("auto");
+      })
       .catch((error) => {
         console.error(error);
         showToast({
@@ -162,7 +171,8 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
   }, []);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    if (!isOpen) return;
+    scrollToLatest(messages.length > 0 ? "smooth" : "auto");
   }, [messages, isOpen]);
 
   const publishTyping = (isTyping: boolean) => {
@@ -304,10 +314,10 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
           <button
             type="button"
             aria-label="Close chat"
-            className="absolute inset-0 bg-black/45"
+            className="chat-overlay absolute inset-0 bg-black/55"
             onClick={() => setIsOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 flex w-full flex-col border-l border-border bg-popover text-popover-foreground shadow-2xl sm:w-[420px]">
+          <aside className="chat-panel absolute inset-y-0 right-0 flex w-full flex-col border-l border-border bg-background text-foreground shadow-2xl sm:w-[420px]">
             <header className="flex h-16 items-center justify-between border-b border-border px-4">
               <div>
                 <h2 className="text-lg font-bold">Global chat</h2>
@@ -323,7 +333,7 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
               </button>
             </header>
 
-            <div ref={listRef} className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+            <div ref={listRef} className="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-muted/25 p-4">
               {isLoading ? (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

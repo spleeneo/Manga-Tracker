@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { ChapterItem } from "./chapter-item";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ArrowDownUp, BookOpen, ExternalLink, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 
 interface Source {
@@ -33,10 +33,13 @@ interface ChapterListProps {
 }
 
 type ChapterMode = "best" | "all";
+type SortDirection = "desc" | "asc";
 
 export function ChapterList({ slug, initialSources, initialChapters, initialNextCursor, initialLastReadChapterNumber }: ChapterListProps) {
     const [selectedSourceId, setSelectedSourceId] = useState<string | "all">("all");
     const [mode, setMode] = useState<ChapterMode>("best");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
     const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
     const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
@@ -146,8 +149,35 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             .map((chapter) => withSourceMetadata(chapter));
 
     const selectedSource = initialSources.find(s => s.id === selectedSourceId);
+    const normalizedSearch = searchQuery.trim().toLowerCase();
 
-    const sortedChapters = [...filteredChapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
+    const searchedChapters = normalizedSearch
+        ? filteredChapters.filter((chapter) => {
+            const sourceName = chapter.sourceName?.toLowerCase() ?? "";
+            const title = chapter.title?.toLowerCase() ?? "";
+            const chapterNumber = String(chapter.chapterNumber);
+            return title.includes(normalizedSearch)
+                || chapterNumber.includes(normalizedSearch)
+                || `chapter ${chapterNumber}`.includes(normalizedSearch)
+                || sourceName.includes(normalizedSearch);
+        })
+        : filteredChapters;
+
+    const sortedChapters = [...searchedChapters].sort((a, b) => (
+        sortDirection === "desc"
+            ? b.chapterNumber - a.chapterNumber
+            : a.chapterNumber - b.chapterNumber
+    ));
+
+    const chaptersByNumberAsc = [...filteredChapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
+    const firstChapter = chaptersByNumberAsc[0];
+    const latestChapter = chaptersByNumberAsc[chaptersByNumberAsc.length - 1];
+    const firstUnreadChapter = chaptersByNumberAsc.find((chapter) => !chapter.isRead);
+
+    const openChapter = (chapter?: Chapter) => {
+        if (!chapter?.url) return;
+        window.open(chapter.url, "_blank", "noopener,noreferrer");
+    };
 
     const selectBest = () => {
         setMode("best");
@@ -167,11 +197,10 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         void loadChapterPage({ reset: true, nextMode: "all", nextSourceId: sourceId });
     };
 
-    return (
-        <div className="space-y-5">
-            <div className="surface rounded-lg p-3 sm:p-4">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+    const chapterControls = (
+        <>
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                <div className="-mx-2.5 flex gap-1.5 overflow-x-auto px-2.5 pb-1 sm:mx-0 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0">
                     <button
                         onClick={selectBest}
                         disabled={isLoadingPage}
@@ -210,9 +239,65 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                     ))}
                 </div>
 
+                <div className="grid gap-1.5 sm:grid-cols-[minmax(220px,1fr)_auto] sm:gap-2 xl:min-w-[520px]">
+                    <label className="relative block">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="Search chapters"
+                            className="h-9 w-full rounded-md border border-border bg-background px-9 text-sm font-semibold outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring sm:h-10 dark:bg-card"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setSortDirection((current) => current === "desc" ? "asc" : "desc")}
+                        className="ui-button ui-button-secondary h-9 justify-center px-3 text-[11px] uppercase sm:h-10 sm:text-xs"
+                        aria-label={`Sort chapters ${sortDirection === "desc" ? "oldest first" : "newest first"}`}
+                    >
+                        <ArrowDownUp className="h-4 w-4" />
+                        {sortDirection === "desc" ? "Newest first" : "Oldest first"}
+                    </button>
                 </div>
             </div>
 
+            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:gap-2">
+                <button
+                    type="button"
+                    onClick={() => openChapter(firstChapter)}
+                    disabled={!firstChapter}
+                    className="ui-button ui-button-secondary min-h-9 justify-center px-2 text-[11px] uppercase"
+                >
+                    <BookOpen className="h-4 w-4" />
+                    <span className="hidden min-[420px]:inline">Read </span>First
+                </button>
+                <button
+                    type="button"
+                    onClick={() => openChapter(firstUnreadChapter)}
+                    disabled={!firstUnreadChapter}
+                    className="ui-button ui-button-primary min-h-9 justify-center px-2 text-[11px] uppercase"
+                >
+                    <BookOpen className="h-4 w-4" />
+                    Unread
+                </button>
+                <button
+                    type="button"
+                    onClick={() => openChapter(latestChapter)}
+                    disabled={!latestChapter}
+                    className="ui-button ui-button-secondary min-h-9 justify-center px-2 text-[11px] uppercase"
+                >
+                    <BookOpen className="h-4 w-4" />
+                    Latest
+                </button>
+            </div>
+        </>
+    );
+
+    return (
+        <div className="space-y-4 sm:space-y-5">
+            <div className="surface rounded-lg p-2.5 sm:p-4">
+                {chapterControls}
+            </div>
             {selectedSource && (
                 <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                     <ExternalLink className="h-3 w-3" />

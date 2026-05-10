@@ -9,8 +9,10 @@ import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
 import { LegalFooter } from "@/components/legal-footer";
+import { MangaDescription } from "@/components/manga-description";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
+import { getLibraryMangaSummary } from "@/lib/library-summary";
 
 interface PageProps {
     params: Promise<{
@@ -76,6 +78,9 @@ export default async function MangaPage({ params }: PageProps) {
     if (!manga) {
         notFound();
     }
+
+    const summary = await getLibraryMangaSummary(session.user.id, manga.id);
+    const primaryReadTarget = summary?.nextUnreadChapter ?? summary?.latestChapter;
 
     return (
         <div className="min-h-screen bg-background pb-12">
@@ -162,7 +167,7 @@ export default async function MangaPage({ params }: PageProps) {
                     <div className="order-1 min-w-0 space-y-5 md:order-2 md:pt-28">
                         <div className="grid gap-4 min-[460px]:grid-cols-[96px_1fr] md:block">
                             {manga.coverUrl && (
-                                <div className="surface relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[460px]:block md:hidden">
+                                <div className="surface relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[560px]:block md:hidden">
                                     <img
                                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                                         alt={manga.title}
@@ -181,10 +186,45 @@ export default async function MangaPage({ params }: PageProps) {
                             </div>
                         </div>
 
-                        {manga.description && (
-                            <div className="surface-soft rounded-lg p-4 text-sm leading-7 text-muted-foreground md:line-clamp-none">
-                                <p>{manga.description}</p>
+                        {summary?.latestChapter && (
+                            <div className="surface rounded-lg p-3 sm:p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold uppercase text-muted-foreground">
+                                            {summary.isCaughtUp ? "Caught up" : `${summary.unreadChapters} unread`}
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-foreground">
+                                            Latest chapter: {summary.latestChapter.chapterNumber}
+                                            {summary.nextUnreadChapter ? ` · Next unread: ${summary.nextUnreadChapter.chapterNumber}` : ""}
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:shrink-0">
+                                        {primaryReadTarget?.url && (
+                                            <a
+                                                href={primaryReadTarget.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="ui-button ui-button-primary justify-center"
+                                            >
+                                                <BookOpen className="h-4 w-4" />
+                                                {summary.nextUnreadChapter ? `Read ${summary.nextUnreadChapter.chapterNumber}` : `Read latest`}
+                                            </a>
+                                        )}
+                                        <a
+                                            href={summary.latestChapter.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="ui-button ui-button-secondary justify-center"
+                                        >
+                                            Latest
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
+                        )}
+
+                        {manga.description && (
+                            <MangaDescription description={manga.description} />
                         )}
 
                         <div>

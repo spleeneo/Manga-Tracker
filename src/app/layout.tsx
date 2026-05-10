@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   },
   description: "Mangateo tracks manga chapters across multiple sources.",
   icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
   },
 };
 

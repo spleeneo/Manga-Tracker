@@ -18,6 +18,9 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
 
     const sortedItems = useMemo(() => {
         return [...items].sort((a, b) => {
+            const unreadPriority = Number(b.unreadChapters > 0) - Number(a.unreadChapters > 0);
+            if (unreadPriority !== 0) return unreadPriority;
+
             const aTime = a.latestAvailableAt ?? a.latestChapter?.releaseDate;
             const bTime = b.latestAvailableAt ?? b.latestChapter?.releaseDate;
             const byUpdate = (bTime ? new Date(bTime).getTime() : 0) - (aTime ? new Date(aTime).getTime() : 0);

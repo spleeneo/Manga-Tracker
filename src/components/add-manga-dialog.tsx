@@ -26,6 +26,7 @@ export function AddMangaDialog() {
     const [trackingKey, setTrackingKey] = useState<string | null>(null);
     const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
     const { showToast, updateToast } = useToast();
+    const visibleSearchResults = searchQuery.trim().length >= 3 ? searchResults : [];
 
     const [formData, setFormData] = useState<{
         title: string;
@@ -47,12 +48,15 @@ export function AddMangaDialog() {
 
     // Simple debounce for search
     useEffect(() => {
-        if (!searchQuery || searchQuery.length < 3) return;
+        const query = searchQuery.trim();
+        if (query.length < 3) {
+            return;
+        }
 
         const timer = setTimeout(async () => {
             setIsSearching(true);
             try {
-                const res = await fetch(`/api/manga/search?q=${encodeURIComponent(searchQuery)}`);
+                const res = await fetch(`/api/manga/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 console.log("Search API response:", data);
                 console.log("Search results:", data.results);
@@ -80,6 +84,13 @@ export function AddMangaDialog() {
     const selectManga = (manga: SearchResult, initialSourceUrl?: string) => {
         setFormData(getMangaFormData(manga, initialSourceUrl));
         setMode("MANUAL");
+    };
+
+    const handleSearchQueryChange = (value: string) => {
+        setSearchQuery(value);
+        if (value.trim().length < 3) {
+            setIsSearching(false);
+        }
     };
 
     const trackSearchResult = async (manga: SearchResult, initialSourceUrl?: string) => {
@@ -208,7 +219,7 @@ export function AddMangaDialog() {
                 onClick={() => setIsOpen(false)}
             />
 
-            <div className="dialog-panel max-w-xl sm:max-w-2xl">
+            <div className="dialog-panel max-w-[min(92vw,760px)]">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b bg-card px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -251,29 +262,29 @@ export function AddMangaDialog() {
                                 <input
                                     autoFocus
                                     placeholder="Search (e.g. Naruto, One Piece...)"
-                                    className="ui-field pl-12"
+                                    className="ui-field h-12 pl-12 pr-12"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => handleSearchQueryChange(e.target.value)}
                                 />
-                                <Search className="absolute left-4 top-4.5 h-5 w-5 text-muted-foreground" />
-                                {isSearching && <Loader2 className="absolute right-4 top-4.5 h-5 w-5 animate-spin text-primary" />}
+                                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                                {isSearching && <Loader2 className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-primary" />}
                             </div>
 
                             <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
-                                {searchResults.length > 0 ? (
-                                    searchResults.map((manga, idx) => (
+                                {visibleSearchResults.length > 0 ? (
+                                    visibleSearchResults.map((manga, idx) => (
                                         <div
                                             key={manga.title || idx}
-                                            className="interactive-surface group flex flex-col items-center gap-4 rounded-lg p-3 text-left sm:flex-row sm:items-start"
+                                            className="interactive-surface group grid min-w-0 grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
                                         >
-                                            <div className="h-28 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
+                                            <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
                                                 {manga.coverUrl ? (
                                                     <img src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-8 w-8 opacity-20" /></div>
                                                 )}
                                             </div>
-                                            <div className="flex-1 min-w-0 py-1">
+                                            <div className="min-w-0 overflow-hidden py-1">
                                                 <button
                                                     type="button"
                                                     onClick={() => void trackSearchResult(manga)}
@@ -285,8 +296,8 @@ export function AddMangaDialog() {
                                                         <span className="truncate">{manga.title}</span>
                                                     </h3>
                                                 </button>
-                                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1 mb-2">{manga.description}</p>
-                                                <div className="flex flex-wrap items-center gap-2">
+                                                <p className="mb-2 mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
                                                     {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
                                                         manga.sources.map((source: SearchSource, sourceIdx: number) => (
                                                             <button
@@ -294,16 +305,18 @@ export function AddMangaDialog() {
                                                                 key={source.url || sourceIdx}
                                                                 onClick={() => void trackSearchResult(manga, source.url)}
                                                                 disabled={loading}
-                                                                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                             >
                                                                 {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
-                                                                {source.name}
+                                                                <span className="truncate">{source.name}</span>
                                                             </button>
                                                         ))
                                                     ) : (
                                                         <span className="text-xs text-red-500">No sources</span>
                                                     )}
-                                                    <span className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{manga.status}</span>
+                                                    {manga.status ? (
+                                                        <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground sm:ml-auto">{manga.status}</span>
+                                                    ) : null}
                                                     <button
                                                         type="button"
                                                         onClick={() => void trackSearchResult(manga)}
