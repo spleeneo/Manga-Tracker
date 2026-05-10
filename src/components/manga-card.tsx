@@ -154,14 +154,6 @@ export function MangaCard({
                     </div>
                 )}
 
-                {manga.unreadChapters > 0 && (
-                    <div className="absolute bottom-3 right-2">
-                        <span className="rounded-full border border-border bg-card px-2 py-1 text-[11px] font-bold text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-muted dark:text-foreground">
-                            {manga.unreadChapters} unread
-                        </span>
-                    </div>
-                )}
-
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
                     <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
