@@ -8,7 +8,6 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChapterList } from "@/components/chapter-list";
 import { ThemeSelector } from "@/components/theme-selector";
-import { CHAPTER_PAGE_SIZE, getMangaChapterPage, type ChapterView } from "@/lib/chapters";
 import { auth } from "../../../../auth";
 
 interface PageProps {
@@ -40,16 +39,8 @@ async function getManga(slug: string, userId: string) {
     });
     if (!tracked) return null;
 
-    const chapterPage = await getMangaChapterPage({
-        mangaId: manga.id,
-        limit: CHAPTER_PAGE_SIZE,
-        lastReadChapterNumber: tracked.lastReadChapterNumber,
-    });
-
     return {
         ...manga,
-        chapters: chapterPage.chapters,
-        nextChapterCursor: chapterPage.nextCursor,
         lastReadChapterNumber: tracked.lastReadChapterNumber,
     };
 }
@@ -186,8 +177,8 @@ export default async function MangaPage({ params }: PageProps) {
                                 mangaId={manga.id}
                                 slug={manga.slug}
                                 initialSources={manga.sources}
-                                initialChapters={manga.chapters as ChapterView[]}
-                                initialNextCursor={manga.nextChapterCursor}
+                                initialChapters={[]}
+                                initialNextCursor={null}
                                 initialLastReadChapterNumber={manga.lastReadChapterNumber}
                             />
                         </div>

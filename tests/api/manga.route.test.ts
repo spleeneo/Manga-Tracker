@@ -1,23 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { checkForUpdatesMock, mangaFindUnique, mangaCreate, mangaFindUniqueById, sourceCreate, sourceFindUnique, userMangaUpsert } = vi.hoisted(() => ({
+const { afterMock, checkForUpdatesMock, mangaFindUnique, mangaCreate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+  afterMock: vi.fn(),
   checkForUpdatesMock: vi.fn(),
   mangaFindUnique: vi.fn(),
   mangaCreate: vi.fn(),
-  mangaFindUniqueById: vi.fn(),
   sourceCreate: vi.fn(),
   sourceFindUnique: vi.fn(),
   userMangaUpsert: vi.fn(),
+  userMangaUpdate: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     manga: {
-      findUnique: (...args: unknown[]) => {
-        const [query] = args as [{ where: { slug?: string; id?: string } }];
-        if (query?.where?.id) return mangaFindUniqueById(...args);
-        return mangaFindUnique(...args);
-      },
+      findUnique: mangaFindUnique,
       create: mangaCreate,
     },
     source: {
@@ -26,9 +23,18 @@ vi.mock("@/lib/db", () => ({
     },
     userManga: {
       upsert: userMangaUpsert,
+      update: userMangaUpdate,
     },
   },
 }));
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: afterMock,
+  };
+});
 
 vi.mock("@/lib/scrapers/registry", () => ({
   fetchMetadata: vi.fn(),
@@ -64,7 +70,6 @@ describe("POST /api/manga", () => {
     mangaFindUnique.mockResolvedValue(null);
     mangaCreate.mockResolvedValue({ id: "m1" });
     userMangaUpsert.mockResolvedValue({ id: "um1" });
-    mangaFindUniqueById.mockResolvedValue({ id: "m1", title: "One Piece", sources: [] });
 
     const req = new Request("http://localhost", {
       method: "POST",
@@ -84,7 +89,6 @@ describe("POST /api/manga", () => {
     sourceFindUnique.mockResolvedValue(null);
     sourceCreate.mockResolvedValue({ id: "s1" });
     checkForUpdatesMock.mockResolvedValue([{ status: "Added 1 new chapter" }]);
-    mangaFindUniqueById.mockResolvedValue({ id: "m1", title: "One Piece", sources: [{ id: "s1" }] });
 
     const req = new Request("http://localhost", {
       method: "POST",
@@ -100,6 +104,11 @@ describe("POST /api/manga", () => {
 
     expect(res.status).toBe(200);
     expect(sourceCreate).toHaveBeenCalledOnce();
-    expect(checkForUpdatesMock).toHaveBeenCalledWith("m1");
+    expect(afterMock).toHaveBeenCalledOnce();
+    expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    expect(userMangaUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      update: expect.objectContaining({ syncStatus: "SYNCING" }),
+      create: expect.objectContaining({ syncStatus: "SYNCING" }),
+    }));
   });
 });

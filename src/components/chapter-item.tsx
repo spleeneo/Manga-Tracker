@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
 
 interface ChapterItemProps {
     slug: string;
@@ -15,17 +16,23 @@ interface ChapterItemProps {
         sourceName?: string;
         alternativeCount?: number;
     };
+    currentLastReadChapterNumber: number | null;
     onProgressChange: (lastReadChapterNumber: number | null) => void;
 }
 
-export function ChapterItem({ slug, chapter, onProgressChange }: ChapterItemProps) {
+export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onProgressChange }: ChapterItemProps) {
     const [loading, setLoading] = useState(false);
+    const { showToast } = useToast();
 
     const toggleRead = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
         setLoading(true);
+        const previousProgress = currentLastReadChapterNumber;
+        if (!chapter.isRead) {
+            onProgressChange(chapter.chapterNumber);
+        }
         try {
             const res = await fetch(`/api/manga/${slug}/progress`, {
                 method: "POST",
@@ -36,12 +43,17 @@ export function ChapterItem({ slug, chapter, onProgressChange }: ChapterItemProp
                 }),
             });
 
-            if (res.ok) {
-                const body = await res.json();
-                onProgressChange(body.lastReadChapterNumber ?? null);
-            }
+            if (!res.ok) throw new Error(`Progress update failed: ${res.status}`);
+            const body = await res.json();
+            onProgressChange(body.lastReadChapterNumber ?? null);
         } catch (error) {
             console.error(error);
+            onProgressChange(previousProgress);
+            showToast({
+                type: "error",
+                title: "Progress was not updated",
+                description: "Please try again.",
+            });
         } finally {
             setLoading(false);
         }

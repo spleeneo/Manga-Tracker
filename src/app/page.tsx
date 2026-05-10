@@ -2,10 +2,9 @@ import { isDatabaseConfigured } from "@/lib/db";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
-import { LibraryDashboard } from "@/components/library-dashboard";
+import { LibraryHome } from "@/components/library-home";
 import { ThemeSelector } from "@/components/theme-selector";
 import { UpdateLibraryButton } from "@/components/update-library-button";
-import { getLibraryMangaSummaries, type LibraryMangaSummary } from "@/lib/library-summary";
 import { auth } from "../../auth";
 
 export const dynamic = 'force-dynamic';
@@ -38,15 +37,6 @@ export default async function Home() {
     );
   }
 
-  let mangas: LibraryMangaSummary[] = [];
-  if (session?.user?.id) {
-    try {
-      mangas = await getLibraryMangaSummaries(session.user.id);
-    } catch (e) {
-      console.error("Failed to load mangas - database might not be initialized", e);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <header className="app-header">
@@ -69,15 +59,8 @@ export default async function Home() {
               Manga, sources, and chapters are shared in the background, but your tracked library and read progress are private to your account.
             </p>
           </div>
-        ) : mangas.length === 0 ? (
-          <div className="empty-state">
-            <h2 className="text-xl font-semibold">No manga tracked yet</h2>
-            <p className="mt-2 text-muted-foreground">
-              Add your first manga to start tracking releases.
-            </p>
-          </div>
         ) : (
-          <LibraryDashboard mangas={mangas} />
+          <LibraryHome />
         )}
       </main>
     </div>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { fetchMetadata } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
 
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
             }
         })).id;
 
+        const hasSources = sourcesToProcess.length > 0;
         await prisma.userManga.upsert({
             where: {
                     userId_mangaId: {
@@ -76,11 +78,19 @@ export async function POST(request: Request) {
                     mangaId,
                 },
             },
-            update: { status: "READING" },
+            update: {
+                status: "READING",
+                syncStatus: hasSources ? "SYNCING" : "IDLE",
+                syncStartedAt: hasSources ? new Date() : null,
+                syncFinishedAt: null,
+                syncError: null,
+            },
             create: {
                 userId,
                 mangaId,
                 status: "READING",
+                syncStatus: hasSources ? "SYNCING" : "IDLE",
+                syncStartedAt: hasSources ? new Date() : null,
             },
         });
 
@@ -129,17 +139,48 @@ export async function POST(request: Request) {
                 }
             }
 
-            const { checkForUpdates } = await import("@/lib/manga-updater");
-            await checkForUpdates(mangaId);
+            after(async () => {
+                try {
+                    const { checkForUpdates } = await import("@/lib/manga-updater");
+                    await checkForUpdates(mangaId);
+                    await prisma.userManga.update({
+                        where: {
+                            userId_mangaId: {
+                                userId,
+                                mangaId,
+                            },
+                        },
+                        data: {
+                            syncStatus: "UPDATED",
+                            syncFinishedAt: new Date(),
+                            syncError: null,
+                        },
+                    });
+                } catch (error) {
+                    console.error(`[API] Background update failed for ${finalMangaData.title}:`, error);
+                    await prisma.userManga.update({
+                        where: {
+                            userId_mangaId: {
+                                userId,
+                                mangaId,
+                            },
+                        },
+                        data: {
+                            syncStatus: "FAILED",
+                            syncFinishedAt: new Date(),
+                            syncError: error instanceof Error ? error.message : "Unknown update error",
+                        },
+                    });
+                }
+            });
         }
 
-        // Return the manga with updated data
-        const completeManga = await prisma.manga.findUnique({
-            where: { id: mangaId },
-            include: { sources: true }
+        return NextResponse.json({
+            id: mangaId,
+            title: finalMangaData.title,
+            slug: finalMangaData.slug,
+            syncStatus: hasSources ? "SYNCING" : "IDLE",
         });
-
-        return NextResponse.json(completeManga);
 
     } catch (error) {
         console.error("Error creating manga:", error);

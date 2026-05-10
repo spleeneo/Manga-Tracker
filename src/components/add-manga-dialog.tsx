@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search, Link2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast-provider";
 
 interface SearchSource {
@@ -26,7 +25,6 @@ export function AddMangaDialog() {
     const [isSearching, setIsSearching] = useState(false);
     const [trackingKey, setTrackingKey] = useState<string | null>(null);
     const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
-    const router = useRouter();
     const { showToast, updateToast } = useToast();
 
     const [formData, setFormData] = useState<{
@@ -90,11 +88,11 @@ export function AddMangaDialog() {
         const toastId = showToast({
             type: "loading",
             title: `Tracking ${manga.title}`,
-            description: "Fetching sources and chapters in the background.",
+            description: "Adding it to your library now.",
         });
 
         setTrackingKey(key);
-        setLoading(false);
+        setLoading(true);
         setIsOpen(false);
         resetForm();
 
@@ -113,9 +111,9 @@ export function AddMangaDialog() {
             updateToast(toastId, {
                 type: "success",
                 title: `${manga.title} is tracked`,
-                description: "Your library has been updated.",
+                description: "Chapters are syncing in the background.",
             });
-            router.refresh();
+            window.dispatchEvent(new Event("mangateo:library-refresh"));
         } catch (error) {
             console.error(error);
             updateToast(toastId, {
@@ -136,10 +134,10 @@ export function AddMangaDialog() {
         const toastId = showToast({
             type: "loading",
             title: `Tracking ${payload.title}`,
-            description: "Fetching sources and chapters in the background.",
+            description: "Adding it to your library now.",
         });
 
-        setLoading(false);
+        setLoading(true);
         setIsOpen(false);
         resetForm();
 
@@ -158,9 +156,9 @@ export function AddMangaDialog() {
             updateToast(toastId, {
                 type: "success",
                 title: `${payload.title} is tracked`,
-                description: "Your library has been updated.",
+                description: "Chapters are syncing in the background.",
             });
-            router.refresh();
+            window.dispatchEvent(new Event("mangateo:library-refresh"));
         } catch (error) {
             console.error(error);
             updateToast(toastId, {

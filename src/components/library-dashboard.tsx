@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BookOpen, CheckCircle2, Clock3, Library, Loader2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
+import { useToast } from "@/components/toast-provider";
 
 type LibraryFilter = "all" | "unread" | "caught-up" | "ongoing" | "completed";
 type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
@@ -13,6 +14,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [filter, setFilter] = useState<LibraryFilter>("all");
     const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
     const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+    const { showToast } = useToast();
 
     const stats = useMemo(() => {
         const unreadTitles = items.filter((manga) => manga.unreadChapters > 0).length;
@@ -61,6 +63,23 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     };
 
     const markProgress = async (slug: string, action: ProgressAction) => {
+        const previousItems = items;
+        const target = items.find((manga) => manga.slug === slug);
+        if (target && action === "caught-up") {
+            setItems((current) => current.map((manga) => (
+                manga.slug === slug
+                    ? {
+                        ...manga,
+                        lastReadChapterNumber: manga.latestChapter?.chapterNumber ?? manga.lastReadChapterNumber,
+                        readChapters: manga.totalChapters,
+                        unreadChapters: 0,
+                        isCaughtUp: manga.totalChapters > 0,
+                        nextUnreadChapter: null,
+                    }
+                    : manga
+            )));
+        }
+
         setProgressAction({ slug, action });
         try {
             const apiAction = action === "next" ? "next" : "caught-up";
@@ -74,7 +93,12 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             updateMangaSummary(body.summary);
         } catch (error) {
             console.error(error);
-            alert("Failed to update reading progress");
+            setItems(previousItems);
+            showToast({
+                type: "error",
+                title: "Progress was not updated",
+                description: "Please try again.",
+            });
         } finally {
             setProgressAction(null);
         }
@@ -86,15 +110,21 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         }
 
         setRemovingSlug(slug);
+        const previousItems = items;
+        setItems((current) => current.filter((manga) => manga.slug !== slug));
         try {
             const res = await fetch(`/api/manga/${slug}/library`, {
                 method: "DELETE",
             });
             if (!res.ok) throw new Error(`Remove failed: ${res.status}`);
-            setItems((current) => current.filter((manga) => manga.slug !== slug));
         } catch (error) {
             console.error(error);
-            alert("Failed to remove manga");
+            setItems(previousItems);
+            showToast({
+                type: "error",
+                title: "Manga was not removed",
+                description: "Please try again.",
+            });
         } finally {
             setRemovingSlug(null);
         }

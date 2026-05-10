@@ -13,6 +13,10 @@ export interface LibraryMangaSummary {
   slug: string;
   coverUrl: string | null;
   status: string | null;
+  syncStatus: string;
+  syncStartedAt: Date | null;
+  syncFinishedAt: Date | null;
+  syncError: string | null;
   lastReadChapterNumber: number | null;
   latestChapter: SummaryChapter | null;
   nextUnreadChapter: SummaryChapter | null;
@@ -22,22 +26,25 @@ export interface LibraryMangaSummary {
   isCaughtUp: boolean;
 }
 
-type LibraryEntry = {
-  manga: {
-    id: string;
-    title: string;
-    slug: string;
-    coverUrl: string | null;
-    status: string | null;
-  };
-  lastReadChapterNumber: number | null;
-};
-
-type BestChapterRow = {
+type SummaryRow = {
   mangaId: string;
-  chapterNumber: number;
-  url: string;
-  releaseDate: Date | null;
+  title: string;
+  slug: string;
+  coverUrl: string | null;
+  status: string | null;
+  syncStatus: string;
+  syncStartedAt: Date | null;
+  syncFinishedAt: Date | null;
+  syncError: string | null;
+  lastReadChapterNumber: number | Prisma.Decimal | null;
+  latestChapterNumber: number | Prisma.Decimal | null;
+  latestUrl: string | null;
+  latestReleaseDate: Date | null;
+  nextUnreadChapterNumber: number | Prisma.Decimal | null;
+  nextUnreadUrl: string | null;
+  nextUnreadReleaseDate: Date | null;
+  totalChapters: number | bigint | null;
+  readChapters: number | bigint | null;
 };
 
 function toNumber(value: number | Prisma.Decimal | null | undefined) {
@@ -45,125 +52,135 @@ function toNumber(value: number | Prisma.Decimal | null | undefined) {
   return typeof value === "number" ? value : value.toNumber();
 }
 
-function buildSummary(entry: LibraryEntry, chapters: BestChapterRow[]): LibraryMangaSummary {
-  const lastReadChapterNumber = toNumber(entry.lastReadChapterNumber);
-  const latestChapter = chapters[0]
-    ? {
-        chapterNumber: toNumber(chapters[0].chapterNumber) ?? 0,
-        url: chapters[0].url,
-        releaseDate: chapters[0].releaseDate,
-      }
-    : null;
-  const nextUnread = chapters
-    .filter((chapter) => lastReadChapterNumber == null || chapter.chapterNumber > lastReadChapterNumber)
-    .sort((a, b) => a.chapterNumber - b.chapterNumber)[0];
-  const readChapters = chapters.filter((chapter) => (
-    lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber
-  )).length;
+function toCount(value: number | bigint | null | undefined) {
+  if (value == null) return 0;
+  return Number(value);
+}
+
+function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
+  const lastReadChapterNumber = toNumber(row.lastReadChapterNumber);
+  const totalChapters = toCount(row.totalChapters);
+  const readChapters = toCount(row.readChapters);
 
   return {
-    ...entry.manga,
+    id: row.mangaId,
+    title: row.title,
+    slug: row.slug,
+    coverUrl: row.coverUrl,
+    status: row.status,
+    syncStatus: row.syncStatus,
+    syncStartedAt: row.syncStartedAt,
+    syncFinishedAt: row.syncFinishedAt,
+    syncError: row.syncError,
     lastReadChapterNumber,
-    latestChapter,
-    nextUnreadChapter: nextUnread
+    latestChapter: row.latestChapterNumber != null && row.latestUrl
       ? {
-          chapterNumber: toNumber(nextUnread.chapterNumber) ?? 0,
-          url: nextUnread.url,
-          releaseDate: nextUnread.releaseDate,
+          chapterNumber: toNumber(row.latestChapterNumber) ?? 0,
+          url: row.latestUrl,
+          releaseDate: row.latestReleaseDate,
         }
       : null,
-    totalChapters: chapters.length,
+    nextUnreadChapter: row.nextUnreadChapterNumber != null && row.nextUnreadUrl
+      ? {
+          chapterNumber: toNumber(row.nextUnreadChapterNumber) ?? 0,
+          url: row.nextUnreadUrl,
+          releaseDate: row.nextUnreadReleaseDate,
+        }
+      : null,
+    totalChapters,
     readChapters,
-    unreadChapters: chapters.length - readChapters,
-    isCaughtUp: chapters.length > 0 && readChapters === chapters.length,
+    unreadChapters: Math.max(totalChapters - readChapters, 0),
+    isCaughtUp: totalChapters > 0 && readChapters >= totalChapters,
   };
 }
 
-async function getBestChaptersByManga(mangaIds: string[]) {
-  if (mangaIds.length === 0) return new Map<string, BestChapterRow[]>();
+const SOURCE_RANK_SQL = Prisma.sql`
+  CASE LOWER(COALESCE(s."sourceName", ''))
+    WHEN 'mangaplus' THEN 5
+    WHEN 'mangadex' THEN 4
+    WHEN 'webtoon' THEN 3
+    WHEN 'nelomanga' THEN 2
+    WHEN 'manganato' THEN 1
+    ELSE 0
+  END
+`;
 
-  const rows = await prisma.$queryRaw<BestChapterRow[]>`
-    SELECT DISTINCT ON (c."mangaId", c."chapterNumber")
-      c."mangaId" AS "mangaId",
-      c."chapterNumber" AS "chapterNumber",
-      c."url" AS "url",
-      c."releaseDate" AS "releaseDate"
-    FROM "Chapter" c
-    LEFT JOIN "Source" s ON s."id" = c."sourceId"
-    WHERE c."mangaId" IN (${Prisma.join(mangaIds)})
-    ORDER BY
-      c."mangaId",
-      c."chapterNumber" DESC,
-      CASE LOWER(COALESCE(s."sourceName", ''))
-        WHEN 'mangaplus' THEN 5
-        WHEN 'mangadex' THEN 4
-        WHEN 'webtoon' THEN 3
-        WHEN 'nelomanga' THEN 2
-        WHEN 'manganato' THEN 1
-        ELSE 0
-      END DESC,
-      c."releaseDate" DESC NULLS LAST,
-      c."createdAt" DESC
+async function getSummaryRows(userId: string, mangaId?: string) {
+  return prisma.$queryRaw<SummaryRow[]>`
+    SELECT
+      m."id" AS "mangaId",
+      m."title" AS "title",
+      m."slug" AS "slug",
+      m."coverUrl" AS "coverUrl",
+      m."status" AS "status",
+      um."syncStatus" AS "syncStatus",
+      um."syncStartedAt" AS "syncStartedAt",
+      um."syncFinishedAt" AS "syncFinishedAt",
+      um."syncError" AS "syncError",
+      um."lastReadChapterNumber" AS "lastReadChapterNumber",
+      latest."chapterNumber" AS "latestChapterNumber",
+      latest."url" AS "latestUrl",
+      latest."releaseDate" AS "latestReleaseDate",
+      next_unread."chapterNumber" AS "nextUnreadChapterNumber",
+      next_unread."url" AS "nextUnreadUrl",
+      next_unread."releaseDate" AS "nextUnreadReleaseDate",
+      COALESCE(counts."totalChapters", 0) AS "totalChapters",
+      COALESCE(counts."readChapters", 0) AS "readChapters"
+    FROM "UserManga" um
+    JOIN "Manga" m ON m."id" = um."mangaId"
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(DISTINCT c."chapterNumber")::int AS "totalChapters",
+        COUNT(DISTINCT c."chapterNumber") FILTER (
+          WHERE um."lastReadChapterNumber" IS NOT NULL
+            AND c."chapterNumber" <= um."lastReadChapterNumber"
+        )::int AS "readChapters"
+      FROM "Chapter" c
+      WHERE c."mangaId" = m."id"
+    ) counts ON true
+    LEFT JOIN LATERAL (
+      SELECT DISTINCT ON (c."chapterNumber")
+        c."chapterNumber",
+        c."url",
+        c."releaseDate"
+      FROM "Chapter" c
+      LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      WHERE c."mangaId" = m."id"
+      ORDER BY
+        c."chapterNumber" DESC,
+        ${SOURCE_RANK_SQL} DESC,
+        c."releaseDate" DESC NULLS LAST,
+        c."createdAt" DESC
+      LIMIT 1
+    ) latest ON true
+    LEFT JOIN LATERAL (
+      SELECT DISTINCT ON (c."chapterNumber")
+        c."chapterNumber",
+        c."url",
+        c."releaseDate"
+      FROM "Chapter" c
+      LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      WHERE c."mangaId" = m."id"
+        AND (um."lastReadChapterNumber" IS NULL OR c."chapterNumber" > um."lastReadChapterNumber")
+      ORDER BY
+        c."chapterNumber" ASC,
+        ${SOURCE_RANK_SQL} DESC,
+        c."releaseDate" DESC NULLS LAST,
+        c."createdAt" DESC
+      LIMIT 1
+    ) next_unread ON true
+    WHERE um."userId" = ${userId}
+      ${mangaId ? Prisma.sql`AND um."mangaId" = ${mangaId}` : Prisma.empty}
+    ORDER BY um."updatedAt" DESC
   `;
-
-  const byManga = new Map<string, BestChapterRow[]>();
-  for (const row of rows) {
-    const chapter = {
-      ...row,
-      chapterNumber: toNumber(row.chapterNumber) ?? 0,
-    };
-    byManga.set(chapter.mangaId, [...(byManga.get(chapter.mangaId) ?? []), chapter]);
-  }
-
-  return byManga;
 }
 
 export async function getLibraryMangaSummaries(userId: string): Promise<LibraryMangaSummary[]> {
-  const library = await prisma.userManga.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-    select: {
-      lastReadChapterNumber: true,
-      manga: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          coverUrl: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  const chaptersByManga = await getBestChaptersByManga(library.map((entry) => entry.manga.id));
-  return library.map((entry) => buildSummary(entry, chaptersByManga.get(entry.manga.id) ?? []));
+  const rows = await getSummaryRows(userId);
+  return rows.map(buildSummaryFromRow);
 }
 
 export async function getLibraryMangaSummary(userId: string, mangaId: string) {
-  const entry = await prisma.userManga.findUnique({
-    where: {
-      userId_mangaId: {
-        userId,
-        mangaId,
-      },
-    },
-    select: {
-      lastReadChapterNumber: true,
-      manga: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          coverUrl: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  if (!entry) return null;
-
-  const chaptersByManga = await getBestChaptersByManga([mangaId]);
-  return buildSummary(entry, chaptersByManga.get(mangaId) ?? []);
+  const [row] = await getSummaryRows(userId, mangaId);
+  return row ? buildSummaryFromRow(row) : null;
 }

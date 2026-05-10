@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { ChapterItem } from "./chapter-item";
 import { ExternalLink, Loader2 } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
 
 interface Source {
     id: string;
@@ -40,6 +41,8 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
     const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
+    const hasLoadedInitialPage = useRef(initialChapters.length > 0);
+    const { showToast } = useToast();
 
     const loadChapterPage = useCallback(async ({
         reset,
@@ -71,11 +74,21 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             setNextCursor(data.nextCursor ?? null);
         } catch (error) {
             console.error(error);
-            alert("Failed to load chapters");
+            showToast({
+                type: "error",
+                title: "Chapters did not load",
+                description: "Please try again.",
+            });
         } finally {
             setIsLoadingPage(false);
         }
-    }, [mode, selectedSourceId, slug]);
+    }, [mode, selectedSourceId, showToast, slug]);
+
+    useEffect(() => {
+        if (hasLoadedInitialPage.current) return;
+        hasLoadedInitialPage.current = true;
+        void loadChapterPage({ reset: true, nextMode: "best", nextSourceId: "all" });
+    }, [loadChapterPage]);
 
     const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
 
@@ -227,7 +240,20 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                 </p>
             )}
 
-            {sortedChapters.length === 0 ? (
+            {sortedChapters.length === 0 && isLoadingPage ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 9 }).map((_, index) => (
+                        <div key={index} className="surface min-h-[132px] animate-pulse rounded-lg p-4">
+                            <div className="h-5 w-28 rounded bg-muted" />
+                            <div className="mt-4 h-4 w-44 rounded bg-muted" />
+                            <div className="mt-10 flex gap-2">
+                                <div className="h-5 w-20 rounded bg-muted" />
+                                <div className="h-5 w-16 rounded bg-muted" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : sortedChapters.length === 0 ? (
                 <div className="rounded-lg border border-dashed bg-card/60 p-12 text-center text-muted-foreground">
                     No chapters found for this source.
                 </div>
@@ -238,6 +264,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                             key={chapter.id}
                             slug={slug}
                             chapter={chapter}
+                            currentLastReadChapterNumber={lastReadChapterNumber}
                             onProgressChange={setLastReadChapterNumber}
                         />
                     ))}

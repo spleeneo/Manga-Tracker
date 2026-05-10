@@ -1,6 +1,7 @@
 import { checkForUpdates } from "@/lib/manga-updater";
 import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/session";
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -22,16 +23,60 @@ export async function POST() {
             },
         });
 
-        const results = [];
         for (const entry of library) {
-            const updateResults = await checkForUpdates(entry.mangaId);
-            results.push({
-                manga: entry.manga.title,
-                results: updateResults,
+            await prisma.userManga.update({
+                where: {
+                    userId_mangaId: {
+                        userId,
+                        mangaId: entry.mangaId,
+                    },
+                },
+                data: {
+                    syncStatus: "SYNCING",
+                    syncStartedAt: new Date(),
+                    syncFinishedAt: null,
+                    syncError: null,
+                },
             });
         }
 
-        return NextResponse.json({ success: true, results });
+        after(async () => {
+            for (const entry of library) {
+                try {
+                    await checkForUpdates(entry.mangaId);
+                    await prisma.userManga.update({
+                        where: {
+                            userId_mangaId: {
+                                userId,
+                                mangaId: entry.mangaId,
+                            },
+                        },
+                        data: {
+                            syncStatus: "UPDATED",
+                            syncFinishedAt: new Date(),
+                            syncError: null,
+                        },
+                    });
+                } catch (error) {
+                    console.error(`Library update failed for ${entry.manga.title}:`, error);
+                    await prisma.userManga.update({
+                        where: {
+                            userId_mangaId: {
+                                userId,
+                                mangaId: entry.mangaId,
+                            },
+                        },
+                        data: {
+                            syncStatus: "FAILED",
+                            syncFinishedAt: new Date(),
+                            syncError: error instanceof Error ? error.message : "Unknown update error",
+                        },
+                    });
+                }
+            }
+        });
+
+        return NextResponse.json({ success: true, queued: library.length });
     } catch (error) {
         console.error("Library update failed:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

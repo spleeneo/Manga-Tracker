@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   deleteUserMangaMock,
+  getLibraryMangaSummariesMock,
   getCurrentUserIdMock,
   mangaFindUniqueMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
   deleteUserMangaMock: vi.fn(),
+  getLibraryMangaSummariesMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
@@ -14,6 +16,10 @@ const {
 
 vi.mock("@/lib/session", () => ({
   getCurrentUserId: getCurrentUserIdMock,
+}));
+
+vi.mock("@/lib/library-summary", () => ({
+  getLibraryMangaSummaries: getLibraryMangaSummariesMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -29,6 +35,33 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { DELETE } from "@/app/api/manga/[slug]/library/route";
+import { GET } from "@/app/api/manga/library/route";
+
+describe("GET /api/manga/library", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUserIdMock.mockResolvedValue("u1");
+    getLibraryMangaSummariesMock.mockResolvedValue([{ id: "m1", slug: "one-piece" }]);
+  });
+
+  it("requires authentication", async () => {
+    getCurrentUserIdMock.mockResolvedValue(null);
+
+    const res = await GET();
+
+    expect(res.status).toBe(401);
+    expect(getLibraryMangaSummariesMock).not.toHaveBeenCalled();
+  });
+
+  it("returns compact summaries for the signed-in user", async () => {
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.mangas).toEqual([{ id: "m1", slug: "one-piece" }]);
+    expect(getLibraryMangaSummariesMock).toHaveBeenCalledWith("u1");
+  });
+});
 
 describe("DELETE /api/manga/[slug]/library", () => {
   beforeEach(() => {

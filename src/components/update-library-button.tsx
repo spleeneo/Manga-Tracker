@@ -1,24 +1,39 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/toast-provider";
 
 export function UpdateLibraryButton() {
-    const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { showToast, updateToast } = useToast();
 
     const updateLibrary = async () => {
         setLoading(true);
+        const toastId = showToast({
+            type: "loading",
+            title: "Library update started",
+            description: "Checking providers in the background.",
+        });
         try {
             const res = await fetch("/api/manga/updates", {
                 method: "POST",
             });
             if (!res.ok) throw new Error(`Library update failed: ${res.status}`);
-            router.refresh();
+            const body = await res.json();
+            updateToast(toastId, {
+                type: "success",
+                title: "Library update queued",
+                description: `${body.queued ?? 0} manga will refresh in the background.`,
+            });
+            window.dispatchEvent(new Event("mangateo:library-refresh"));
         } catch (error) {
             console.error(error);
-            alert("Failed to update your library");
+            updateToast(toastId, {
+                type: "error",
+                title: "Library update failed",
+                description: "Please try again.",
+            });
         } finally {
             setLoading(false);
         }

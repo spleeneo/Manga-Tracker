@@ -21,6 +21,7 @@ export function MangaCard({
 }) {
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
     const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
+    const isSyncing = manga.syncStatus === "SYNCING";
 
     return (
         <>
@@ -64,7 +65,11 @@ export function MangaCard({
             <div className="flex min-w-0 flex-1 flex-col p-3">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        {manga.status ? (
+                        {isSyncing ? (
+                            <span className="mb-1 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-foreground">
+                                Syncing
+                            </span>
+                        ) : manga.status ? (
                             <span className="mb-1 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
                                 {manga.status}
                             </span>
@@ -95,7 +100,11 @@ export function MangaCard({
                     <span>
                         {manga.isCaughtUp ? "Caught up" : `${manga.readChapters} / ${manga.totalChapters} read`}
                     </span>
-                    {manga.unreadChapters > 0 ? (
+                    {isSyncing ? (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
+                            syncing
+                        </span>
+                    ) : manga.unreadChapters > 0 ? (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
                             {manga.unreadChapters} unread
                         </span>
@@ -137,10 +146,10 @@ export function MangaCard({
                     )}
                 </Link>
 
-                {manga.status && (
+                {(isSyncing || manga.status) && (
                     <div className="absolute left-2 top-2">
                         <span className="status-pill cover-status-pill">
-                            {manga.status}
+                            {isSyncing ? "SYNCING" : manga.status}
                         </span>
                     </div>
                 )}
