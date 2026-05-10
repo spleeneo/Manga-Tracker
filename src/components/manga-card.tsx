@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, CheckCircle2, ExternalLink, ListChecks, Loader2, Play, X } from "lucide-react";
+import { BookOpen, CheckCircle2, Loader2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 
 export type MangaCardData = LibraryMangaSummary;
@@ -71,7 +71,7 @@ export function MangaCard({
                     onDelete(manga.slug, manga.title);
                 }}
                 disabled={removing}
-                className="absolute -right-3 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border-2 border-foreground/70 bg-card text-foreground shadow-[0_2px_0_hsl(var(--background)),0_8px_20px_hsl(0_0%_0%/0.28)] transition-all hover:-translate-y-0.5 hover:border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+                className="absolute -right-3 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border-2 border-border bg-background text-foreground shadow-[0_0_0_3px_hsl(var(--card)),0_8px_20px_hsl(0_0%_0%/0.32)] transition-all hover:-translate-y-0.5 hover:border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-card"
                 aria-label={`Remove ${manga.title} from library`}
                 title={`Untrack ${manga.title}`}
             >
@@ -98,70 +98,37 @@ export function MangaCard({
                             <span>{manga.readChapters} / {manga.totalChapters} READ</span>
                         )}
                     </div>
-                    {manga.latestChapter && <span>Ch. {manga.latestChapter.chapterNumber}</span>}
-                </div>
-
-                <div className="mt-3 rounded-md border border-border bg-muted/35 p-2.5">
-                    <div className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">
-                        Set progress
-                    </div>
-                    {manga.latestChapter ? (
-                        manga.isCaughtUp ? (
-                            <div className="flex min-h-8 items-center justify-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-bold uppercase text-foreground">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Caught up
-                            </div>
-                        ) : (
-                            <div className="grid gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => onProgress(manga.slug, "latest")}
-                                    disabled={Boolean(loadingAction)}
-                                    className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
-                                    title={`Mark chapter ${manga.latestChapter.chapterNumber} as read`}
-                                >
-                                    {loadingAction === "latest" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                                    Mark latest read
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onProgress(manga.slug, "catch-up")}
-                                    disabled={Boolean(loadingAction)}
-                                    className="ui-button ui-button-primary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
-                                    title="Mark all current chapters as read"
-                                >
-                                    {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ListChecks className="h-3 w-3" />}
-                                    Mark caught up
-                                </button>
-                            </div>
-                        )
-                    ) : (
-                        <div className="min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
-                            No chapters yet
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                    {readTarget && (
+                    {readTarget ? (
                         <a
                             href={readTarget.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="ui-button ui-button-primary min-h-8 px-2 py-1.5 text-[11px] uppercase"
+                            className="rounded-full border border-border bg-background px-2 py-1 text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
+                            title={`Read chapter ${readTarget.chapterNumber}`}
                         >
-                            <Play className="h-3 w-3 fill-current" />
-                            Read
+                            Ch. {readTarget.chapterNumber}
                         </a>
-                    )}
-                    <Link
-                        href={`/manga/${manga.slug}`}
-                        className="ui-button ui-button-secondary min-h-8 px-2 py-1.5 text-[11px] uppercase"
-                    >
-                        <ExternalLink className="h-3 w-3" />
-                        Details
-                    </Link>
+                    ) : null}
                 </div>
+
+                {manga.latestChapter && !manga.isCaughtUp ? (
+                    <button
+                        type="button"
+                        onClick={() => onProgress(manga.slug, "catch-up")}
+                        disabled={Boolean(loadingAction)}
+                        className="ui-button ui-button-secondary mt-3 min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
+                        title="Mark every available chapter as read"
+                    >
+                        {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                        Mark caught up
+                    </button>
+                ) : null}
+
+                {!manga.latestChapter ? (
+                    <div className="mt-3 min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
+                        No chapters yet
+                    </div>
+                ) : null}
             </div>
         </div>
     );
