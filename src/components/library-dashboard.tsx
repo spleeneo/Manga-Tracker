@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, CheckCircle2, Clock3, Library, ListChecks, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock3, Library, Loader2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 
@@ -140,28 +140,16 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                     </Link>
                                 )}
                                 {continueManga && continueManga.unreadChapters > 0 && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => void markProgress(continueManga.slug, "next")}
-                                            disabled={progressAction !== null}
-                                            className="ui-button ui-button-secondary"
-                                            title={`Mark chapter ${continueManga.nextUnreadChapter?.chapterNumber} as read`}
-                                        >
-                                            {progressAction?.slug === continueManga.slug && progressAction.action === "next" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                            Mark next read
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => void markProgress(continueManga.slug, "caught-up")}
-                                            disabled={progressAction !== null}
-                                            className="ui-button ui-button-primary"
-                                            title="Mark all unread chapters as read"
-                                        >
-                                            {progressAction?.slug === continueManga.slug && progressAction.action === "caught-up" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
-                                            Mark caught up
-                                        </button>
-                                    </>
+                                    <button
+                                        type="button"
+                                        onClick={() => void markProgress(continueManga.slug, "caught-up")}
+                                        disabled={progressAction !== null}
+                                        className="ui-button ui-button-secondary"
+                                        title="Mark every available chapter as read"
+                                    >
+                                        {progressAction?.slug === continueManga.slug && progressAction.action === "caught-up" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                        Mark caught up
+                                    </button>
                                 )}
                             </div>
                         </div>
