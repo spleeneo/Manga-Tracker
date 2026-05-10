@@ -18,7 +18,7 @@ export default async function Home() {
         <header className="app-header">
           <div className="page-wrap flex h-16 items-center justify-between">
             <BrandLink />
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <ThemeSelector />
               <AuthButton />
             </div>
@@ -42,7 +42,7 @@ export default async function Home() {
       <header className="app-header">
         <div className="page-wrap flex h-16 items-center justify-between">
           <BrandLink />
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {session?.user && <AddMangaDialog />}
             {session?.user && <UpdateLibraryButton />}
             <ThemeSelector />

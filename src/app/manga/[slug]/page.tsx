@@ -77,43 +77,38 @@ export default async function MangaPage({ params }: PageProps) {
 
     return (
         <div className="min-h-screen bg-background pb-12">
-            {/* Header / Banner Area */}
-            <div className="relative h-60 w-full overflow-hidden border-b bg-muted">
+            <div className="relative h-16 w-full overflow-hidden border-b bg-background md:h-60 md:bg-muted">
                 {manga.coverUrl && (
                     <div
-                        className="absolute inset-0 bg-cover bg-center opacity-25"
+                        className="absolute inset-0 hidden bg-cover bg-center opacity-25 md:block"
                         style={{ backgroundImage: `url(/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)})` }}
                     />
                 )}
-                {/* Dark gradient overlay for text readability if needed, though mostly decorative here */}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
+                <div className="absolute inset-0 hidden bg-gradient-to-t from-background via-background/70 to-background/20 md:block" />
 
-                <div className="page-wrap relative h-full">
-                    <div className="absolute left-4 top-5">
-                        <div className="flex items-center gap-2">
-                            <Link
-                                href="/"
-                                className="ui-icon-button"
-                                aria-label="Back to library"
-                                title="Back to library"
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                            </Link>
-                            <BrandLink />
-                        </div>
+                <div className="page-wrap relative flex h-full items-center justify-between">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <Link
+                            href="/"
+                            className="ui-icon-button shrink-0"
+                            aria-label="Back to library"
+                            title="Back to library"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                        <BrandLink />
                     </div>
-                    <div className="absolute right-4 top-6 flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <ThemeSelector />
                         <AuthButton />
                     </div>
                 </div>
             </div>
 
-            <div className="page-wrap relative z-10 -mt-28">
+            <div className="page-wrap relative z-10 py-5 md:-mt-28 md:py-0">
                 <div className="grid gap-6 md:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr]">
-                    {/* Sidebar / Cover */}
-                    <div className="mx-auto flex w-full max-w-[260px] flex-col gap-4 md:mx-0 xl:max-w-[280px]">
-                        <div className="surface group relative aspect-[2/3] overflow-hidden rounded-lg">
+                    <div className="order-2 flex w-full flex-col gap-4 md:order-1 md:mx-0 md:max-w-[260px] xl:max-w-[280px]">
+                        <div className="surface group relative mx-auto hidden aspect-[2/3] w-full max-w-[220px] overflow-hidden rounded-lg md:block md:max-w-none">
                             {manga.coverUrl ? (
                                 <img
                                     src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
@@ -128,18 +123,18 @@ export default async function MangaPage({ params }: PageProps) {
                         </div>
 
                         <div className="surface rounded-lg p-4">
-                            <h3 className="font-semibold mb-3">Sources</h3>
+                            <h3 className="mb-3 font-semibold">Sources</h3>
                             {manga.sources.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No sources linked yet.</p>
                             ) : (
-                                <ul className="space-y-2">
+                                <ul className="flex flex-wrap gap-2 md:block md:space-y-2">
                                     {manga.sources.map((source: { id: string; sourceUrl: string; sourceName: string }) => (
                                         <li key={source.id}>
                                             <a
                                                 href={source.sourceUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:border-0 md:bg-transparent md:px-2"
                                             >
                                                 <ExternalLink className="h-3 w-3" />
                                                 {source.sourceName}
@@ -154,20 +149,30 @@ export default async function MangaPage({ params }: PageProps) {
                         </div>
                     </div>
 
-                    {/* Main Content */}
-                    <div className="min-w-0 space-y-6 pt-8 md:pt-28">
-                        <div>
-                            <h1 className="text-4xl font-bold tracking-tight">{manga.title}</h1>
-                            <div className="mt-2 flex items-center gap-4 text-muted-foreground">
-                                <span className="status-pill border-foreground/40 bg-card text-foreground">
-                                    {manga.status || 'Unknown Status'}
-                                </span>
-                                {manga.author && <span>by {manga.author}</span>}
+                    <div className="order-1 min-w-0 space-y-5 md:order-2 md:pt-28">
+                        <div className="grid gap-4 min-[460px]:grid-cols-[96px_1fr] md:block">
+                            {manga.coverUrl && (
+                                <div className="surface group relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[460px]:block md:hidden">
+                                    <img
+                                        src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                                        alt={manga.title}
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                            )}
+                            <div className="min-w-0">
+                                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{manga.title}</h1>
+                                <div className="mt-2 flex items-center gap-4 text-muted-foreground">
+                                    <span className="status-pill border-foreground/40 bg-card text-foreground">
+                                        {manga.status || 'Unknown Status'}
+                                    </span>
+                                    {manga.author && <span>by {manga.author}</span>}
+                                </div>
                             </div>
                         </div>
 
                         {manga.description && (
-                            <div className="surface-soft rounded-lg p-4 text-sm leading-7 text-muted-foreground">
+                            <div className="surface-soft rounded-lg p-4 text-sm leading-7 text-muted-foreground md:line-clamp-none">
                                 <p>{manga.description}</p>
                             </div>
                         )}

@@ -1,4 +1,5 @@
 import { auth, signIn, signOut } from "../../auth";
+import { LogOut } from "lucide-react";
 
 export async function AuthButton() {
   const session = await auth();
@@ -39,8 +40,9 @@ export async function AuthButton() {
           await signOut();
         }}
       >
-        <button className="ui-button ui-button-secondary">
-          Sign out
+        <button className="ui-button ui-button-secondary h-10 w-10 px-0 sm:w-auto sm:px-3.5" aria-label="Sign out" title="Sign out">
+          <LogOut className="h-4 w-4 sm:hidden" />
+          <span className="hidden sm:inline">Sign out</span>
         </button>
       </form>
     </div>

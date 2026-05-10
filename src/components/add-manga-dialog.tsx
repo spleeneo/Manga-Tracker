@@ -191,10 +191,12 @@ export function AddMangaDialog() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="ui-button ui-button-primary"
+                className="ui-button ui-button-primary h-10 w-10 px-0 sm:w-auto sm:px-3.5"
+                aria-label="Track new manga"
+                title="Track new manga"
             >
                 <Plus className="h-4 w-4" />
-                <span>Track New Manga</span>
+                <span className="hidden sm:inline">Track New Manga</span>
             </button>
         );
     }

@@ -44,11 +44,12 @@ export function UpdateLibraryButton() {
             type="button"
             onClick={updateLibrary}
             disabled={loading}
-            className="ui-button ui-button-secondary"
+            className="ui-button ui-button-secondary h-10 w-10 px-0 sm:w-auto sm:px-3.5"
             title="Check all tracked manga for new chapters"
+            aria-label={loading ? "Updating library" : "Update library"}
         >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Updating..." : "Update Library"}
+            <span className="hidden sm:inline">{loading ? "Updating..." : "Update Library"}</span>
         </button>
     );
 }

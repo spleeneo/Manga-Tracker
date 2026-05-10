@@ -171,7 +171,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         <div className="space-y-5">
             <div className="surface rounded-lg p-3 sm:p-4">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
                     <button
                         onClick={selectBest}
                         disabled={isLoadingPage}
@@ -214,14 +214,14 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             </div>
 
             {selectedSource && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                     <ExternalLink className="h-3 w-3" />
-                    <span>Source: </span>
+                    <span className="shrink-0">Source: </span>
                     <a
                         href={selectedSource.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="min-w-0 truncate text-primary hover:underline"
                     >
                         {selectedSource.sourceUrl}
                     </a>

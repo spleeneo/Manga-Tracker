@@ -133,14 +133,14 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     return (
         <div className="space-y-6">
             <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-                <div className="surface overflow-hidden rounded-lg p-5 sm:p-6">
+                <div className="surface overflow-hidden rounded-lg p-4 sm:p-6">
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                         <div className="flex-1">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-bold uppercase text-muted-foreground">
                                 <Sparkles className="h-3.5 w-3.5" />
                                 {continueManga?.unreadChapters ? "Continue reading" : "Up to date"}
                             </div>
-                            <h2 className="text-2xl font-bold tracking-tight">{continueManga?.title ?? "Your library"}</h2>
+                            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{continueManga?.title ?? "Your library"}</h2>
                             {continueManga?.latestChapter ? (
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     {continueManga.unreadChapters > 0 && continueManga.nextUnreadChapter
@@ -150,7 +150,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                             ) : (
                                 <p className="mt-2 text-sm text-muted-foreground">Add a manga to start building your reading queue.</p>
                             )}
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="mt-4 grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
                                 {(continueManga?.nextUnreadChapter ?? continueManga?.latestChapter)?.url && (
                                     <a
                                         href={(continueManga.nextUnreadChapter ?? continueManga.latestChapter)?.url}
@@ -186,34 +186,34 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="surface rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-2 sm:gap-3">
+                    <div className="surface rounded-lg p-2.5 sm:p-4">
+                        <div className="flex flex-col items-center gap-1 text-center text-[11px] font-semibold text-muted-foreground sm:flex-row sm:gap-2 sm:text-left sm:text-sm">
                             <Library className="h-4 w-4" />
                             Library
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{items.length}</p>
+                        <p className="mt-1 text-center text-2xl font-bold sm:mt-2 sm:text-left sm:text-3xl">{items.length}</p>
                     </div>
-                    <div className="surface rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <div className="surface rounded-lg p-2.5 sm:p-4">
+                        <div className="flex flex-col items-center gap-1 text-center text-[11px] font-semibold text-muted-foreground sm:flex-row sm:gap-2 sm:text-left sm:text-sm">
                             <Clock3 className="h-4 w-4" />
                             Unread
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{stats.unreadChapters}</p>
+                        <p className="mt-1 text-center text-2xl font-bold sm:mt-2 sm:text-left sm:text-3xl">{stats.unreadChapters}</p>
                     </div>
-                    <div className="surface rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <div className="surface rounded-lg p-2.5 sm:p-4">
+                        <div className="flex flex-col items-center gap-1 text-center text-[11px] font-semibold text-muted-foreground sm:flex-row sm:gap-2 sm:text-left sm:text-sm">
                             <CheckCircle2 className="h-4 w-4" />
                             Caught up
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{stats.caughtUp}</p>
+                        <p className="mt-1 text-center text-2xl font-bold sm:mt-2 sm:text-left sm:text-3xl">{stats.caughtUp}</p>
                     </div>
-                    <div className="surface rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <div className="surface rounded-lg p-2.5 sm:p-4">
+                        <div className="flex flex-col items-center gap-1 text-center text-[11px] font-semibold text-muted-foreground sm:flex-row sm:gap-2 sm:text-left sm:text-sm">
                             <BookOpen className="h-4 w-4" />
                             Ongoing
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{stats.ongoing}</p>
+                        <p className="mt-1 text-center text-2xl font-bold sm:mt-2 sm:text-left sm:text-3xl">{stats.ongoing}</p>
                     </div>
                 </div>
             </section>
@@ -224,7 +224,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                         <h2 className="text-xl font-bold tracking-tight">Library</h2>
                         <p className="text-sm text-muted-foreground">Filter by reading state and jump back in quickly.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
                         {filters.map((item) => (
                             <button
                                 key={item.value}
