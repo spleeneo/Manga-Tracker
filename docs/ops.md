@@ -19,6 +19,8 @@ Mangateo is designed for a free or near-free setup using Vercel Hobby and Neon F
 - `AUTH_GOOGLE_ID`: Google OAuth client id.
 - `AUTH_GOOGLE_SECRET`: Google OAuth client secret.
 - `ALLOWED_EMAILS`: optional comma-separated email allowlist.
+- `ABLY_API_KEY`: Ably key used to publish global chat messages and issue browser token requests.
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob token used for global chat image uploads.
 
 Use `.env.example` as the local template.
 
@@ -44,10 +46,11 @@ After changing OAuth variables locally, restart the dev server. After changing t
 ## Deployment
 
 1. Create the Neon database.
-2. Set Vercel environment variables.
-3. Connect Vercel to GitHub.
-4. Deploy from `main`.
-5. Run migrations with `npm run db:migrate` against the Neon database, or `npx prisma migrate deploy` in a trusted environment.
+2. Create an Ably app and a Vercel Blob store if global chat is enabled.
+3. Set Vercel environment variables.
+4. Connect Vercel to GitHub.
+5. Deploy from `main`.
+6. Run migrations with `npm run db:migrate` against the Neon database, or `npx prisma migrate deploy` in a trusted environment.
 
 `postinstall` runs `prisma generate`, so Vercel should have a generated Prisma client after install.
 

@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
 import { AddSourceDialog } from "@/components/add-source-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
+import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
@@ -99,6 +100,14 @@ export default async function MangaPage({ params }: PageProps) {
                         <BrandLink />
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
+                        <ChatDrawer
+                            currentUser={{
+                                id: session.user.id,
+                                name: session.user.name,
+                                email: session.user.email,
+                                image: session.user.image,
+                            }}
+                        />
                         <ThemeSelector />
                         <AuthButton />
                     </div>

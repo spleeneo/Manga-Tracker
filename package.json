@@ -19,6 +19,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
     "@prisma/client": "^6.19.2",
+    "@vercel/blob": "^2.3.3",
+    "ably": "^2.21.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.562.0",

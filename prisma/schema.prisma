@@ -73,6 +73,7 @@ model User {
   sessions      Session[]
   library       UserManga[]
   chapters      UserChapter[]
+  chatMessages  ChatMessage[]
 }
 
 model Account {
@@ -144,4 +145,19 @@ model UserChapter {
 
   @@unique([userId, chapterId])
   @@index([chapterId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  body      String?
+  imageUrl  String?
+  imageName String?
+  imageMime String?
+  imageSize Int?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([userId])
 }

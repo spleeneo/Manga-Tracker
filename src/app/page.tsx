@@ -2,6 +2,7 @@ import { isDatabaseConfigured } from "@/lib/db";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
+import { ChatDrawer } from "@/components/chat-drawer";
 import { LibraryHome } from "@/components/library-home";
 import { ThemeSelector } from "@/components/theme-selector";
 import { UpdateLibraryButton } from "@/components/update-library-button";
@@ -45,6 +46,16 @@ export default async function Home() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {session?.user && <AddMangaDialog />}
             {session?.user && <UpdateLibraryButton />}
+            {session?.user?.id && (
+              <ChatDrawer
+                currentUser={{
+                  id: session.user.id,
+                  name: session.user.name,
+                  email: session.user.email,
+                  image: session.user.image,
+                }}
+              />
+            )}
             <ThemeSelector />
             <AuthButton />
           </div>
