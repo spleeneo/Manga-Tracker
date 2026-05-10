@@ -41,6 +41,10 @@ Create a Google OAuth web application and add redirect URIs for each environment
 - `http://localhost:3000/api/auth/callback/google`
 - Production Vercel callback URL, for example `https://<project>.vercel.app/api/auth/callback/google`
 
+For Google app publishing, use the public privacy policy URL:
+
+- `https://mangateo.vercel.app/privacy`
+
 After changing OAuth variables locally, restart the dev server. After changing them in Vercel, redeploy.
 
 ## Deployment

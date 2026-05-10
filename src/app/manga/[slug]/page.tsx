@@ -8,6 +8,7 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
+import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
 
@@ -199,6 +200,7 @@ export default async function MangaPage({ params }: PageProps) {
                     </div>
                 </div>
             </div>
+            <LegalFooter />
         </div>
     );
 }
