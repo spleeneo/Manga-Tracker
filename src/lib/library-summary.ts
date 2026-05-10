@@ -19,6 +19,7 @@ export interface LibraryMangaSummary {
   syncError: string | null;
   lastReadChapterNumber: number | null;
   latestChapter: SummaryChapter | null;
+  latestAvailableAt: Date | null;
   nextUnreadChapter: SummaryChapter | null;
   totalChapters: number;
   readChapters: number;
@@ -40,6 +41,7 @@ type SummaryRow = {
   latestChapterNumber: number | Prisma.Decimal | null;
   latestUrl: string | null;
   latestReleaseDate: Date | null;
+  latestAvailableAt: Date | null;
   nextUnreadChapterNumber: number | Prisma.Decimal | null;
   nextUnreadUrl: string | null;
   nextUnreadReleaseDate: Date | null;
@@ -80,6 +82,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
           releaseDate: row.latestReleaseDate,
         }
       : null,
+    latestAvailableAt: row.latestAvailableAt,
     nextUnreadChapter: row.nextUnreadChapterNumber != null && row.nextUnreadUrl
       ? {
           chapterNumber: toNumber(row.nextUnreadChapterNumber) ?? 0,
@@ -121,6 +124,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       latest."chapterNumber" AS "latestChapterNumber",
       latest."url" AS "latestUrl",
       latest."releaseDate" AS "latestReleaseDate",
+      latest."availableAt" AS "latestAvailableAt",
       next_unread."chapterNumber" AS "nextUnreadChapterNumber",
       next_unread."url" AS "nextUnreadUrl",
       next_unread."releaseDate" AS "nextUnreadReleaseDate",
@@ -142,7 +146,8 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       SELECT DISTINCT ON (c."chapterNumber")
         c."chapterNumber",
         c."url",
-        c."releaseDate"
+        c."releaseDate",
+        COALESCE(c."releaseDate", c."createdAt") AS "availableAt"
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
@@ -171,7 +176,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
     ) next_unread ON true
     WHERE um."userId" = ${userId}
       ${mangaId ? Prisma.sql`AND um."mangaId" = ${mangaId}` : Prisma.empty}
-    ORDER BY um."updatedAt" DESC
+    ORDER BY latest."availableAt" DESC NULLS LAST, latest."chapterNumber" DESC NULLS LAST, um."updatedAt" DESC
   `;
 }
 

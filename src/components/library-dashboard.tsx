@@ -16,6 +16,16 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [removingSlug, setRemovingSlug] = useState<string | null>(null);
     const { showToast } = useToast();
 
+    const sortedItems = useMemo(() => {
+        return [...items].sort((a, b) => {
+            const aTime = a.latestAvailableAt ?? a.latestChapter?.releaseDate;
+            const bTime = b.latestAvailableAt ?? b.latestChapter?.releaseDate;
+            const byUpdate = (bTime ? new Date(bTime).getTime() : 0) - (aTime ? new Date(aTime).getTime() : 0);
+            if (byUpdate !== 0) return byUpdate;
+            return (b.latestChapter?.chapterNumber ?? 0) - (a.latestChapter?.chapterNumber ?? 0);
+        });
+    }, [items]);
+
     const stats = useMemo(() => {
         const unreadTitles = items.filter((manga) => manga.unreadChapters > 0).length;
         const unreadChapters = items.reduce((total, manga) => total + manga.unreadChapters, 0);
@@ -26,16 +36,16 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     }, [items]);
 
     const continueManga = useMemo(() => (
-        [...items]
+        [...sortedItems]
             .filter((manga) => manga.unreadChapters > 0)
             .sort((a, b) => {
                 const aChapter = a.nextUnreadChapter?.releaseDate;
                 const bChapter = b.nextUnreadChapter?.releaseDate;
                 return (bChapter ? new Date(bChapter).getTime() : 0) - (aChapter ? new Date(aChapter).getTime() : 0);
-            })[0] ?? items[0]
-    ), [items]);
+            })[0] ?? sortedItems[0]
+    ), [sortedItems]);
 
-    const filteredMangas = items.filter((manga) => {
+    const filteredMangas = sortedItems.filter((manga) => {
         switch (filter) {
             case "unread":
                 return manga.unreadChapters > 0;

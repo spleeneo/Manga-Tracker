@@ -45,6 +45,13 @@ export function MangaCard({
                 <div className="absolute bottom-0 left-0 h-1 w-full bg-black/20">
                     <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
+                {manga.unreadChapters > 0 ? (
+                    <span
+                        className="absolute right-2 top-2 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background)),0_0_16px_hsl(142_71%_45%/0.8)]"
+                        aria-label="Unread chapters available"
+                        title="Unread chapters available"
+                    />
+                ) : null}
             </Link>
 
             <button
@@ -146,11 +153,20 @@ export function MangaCard({
                     )}
                 </Link>
 
-                {(isSyncing || manga.status) && (
-                    <div className="absolute left-2 top-2">
-                        <span className="status-pill cover-status-pill">
-                            {isSyncing ? "SYNCING" : manga.status}
-                        </span>
+                {(isSyncing || manga.unreadChapters > 0) && (
+                    <div className="absolute left-2 top-2 flex items-center gap-2">
+                        {isSyncing ? (
+                            <span className="rounded-full border border-border bg-background px-2 py-1 text-[10px] font-bold uppercase text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-card">
+                                Syncing
+                            </span>
+                        ) : null}
+                        {manga.unreadChapters > 0 ? (
+                            <span
+                                className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_0_3px_hsl(var(--background)),0_0_16px_hsl(142_71%_45%/0.8)]"
+                                aria-label="Unread chapters available"
+                                title="Unread chapters available"
+                            />
+                        ) : null}
                     </div>
                 )}
 
