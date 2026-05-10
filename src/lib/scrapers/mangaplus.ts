@@ -49,6 +49,14 @@ interface MangaPlusNamedTitle extends MangaPlusTitle {
     name: string;
 }
 
+function parseChapterNumber(name?: string): number | null {
+    const match = name?.match(/#?\s*(\d+(?:\.\d+)?)/);
+    if (!match) return null;
+
+    const chapterNumber = Number(match[1]);
+    return Number.isFinite(chapterNumber) ? chapterNumber : null;
+}
+
 export class MangaPlusScraper implements Scraper {
     name = "MangaPlus";
     capabilities = { search: true, metadata: true, chapters: true };
@@ -132,11 +140,12 @@ export class MangaPlusScraper implements Scraper {
 
             return allChapters
                 .filter((chapter) => typeof chapter.chapterId === "number")
+                .filter((chapter) => parseChapterNumber(chapter.name) !== null)
                 .map((chapter) => {
                     const header = chapter.name || "";
                     const sub = chapter.subTitle || "";
                     const title = header && sub ? `${header}: ${sub}` : header || sub || `Chapter ${chapter.chapterId}`;
-                    const num = parseFloat(header.replace("#", "")) || chapter.chapterId || 0;
+                    const num = parseChapterNumber(header) ?? 0;
                     const releaseDate = chapter.startTimeStamp
                         ? new Date(chapter.startTimeStamp * 1000)
                         : undefined;
