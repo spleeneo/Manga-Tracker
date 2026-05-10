@@ -28,14 +28,14 @@ export function MangaCard({
         <div className="interactive-surface manga-card-surface group relative flex overflow-visible rounded-lg sm:hidden">
             <Link
                 href={`/manga/${manga.slug}`}
-                className="relative block h-32 w-20 shrink-0 overflow-hidden rounded-l-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative block w-20 shrink-0 self-stretch overflow-hidden rounded-l-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`Open ${manga.title} details`}
             >
                 {manga.coverUrl ? (
                     <img
                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                         alt={manga.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -144,7 +144,7 @@ export function MangaCard({
                         <img
                             src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                             alt={manga.title}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                         />
                     ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">

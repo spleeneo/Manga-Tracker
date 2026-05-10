@@ -123,7 +123,7 @@ export default async function MangaPage({ params }: PageProps) {
                                 <img
                                     src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                                     alt={manga.title}
-                                    className="h-full w-full object-cover"
+                                    className="h-full w-full object-contain"
                                 />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
@@ -166,7 +166,7 @@ export default async function MangaPage({ params }: PageProps) {
                                     <img
                                         src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                                         alt={manga.title}
-                                        className="h-full w-full object-cover"
+                                        className="h-full w-full object-contain"
                                     />
                                 </div>
                             )}
