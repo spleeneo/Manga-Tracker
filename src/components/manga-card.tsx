@@ -71,7 +71,7 @@ export function MangaCard({
                     onDelete(manga.slug, manga.title);
                 }}
                 disabled={removing}
-                className="absolute -right-3 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border-2 border-border bg-background text-foreground shadow-[0_0_0_3px_hsl(var(--card)),0_8px_20px_hsl(0_0%_0%/0.32)] transition-all hover:-translate-y-0.5 hover:border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-card"
+                className="absolute -right-3 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-foreground text-background shadow-[0_0_0_3px_hsl(var(--card)),0_8px_20px_hsl(0_0%_0%/0.36)] transition-all hover:-translate-y-0.5 hover:border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:border-card dark:bg-foreground dark:text-background"
                 aria-label={`Remove ${manga.title} from library`}
                 title={`Untrack ${manga.title}`}
             >
