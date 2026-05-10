@@ -51,6 +51,10 @@ After changing OAuth variables locally, restart the dev server. After changing t
 
 `postinstall` runs `prisma generate`, so Vercel should have a generated Prisma client after install.
 
+Vercel functions are pinned to `fra1` in `vercel.json` and the App Router root exports the same preferred region. Keep the Neon database in a nearby European region, such as Frankfurt/eu-central-1, so Auth.js and Prisma queries do not pay cross-region latency on every request.
+
+Use `/api/health` after deployment to confirm the function region and database timing. A healthy deployment should report `region: "fra1"` and a low `checks.databaseDurationMs`.
+
 ## Cron
 
 `vercel.json` schedules `GET /api/cron/update` once per day at 05:00 UTC.

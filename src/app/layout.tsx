@@ -4,6 +4,8 @@ import { ThemeScript } from "@/components/theme-script";
 import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 
+export const preferredRegion = "fra1";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
