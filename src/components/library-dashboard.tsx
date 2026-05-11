@@ -117,11 +117,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         }
     };
 
-    const deleteManga = async (slug: string, title: string) => {
-        if (!window.confirm(`Remove "${title}" from your library? Your shared manga data and sources will stay available if you track it again later.`)) {
-            return;
-        }
-
+    const deleteManga = async (slug: string) => {
         setRemovingSlug(slug);
         const previousItems = items;
         setItems((current) => current.filter((manga) => manga.slug !== slug));
@@ -265,7 +261,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                 manga={manga}
                                 loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
                                 removing={removingSlug === manga.slug}
-                                onDelete={deleteManga}
+                                onDelete={(slug) => void deleteManga(slug)}
                                 onProgress={markProgress}
                             />
                         ))}
