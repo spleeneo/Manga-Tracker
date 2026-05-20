@@ -78,4 +78,28 @@ describe("WebtoonScraper", () => {
       url: "https://www.webtoons.com/en/fantasy/tower-of-god/season-3-ep-235/viewer?title_no=95&episode_no=653",
     });
   });
+
+  it("skips episode rows marked as locked or paid", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <a href="https://www.webtoons.com/en/fantasy/tower-of-god/free/viewer?title_no=95&episode_no=10">
+        <span class="subj"><span>Episode 10</span></span>
+        <span class="date">Jan 1, 2025</span>
+      </a>
+      <a href="https://www.webtoons.com/en/fantasy/tower-of-god/fast-pass/viewer?title_no=95&episode_no=11">
+        <span class="subj"><span>Episode 11</span></span>
+        <span class="badge">Fast Pass</span>
+        <span class="date">Jan 8, 2025</span>
+      </a>
+      <a href="https://www.webtoons.com/en/fantasy/tower-of-god/coin/viewer?title_no=95&episode_no=12">
+        <span class="subj"><span>Episode 12</span></span>
+        <em class="ico_lock">locked</em>
+        <span class="date">Jan 15, 2025</span>
+      </a>
+    `));
+
+    const scraper = new WebtoonScraper();
+    const chapters = await scraper.fetchChapters("https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95");
+
+    expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([10]);
+  });
 });

@@ -37,6 +37,24 @@ function parseWebtoonDate(value?: string): Date | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
+function isFreeEpisodeListItem(html: string): boolean {
+  const normalized = stripTags(html).toLowerCase();
+  const raw = html.toLowerCase();
+
+  return ![
+    "fast pass",
+    "daily pass",
+    "coin",
+    "coins",
+    "locked",
+    "unlock",
+    "only on the app",
+    "download app",
+    "ico_lock",
+    "lock_icon",
+  ].some((marker) => normalized.includes(marker) || raw.includes(marker));
+}
+
 export class WebtoonScraper implements Scraper {
   name = "Webtoon";
   capabilities = { search: true, metadata: true, chapters: true };
@@ -145,7 +163,7 @@ export class WebtoonScraper implements Scraper {
   private parseChapterList(html: string): ScrapedChapter[] {
     return Array.from(
       html.matchAll(/<a[^>]+href="([^"]*episode_no=(\d+)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi)
-    ).map((entry) => {
+    ).filter((entry) => isFreeEpisodeListItem(entry[3])).map((entry) => {
       const episodeNo = Number(entry[2]);
       const body = entry[3];
       const title = stripTags(
