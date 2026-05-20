@@ -97,6 +97,8 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const getSourceRank = (sourceName?: string) => {
         switch (sourceName?.toLowerCase()) {
+            case "urek mazino":
+                return 6;
             case "mangaplus":
                 return 5;
             case "mangadex":

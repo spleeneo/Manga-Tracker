@@ -99,6 +99,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 
 const SOURCE_RANK_SQL = Prisma.sql`
   CASE LOWER(COALESCE(s."sourceName", ''))
+    WHEN 'urek mazino' THEN 6
     WHEN 'mangaplus' THEN 5
     WHEN 'mangadex' THEN 4
     WHEN 'webtoon' THEN 3

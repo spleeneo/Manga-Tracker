@@ -4,6 +4,7 @@ import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
 import { VizScraper } from "./viz";
 import { WebtoonScraper } from "./webtoon";
+import { UrekMazinoScraper } from "./urek-mazino";
 import { ManganatoScraper } from "./manganato";
 
 const scrapers: Scraper[] = [
@@ -11,6 +12,7 @@ const scrapers: Scraper[] = [
     new NeloMangaScraper(),
     new MangaPlusScraper(),
     new VizScraper(),
+    new UrekMazinoScraper(),
     new WebtoonScraper(),
     new ManganatoScraper(),
 ];

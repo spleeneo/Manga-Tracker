@@ -23,5 +23,6 @@ describe("scraper provider contract", () => {
     expect(names).toContain("Webtoon");
     expect(names).toContain("Manganato");
     expect(names).toContain("VIZ");
+    expect(names).toContain("Urek Mazino");
   });
 });
