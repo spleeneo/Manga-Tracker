@@ -26,9 +26,10 @@ export async function POST(request: Request) {
                             sourceUrl.includes("mangaplus") ? "MangaPlus" :
                                 sourceUrl.includes("viz.com") ? "VIZ" :
                                     sourceUrl.includes("urekmazino.com") ? "Urek Mazino" :
-                                        sourceUrl.includes("webtoons") ? "Webtoon" :
-                                            (sourceUrl.includes("manganato") || sourceUrl.includes("chapmanganato")) ? "Manganato" :
-                                                "Source"
+                                        sourceUrl.includes("bleach.live") ? "Bleach Live" :
+                                            sourceUrl.includes("webtoons") ? "Webtoon" :
+                                                (sourceUrl.includes("manganato") || sourceUrl.includes("chapmanganato")) ? "Manganato" :
+                                                    "Source"
             });
         }
 
@@ -93,9 +94,10 @@ export async function POST(request: Request) {
                             url.includes("mangaplus") ? "MangaPlus" :
                                 url.includes("viz.com") ? "VIZ" :
                                     url.includes("urekmazino.com") ? "Urek Mazino" :
-                                        url.includes("webtoons") ? "Webtoon" :
-                                            (url.includes("manganato") || url.includes("chapmanganato")) ? "Manganato" :
-                                                "Source"
+                                        url.includes("bleach.live") ? "Bleach Live" :
+                                            url.includes("webtoons") ? "Webtoon" :
+                                                (url.includes("manganato") || url.includes("chapmanganato")) ? "Manganato" :
+                                                    "Source"
                 );
 
                 try {
