@@ -255,9 +255,6 @@ export function AddMangaDialog() {
                                                 {manga.status ? (
                                                     <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground sm:ml-auto">{manga.status}</span>
                                                 ) : null}
-                                                <span className="rounded border bg-primary px-2 py-1 text-[10px] font-bold uppercase text-primary-foreground">
-                                                    {trackingKey === `${manga.title}:all` ? "Tracking" : "Track"}
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
