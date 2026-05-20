@@ -2,6 +2,7 @@ import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult } from "
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
+import { VizScraper } from "./viz";
 import { WebtoonScraper } from "./webtoon";
 import { ManganatoScraper } from "./manganato";
 
@@ -9,6 +10,7 @@ const scrapers: Scraper[] = [
     new MangaDexScraper(),
     new NeloMangaScraper(),
     new MangaPlusScraper(),
+    new VizScraper(),
     new WebtoonScraper(),
     new ManganatoScraper(),
 ];

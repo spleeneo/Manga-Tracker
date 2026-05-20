@@ -22,5 +22,6 @@ describe("scraper provider contract", () => {
     const names = getRegisteredScrapers().map((p) => p.name);
     expect(names).toContain("Webtoon");
     expect(names).toContain("Manganato");
+    expect(names).toContain("VIZ");
   });
 });
