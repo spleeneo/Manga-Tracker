@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search, Link2 } from "lucide-react";
+import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 
 interface SearchSource {
@@ -24,27 +24,8 @@ export function AddMangaDialog() {
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [trackingKey, setTrackingKey] = useState<string | null>(null);
-    const [mode, setMode] = useState<"MANUAL" | "SEARCH">("SEARCH");
     const { showToast, updateToast } = useToast();
     const visibleSearchResults = searchQuery.trim().length >= 3 ? searchResults : [];
-
-    const [formData, setFormData] = useState<{
-        title: string;
-        slug: string;
-        coverUrl: string;
-        status: string;
-        description: string;
-        sourceUrl: string;
-        sources: SearchSource[];
-    }>({
-        title: "",
-        slug: "",
-        coverUrl: "",
-        status: "ONGOING",
-        description: "",
-        sourceUrl: "",
-        sources: [],
-    });
 
     // Simple debounce for search
     useEffect(() => {
@@ -80,11 +61,6 @@ export function AddMangaDialog() {
         sourceUrl: initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "",
         sources: manga.sources || [],
     });
-
-    const selectManga = (manga: SearchResult, initialSourceUrl?: string) => {
-        setFormData(getMangaFormData(manga, initialSourceUrl));
-        setMode("MANUAL");
-    };
 
     const handleSearchQueryChange = (value: string) => {
         setSearchQuery(value);
@@ -152,63 +128,9 @@ export function AddMangaDialog() {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const payload = formData;
-        const toastId = showToast({
-            type: "loading",
-            title: `Tracking ${payload.title}`,
-            description: "Adding it to your library now.",
-        });
-
-        setLoading(true);
-        setIsOpen(false);
-        resetForm();
-
-        try {
-            const res = await fetch("/api/manga", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to create manga");
-            }
-
-            updateToast(toastId, {
-                type: "success",
-                title: `${payload.title} is tracked`,
-                description: "Chapters are syncing in the background.",
-            });
-            window.dispatchEvent(new Event("mangateo:library-refresh"));
-        } catch (error) {
-            console.error(error);
-            updateToast(toastId, {
-                type: "error",
-                title: `Could not track ${payload.title}`,
-                description: error instanceof Error ? error.message : "Failed to create manga",
-                durationMs: 7000,
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const resetForm = () => {
-        setFormData({
-            title: "",
-            slug: "",
-            coverUrl: "",
-            status: "ONGOING",
-            description: "",
-            sourceUrl: "",
-            sources: [],
-        });
         setSearchQuery("");
         setSearchResults([]);
-        setMode("SEARCH");
     };
 
     if (!isOpen) {
@@ -253,227 +175,106 @@ export function AddMangaDialog() {
                     </button>
                 </div>
 
-                <div className="flex gap-2 border-b bg-muted/35 p-2">
-                    <button
-                        onClick={() => setMode("SEARCH")}
-                        className={`ui-tab flex-1 ${mode === "SEARCH" ? "ui-tab-active" : "bg-card"}`}
-                    >
-                        SEARCH ONLINE
-                    </button>
-                    <button
-                        onClick={() => setMode("MANUAL")}
-                        className={`ui-tab flex-1 ${mode === "MANUAL" ? "ui-tab-active" : "bg-card"}`}
-                    >
-                        MANUAL ENTRY
-                    </button>
-                </div>
-
                 <div className="max-h-[72vh] overflow-y-auto p-6 custom-scrollbar sm:p-8">
-                    {mode === "SEARCH" ? (
-                        <div className="space-y-6">
-                            <div className="relative">
-                                <input
-                                    autoFocus
-                                    placeholder="Search (e.g. Naruto, One Piece...)"
-                                    className="ui-field h-12 pl-12 pr-12"
-                                    value={searchQuery}
-                                    onChange={(e) => handleSearchQueryChange(e.target.value)}
-                                />
-                                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                {isSearching && <Loader2 className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-primary" />}
-                            </div>
-
-                            <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
-                                {visibleSearchResults.length > 0 ? (
-                                    visibleSearchResults.map((manga, idx) => (
-                                        <div
-                                            key={manga.title || idx}
-                                            role="button"
-                                            tabIndex={loading ? -1 : 0}
-                                            onClick={() => {
-                                                if (!loading) void trackSearchResult(manga);
-                                            }}
-                                            onKeyDown={(event) => {
-                                                if (loading) return;
-                                                if (event.key === "Enter" || event.key === " ") {
-                                                    event.preventDefault();
-                                                    void trackSearchResult(manga);
-                                                }
-                                            }}
-                                            className="interactive-surface group grid min-w-0 cursor-pointer grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
-                                            aria-label={`Track ${manga.title}`}
-                                        >
-                                            <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
-                                                {manga.coverUrl ? (
-                                                    <img src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-8 w-8 opacity-20" /></div>
-                                                )}
-                                            </div>
-                                            <div className="min-w-0 overflow-hidden py-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        void trackSearchResult(manga);
-                                                    }}
-                                                    disabled={loading}
-                                                    className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                >
-                                                    <h3 className="flex items-center gap-2 truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">
-                                                        {trackingKey === `${manga.title}:all` && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
-                                                        <span className="truncate">{manga.title}</span>
-                                                    </h3>
-                                                </button>
-                                                <p className="mb-2 mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
-                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                                    {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
-                                                        manga.sources.map((source: SearchSource, sourceIdx: number) => (
-                                                            <button
-                                                                type="button"
-                                                                key={source.url || sourceIdx}
-                                                                onClick={(event) => {
-                                                                    event.stopPropagation();
-                                                                    void trackSearchResult(manga, source.url);
-                                                                }}
-                                                                disabled={loading}
-                                                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                            >
-                                                                {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
-                                                                <span className="truncate">{source.name}</span>
-                                                            </button>
-                                                        ))
-                                                    ) : (
-                                                        <span className="text-xs text-red-500">No sources</span>
-                                                    )}
-                                                    {manga.status ? (
-                                                        <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground sm:ml-auto">{manga.status}</span>
-                                                    ) : null}
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            void trackSearchResult(manga);
-                                                        }}
-                                                        disabled={loading}
-                                                        className="inline-flex items-center gap-1.5 rounded border bg-primary px-2 py-1 text-[10px] font-bold uppercase text-primary-foreground transition-colors hover:bg-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
-                                                    >
-                                                        {trackingKey === `${manga.title}:all` && <Loader2 className="h-3 w-3 animate-spin" />}
-                                                        {trackingKey === `${manga.title}:all` ? "Tracking" : "Track"}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            selectManga(manga);
-                                                        }}
-                                                        disabled={loading}
-                                                        className="rounded border bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : searchQuery.length >= 3 && !isSearching ? (
-                                    <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                                        <Search className="h-8 w-8 opacity-20 mb-2" />
-                                        <p className="text-sm">No results found</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                                        <Sparkles className="h-8 w-8 opacity-20 mb-2" />
-                                        <p className="text-sm">Type to search</p>
-                                    </div>
-                                )}
-                            </div>
+                    <div className="space-y-6">
+                        <div className="relative">
+                            <input
+                                autoFocus
+                                placeholder="Search (e.g. Naruto, One Piece...)"
+                                className="ui-field h-12 pl-12 pr-12"
+                                value={searchQuery}
+                                onChange={(e) => handleSearchQueryChange(e.target.value)}
+                            />
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                            {isSearching && <Loader2 className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-primary" />}
                         </div>
-                    ) : (
-                        <form onSubmit={handleSubmit}>
-                            <div className="grid gap-8 sm:grid-cols-2">
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="ui-label">Title</label>
-                                        <input
-                                            required
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            placeholder="e.g. One Piece"
-                                            className="ui-field"
-                                        />
-                                    </div>
 
-                                    <div>
-                                        <label className="ui-label">Slug</label>
-                                        <input
-                                            required
-                                            value={formData.slug}
-                                            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                            placeholder="e.g. one-piece"
-                                            className="ui-field"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="ui-label">Source URL (Auto-Track)</label>
-                                        <div className="group relative">
-                                            <input
-                                                value={formData.sourceUrl}
-                                                onChange={(e) => setFormData({ ...formData, sourceUrl: e.target.value })}
-                                                placeholder="https://mangadex.org/..."
-                                                className="ui-field pl-11"
-                                            />
-                                            <Link2 className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                        <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                            {visibleSearchResults.length > 0 ? (
+                                visibleSearchResults.map((manga, idx) => (
+                                    <div
+                                        key={manga.title || idx}
+                                        role="button"
+                                        tabIndex={loading ? -1 : 0}
+                                        onClick={() => {
+                                            if (!loading) void trackSearchResult(manga);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (loading) return;
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                void trackSearchResult(manga);
+                                            }
+                                        }}
+                                        className="interactive-surface group grid min-w-0 cursor-pointer grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
+                                        aria-label={`Track ${manga.title}`}
+                                    >
+                                        <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
+                                            {manga.coverUrl ? (
+                                                <img src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                            ) : (
+                                                <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-8 w-8 opacity-20" /></div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 overflow-hidden py-1">
+                                            <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void trackSearchResult(manga);
+                                                }}
+                                                disabled={loading}
+                                                className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            >
+                                                <h3 className="flex items-center gap-2 truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">
+                                                    {trackingKey === `${manga.title}:all` && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+                                                    <span className="truncate">{manga.title}</span>
+                                                </h3>
+                                            </button>
+                                            <p className="mb-2 mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
+                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
+                                                    manga.sources.map((source: SearchSource, sourceIdx: number) => (
+                                                        <button
+                                                            type="button"
+                                                            key={source.url || sourceIdx}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                void trackSearchResult(manga, source.url);
+                                                            }}
+                                                            disabled={loading}
+                                                            className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                        >
+                                                            {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
+                                                            <span className="truncate">{source.name}</span>
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-red-500">No sources</span>
+                                                )}
+                                                {manga.status ? (
+                                                    <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground sm:ml-auto">{manga.status}</span>
+                                                ) : null}
+                                                <span className="rounded border bg-primary px-2 py-1 text-[10px] font-bold uppercase text-primary-foreground">
+                                                    {trackingKey === `${manga.title}:all` ? "Tracking" : "Track"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
+                                ))
+                            ) : searchQuery.length >= 3 && !isSearching ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                                    <Search className="h-8 w-8 opacity-20 mb-2" />
+                                    <p className="text-sm">No results found</p>
                                 </div>
-
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="ui-label">Cover URL</label>
-                                        <div className="group relative">
-                                            <input
-                                                value={formData.coverUrl}
-                                                onChange={(e) => setFormData({ ...formData, coverUrl: e.target.value })}
-                                                placeholder="https://..."
-                                                className="ui-field pl-11"
-                                            />
-                                            <ImageIcon className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="ui-label">Description</label>
-                                        <textarea
-                                            rows={6}
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Manga overview..."
-                                            className="ui-field resize-none"
-                                        />
-                                    </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                                    <Sparkles className="h-8 w-8 opacity-20 mb-2" />
+                                    <p className="text-sm">Type to search</p>
                                 </div>
-                            </div>
-
-                            <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode("SEARCH")}
-                                    className="ui-button ui-button-ghost"
-                                >
-                                    BACK TO SEARCH
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="ui-button ui-button-primary min-w-[160px]"
-                                >
-                                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "TRACK MANGA"}
-                                </button>
-                            </div>
-                        </form>
-                    )}
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
