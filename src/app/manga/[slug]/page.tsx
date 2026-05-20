@@ -4,11 +4,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
 import { AddSourceDialog } from "@/components/add-source-dialog";
+import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
-import { ExploreLink } from "@/components/explore-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { MangaDescription } from "@/components/manga-description";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -85,7 +85,7 @@ export default async function MangaPage({ params }: PageProps) {
 
     return (
         <div className="min-h-screen bg-background pb-12">
-            <div className="relative h-16 w-full overflow-hidden border-b bg-background md:h-60 md:bg-muted">
+            <div className="relative min-h-16 w-full overflow-hidden border-b bg-background md:h-60 md:bg-muted">
                 {manga.coverUrl && (
                     <div
                         className="absolute inset-0 hidden bg-cover bg-center opacity-25 md:block"
@@ -94,7 +94,7 @@ export default async function MangaPage({ params }: PageProps) {
                 )}
                 <div className="absolute inset-0 hidden bg-gradient-to-t from-background via-background/70 to-background/20 md:block" />
 
-                <div className="page-wrap relative flex h-full items-center justify-between">
+                <div className="page-wrap app-header-row relative h-full">
                     <div className="flex min-w-0 items-center gap-2">
                         <Link
                             href="/"
@@ -106,8 +106,8 @@ export default async function MangaPage({ params }: PageProps) {
                         </Link>
                         <BrandLink />
                     </div>
+                    <AppNav />
                     <div className="flex items-center gap-2 sm:gap-3">
-                        <ExploreLink />
                         <ChatDrawer
                             currentUser={{
                                 id: session.user.id,

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
+import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
-import { ExploreLink } from "@/components/explore-link";
 import { ExplorePage } from "@/components/explore-page";
 import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -21,10 +21,10 @@ export default async function Page() {
   return (
     <div className="min-h-screen bg-background">
       <header className="app-header">
-        <div className="page-wrap flex h-16 items-center justify-between">
+        <div className="page-wrap app-header-row">
           <BrandLink />
+          <AppNav />
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <ExploreLink />
             <AddMangaDialog />
             <UpdateLibraryButton />
             <ChatDrawer

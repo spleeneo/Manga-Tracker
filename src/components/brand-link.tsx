@@ -18,7 +18,7 @@ export function BrandLink() {
           priority
         />
       </span>
-      <span className="hidden whitespace-nowrap min-[360px]:inline">Mangateo</span>
+      <span className="hidden whitespace-nowrap sm:inline">Mangateo</span>
     </Link>
   );
 }

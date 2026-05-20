@@ -1,9 +1,9 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { AddMangaDialog } from "@/components/add-manga-dialog";
+import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
-import { ExploreLink } from "@/components/explore-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { LibraryHome } from "@/components/library-home";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -43,11 +43,11 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-background">
       <header className="app-header">
-        <div className="page-wrap flex h-16 items-center justify-between">
+        <div className="page-wrap app-header-row">
           <BrandLink />
+          {session?.user && <AppNav />}
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {session?.user && <AddMangaDialog />}
-            {session?.user && <ExploreLink />}
             {session?.user && <UpdateLibraryButton />}
             {session?.user?.id && (
               <ChatDrawer
