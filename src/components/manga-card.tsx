@@ -56,7 +56,7 @@ function MangaDeleteButton({
                         className="absolute inset-0"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className="relative w-full max-w-sm rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-2xl">
+                    <div className="modal-surface relative w-full max-w-sm rounded-lg p-5 shadow-2xl">
                         <div className="mb-4 flex items-start gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
                                 <Trash2 className="h-4 w-4" />

@@ -317,7 +317,7 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
             className="chat-overlay absolute inset-0 bg-black/55"
             onClick={() => setIsOpen(false)}
           />
-          <aside className="chat-panel absolute inset-y-0 right-0 flex w-full flex-col border-l border-border bg-background text-foreground shadow-2xl sm:w-[420px]">
+          <aside className="chat-panel absolute inset-y-0 right-0 flex w-full flex-col border-l border-border shadow-2xl sm:w-[420px]">
             <header className="flex h-16 items-center justify-between border-b border-border px-4">
               <div>
                 <h2 className="text-lg font-bold">Global chat</h2>
@@ -333,7 +333,7 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
               </button>
             </header>
 
-            <div ref={listRef} className="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-muted/25 p-4">
+            <div ref={listRef} className="chat-message-list custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
               {isLoading ? (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
