@@ -206,7 +206,7 @@ export function AddMangaDialog() {
                                                 void trackSearchResult(manga);
                                             }
                                         }}
-                                        className="interactive-surface group grid min-w-0 cursor-pointer grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
+                                        className="interactive-surface group grid min-h-32 min-w-0 cursor-pointer grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
                                         aria-label={`Track ${manga.title}`}
                                     >
                                         <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
@@ -216,7 +216,7 @@ export function AddMangaDialog() {
                                                 <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-8 w-8 opacity-20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 overflow-hidden py-1">
+                                        <div className="flex min-w-0 flex-col overflow-hidden py-1">
                                             <button
                                                 type="button"
                                                 onClick={(event) => {
@@ -231,29 +231,31 @@ export function AddMangaDialog() {
                                                     <span className="truncate">{manga.title}</span>
                                                 </h3>
                                             </button>
-                                            <p className="mb-2 mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
-                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                                {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
-                                                    manga.sources.map((source: SearchSource, sourceIdx: number) => (
-                                                        <button
-                                                            type="button"
-                                                            key={source.url || sourceIdx}
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                void trackSearchResult(manga, source.url);
-                                                            }}
-                                                            disabled={loading}
-                                                            className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                        >
-                                                            {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
-                                                            <span className="truncate">{source.name}</span>
-                                                        </button>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-xs text-red-500">No sources</span>
-                                                )}
+                                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
+                                            <div className="mt-auto flex min-w-0 items-end justify-between gap-3 pt-3">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                    {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
+                                                        manga.sources.map((source: SearchSource, sourceIdx: number) => (
+                                                            <button
+                                                                type="button"
+                                                                key={source.url || sourceIdx}
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    void trackSearchResult(manga, source.url);
+                                                                }}
+                                                                disabled={loading}
+                                                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                            >
+                                                                {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
+                                                                <span className="truncate">{source.name}</span>
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-red-500">No sources</span>
+                                                    )}
+                                                </div>
                                                 {manga.status ? (
-                                                    <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground sm:ml-auto">{manga.status}</span>
+                                                    <span className="shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{manga.status}</span>
                                                 ) : null}
                                             </div>
                                         </div>
