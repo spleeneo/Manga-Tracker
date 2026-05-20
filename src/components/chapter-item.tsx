@@ -15,6 +15,7 @@ interface ChapterItemProps {
         isRead: boolean;
         sourceName?: string;
         alternativeCount?: number;
+        readerStatus?: string | null;
     };
     currentLastReadChapterNumber: number | null;
     onProgressChange: (lastReadChapterNumber: number | null) => void;
@@ -23,7 +24,14 @@ interface ChapterItemProps {
 export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onProgressChange }: ChapterItemProps) {
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
+    const canUseReader = chapter.readerStatus === "READABLE"
+        || (chapter.readerStatus == null && chapter.sourceName?.toLowerCase() === "mangadex");
+    const readerHref = `/manga/${slug}/chapter/${chapter.id}`;
     const openChapter = () => {
+        if (canUseReader) {
+            window.location.assign(readerHref);
+            return;
+        }
         window.open(chapter.url, "_blank", "noopener,noreferrer");
     };
 
@@ -75,7 +83,7 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             onKeyDown={handleKeyDown}
             role="link"
             tabIndex={0}
-            aria-label={`Open chapter ${chapter.chapterNumber}`}
+            aria-label={canUseReader ? `Read chapter ${chapter.chapterNumber} in Mangateo` : `Open chapter ${chapter.chapterNumber} on source`}
         >
             <div className="flex items-center justify-between mb-1">
                 <span

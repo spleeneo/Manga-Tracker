@@ -1,4 +1,4 @@
-import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult } from "./types";
+import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
@@ -42,6 +42,20 @@ export async function fetchMetadata(url: string): Promise<MangaMetadata> {
         throw new Error(`No scraper found for URL: ${url}`);
     }
     return scraper.fetchMetadata(url);
+}
+
+export async function fetchReaderPages(chapter: ReaderChapterInput, source: ReaderSourceInput): Promise<ReaderResult> {
+    const scraper = scrapers.find(s => s.canHandle(source.sourceUrl) || s.canHandle(chapter.url));
+    if (!scraper?.fetchReaderPages || !scraper.capabilities?.reader) {
+        return {
+            status: "EXTERNAL_ONLY",
+            pages: [],
+            externalUrl: chapter.url,
+            reason: `${source.sourceName} does not support the Mangateo reader yet.`,
+        };
+    }
+
+    return scraper.fetchReaderPages(chapter, source);
 }
 
 export async function searchScrapers(query: string): Promise<AggregatedSearchResult[]> {

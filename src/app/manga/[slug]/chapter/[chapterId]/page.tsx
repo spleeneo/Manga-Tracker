@@ -1,0 +1,95 @@
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { ChapterReader } from "@/components/chapter-reader";
+import { auth } from "../../../../../../auth";
+
+interface PageProps {
+  params: Promise<{
+    slug: string;
+    chapterId: string;
+  }>;
+}
+
+export default async function ReaderPage({ params }: PageProps) {
+  const session = await auth();
+  if (!session?.user?.id) notFound();
+
+  const { slug, chapterId } = await params;
+  const manga = await prisma.manga.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+    },
+  });
+  if (!manga) notFound();
+
+  const tracked = await prisma.userManga.findUnique({
+    where: {
+      userId_mangaId: {
+        userId: session.user.id,
+        mangaId: manga.id,
+      },
+    },
+    select: { id: true },
+  });
+  if (!tracked) notFound();
+
+  const chapter = await prisma.chapter.findFirst({
+    where: {
+      id: chapterId,
+      mangaId: manga.id,
+    },
+    select: {
+      id: true,
+      chapterNumber: true,
+      title: true,
+      url: true,
+      sourceId: true,
+      source: {
+        select: {
+          sourceName: true,
+        },
+      },
+    },
+  });
+  if (!chapter) notFound();
+
+  const [previousChapter, nextChapter] = await Promise.all([
+    prisma.chapter.findFirst({
+      where: {
+        mangaId: manga.id,
+        ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
+        chapterNumber: { lt: chapter.chapterNumber },
+      },
+      orderBy: { chapterNumber: "desc" },
+      select: { id: true, chapterNumber: true, title: true },
+    }),
+    prisma.chapter.findFirst({
+      where: {
+        mangaId: manga.id,
+        ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
+        chapterNumber: { gt: chapter.chapterNumber },
+      },
+      orderBy: { chapterNumber: "asc" },
+      select: { id: true, chapterNumber: true, title: true },
+    }),
+  ]);
+
+  return (
+    <ChapterReader
+      slug={manga.slug}
+      mangaTitle={manga.title}
+      chapter={{
+        id: chapter.id,
+        chapterNumber: chapter.chapterNumber,
+        title: chapter.title,
+        url: chapter.url,
+        sourceName: chapter.source?.sourceName ?? null,
+      }}
+      previousChapter={previousChapter}
+      nextChapter={nextChapter}
+    />
+  );
+}

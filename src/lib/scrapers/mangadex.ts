@@ -1,4 +1,4 @@
-import { ScrapedChapter, Scraper, MangaMetadata, SearchResult } from "./types";
+import { ScrapedChapter, Scraper, MangaMetadata, SearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
 import { fetchWithRetry, ScraperRequestError } from "./http";
 
 interface MangaDexRelationship {
@@ -35,9 +35,18 @@ interface MangaDexFeedResponse {
     total?: number;
 }
 
+interface MangaDexAtHomeResponse {
+    baseUrl: string;
+    chapter: {
+        hash: string;
+        data: string[];
+        dataSaver?: string[];
+    };
+}
+
 export class MangaDexScraper implements Scraper {
     name = "MangaDex";
-    capabilities = { search: true, metadata: true, chapters: true };
+    capabilities = { search: true, metadata: true, chapters: true, reader: true };
 
     canHandle(url: string): boolean {
         return url.includes("mangadex.org");
@@ -111,6 +120,57 @@ export class MangaDexScraper implements Scraper {
             status: manga.attributes.status?.toUpperCase(),
             author: author
         };
+    }
+
+    async fetchReaderPages(chapter: ReaderChapterInput, _sourceInput: ReaderSourceInput): Promise<ReaderResult> {
+        void _sourceInput;
+        if (!chapter.providerChapterId) {
+            return {
+                status: "UNSUPPORTED",
+                pages: [],
+                externalUrl: chapter.url,
+                reason: "This MangaDex chapter is missing its provider chapter id.",
+            };
+        }
+
+        try {
+            const res = await fetchWithRetry(`https://api.mangadex.org/at-home/server/${chapter.providerChapterId}`);
+            if (!res.ok) {
+                return {
+                    status: res.status === 403 ? "BLOCKED" : "ERROR",
+                    pages: [],
+                    externalUrl: chapter.url,
+                    reason: `MangaDex reader returned ${res.status}.`,
+                };
+            }
+
+            const data = await res.json() as MangaDexAtHomeResponse;
+            const files = data.chapter?.data ?? [];
+            if (!data.baseUrl || !data.chapter?.hash || files.length === 0) {
+                return {
+                    status: "EXTERNAL_ONLY",
+                    pages: [],
+                    externalUrl: chapter.url,
+                    reason: "MangaDex did not return readable page images for this chapter.",
+                };
+            }
+
+            return {
+                status: "READABLE",
+                externalUrl: chapter.url,
+                pages: files.map((fileName, index) => ({
+                    index,
+                    imageUrl: `${data.baseUrl}/data/${data.chapter.hash}/${fileName}`,
+                })),
+            };
+        } catch (error) {
+            return {
+                status: "ERROR",
+                pages: [],
+                externalUrl: chapter.url,
+                reason: error instanceof Error ? error.message : "MangaDex reader failed.",
+            };
+        }
     }
 
     async search(query: string): Promise<SearchResult[]> {

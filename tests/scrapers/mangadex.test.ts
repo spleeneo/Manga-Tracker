@@ -67,4 +67,33 @@ describe("MangaDexScraper", () => {
     expect(fetchWithRetryMock.mock.calls[0][0]).toContain("limit=100&offset=0");
     expect(fetchWithRetryMock.mock.calls[1][0]).toContain("limit=100&offset=100");
   });
+
+  it("maps MangaDex AtHome pages for the in-app reader", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
+      baseUrl: "https://uploads.mangadex.org",
+      chapter: {
+        hash: "hash",
+        data: ["p1.jpg", "p2.jpg"],
+      },
+    }));
+
+    const scraper = new MangaDexScraper();
+    const result = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      providerChapterId: "md-chapter-id",
+      url: "https://mangadex.org/chapter/md-chapter-id",
+      chapterNumber: 1,
+      title: "One",
+    }, {
+      id: "source-id",
+      sourceName: "MangaDex",
+      sourceUrl: "https://mangadex.org/title/11111111-1111-1111-1111-111111111111/test",
+    });
+
+    expect(result.status).toBe("READABLE");
+    expect(result.pages).toEqual([
+      { index: 0, imageUrl: "https://uploads.mangadex.org/data/hash/p1.jpg" },
+      { index: 1, imageUrl: "https://uploads.mangadex.org/data/hash/p2.jpg" },
+    ]);
+  });
 });

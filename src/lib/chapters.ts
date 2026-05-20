@@ -12,6 +12,8 @@ export interface ChapterView {
   releaseDate: Date | null;
   isRead: boolean;
   sourceId: string | null;
+  sourceName?: string;
+  readerStatus: string | null;
 }
 
 export function getChapterMode(value: string | null): ChapterListMode {
@@ -54,13 +56,27 @@ export async function getMangaChapterPage({
       url: true,
       releaseDate: true,
       sourceId: true,
+      providerChapterId: true,
+      readerStatus: true,
+      source: {
+        select: {
+          sourceName: true,
+        },
+      },
     },
   });
 
   const visibleChapters = chapters.slice(0, pageSize);
   return {
     chapters: visibleChapters.map((chapter): ChapterView => ({
-      ...chapter,
+      id: chapter.id,
+      chapterNumber: chapter.chapterNumber,
+      title: chapter.title,
+      url: chapter.url,
+      releaseDate: chapter.releaseDate,
+      sourceId: chapter.sourceId,
+      sourceName: chapter.source?.sourceName,
+      readerStatus: chapter.readerStatus,
       isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
     })),
     nextCursor: chapters.length > pageSize

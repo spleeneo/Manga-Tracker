@@ -53,6 +53,10 @@ model Chapter {
   url           String
   releaseDate   DateTime?
   isRead        Boolean   @default(false)
+  readerStatus  String?
+  readerCheckedAt DateTime?
+  readerPageCount Int?
+  readerError   String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
