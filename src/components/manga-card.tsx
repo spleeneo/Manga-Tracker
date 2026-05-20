@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, CheckCircle2, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { BookOpen, CheckCircle2, Loader2, Trash2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 
 export type MangaCardData = LibraryMangaSummary;
@@ -18,7 +18,7 @@ function UpdateLight({ className = "" }: { className?: string }) {
     );
 }
 
-function MangaCardMenu({
+function MangaDeleteButton({
     title,
     removing,
     onDelete,
@@ -28,80 +28,68 @@ function MangaCardMenu({
     onDelete: () => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [isConfirming, setIsConfirming] = useState(false);
-
-    const closeMenu = () => {
-        setIsOpen(false);
-        setIsConfirming(false);
-    };
 
     return (
-        <div
-            className="absolute right-2 top-2 z-30"
-            onClick={(event) => event.stopPropagation()}
-        >
+        <>
             <button
                 type="button"
-                onClick={() => {
-                    if (isOpen) {
-                        closeMenu();
-                    } else {
-                        setIsOpen(true);
-                    }
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setIsOpen(true);
                 }}
                 disabled={removing}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-[0_4px_14px_hsl(0_0%_0%/0.24)] transition-all hover:-translate-y-0.5 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-card"
-                aria-label={`Open options for ${title}`}
-                title={`${title} options`}
+                className="absolute -right-2 -top-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white shadow-[0_5px_12px_hsl(0_0%_0%/0.28)] transition-all hover:-translate-y-0.5 hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+                aria-label={`Remove ${title} from library`}
+                title={`Remove ${title}`}
             >
-                {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
+                {removing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-3 w-3" />}
             </button>
 
             {isOpen ? (
-                <div className="absolute right-0 top-10 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-2xl">
-                    {isConfirming ? (
-                        <div className="space-y-3 p-2">
-                            <div>
-                                <p className="text-sm font-bold">Remove from library?</p>
-                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                <div
+                    className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4"
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    <button
+                        type="button"
+                        aria-label="Cancel remove manga"
+                        className="absolute inset-0"
+                        onClick={() => setIsOpen(false)}
+                    />
+                    <div className="relative w-full max-w-sm rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-2xl">
+                        <div className="mb-4 flex items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
+                                <Trash2 className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-bold">Remove from library?</h2>
+                                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                                     {title} will disappear from your list. Shared manga data stays available if you track it again.
                                 </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={closeMenu}
-                                    className="ui-button ui-button-secondary min-h-8 px-2 text-xs"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={onDelete}
-                                    disabled={removing}
-                                    className="ui-button min-h-8 bg-red-600 px-2 text-xs text-white hover:bg-red-700"
-                                >
-                                    {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                                    Remove
-                                </button>
-                            </div>
                         </div>
-                    ) : (
-                        <div className="space-y-1">
-                            <p className="px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">Manga options</p>
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
-                                onClick={() => setIsConfirming(true)}
-                                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => setIsOpen(false)}
+                                className="ui-button ui-button-secondary"
                             >
-                                <Trash2 className="h-4 w-4" />
-                                Remove from library
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                disabled={removing}
+                                className="ui-button bg-red-600 text-white hover:bg-red-700"
+                            >
+                                {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                Remove
                             </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             ) : null}
-        </div>
+        </>
     );
 }
 
@@ -152,7 +140,7 @@ export function MangaCard({
                 </div>
             </Link>
 
-            <MangaCardMenu
+            <MangaDeleteButton
                 title={manga.title}
                 removing={removing}
                 onDelete={() => onDelete(manga.slug, manga.title)}
@@ -259,7 +247,7 @@ export function MangaCard({
                 </div>
             </div>
 
-            <MangaCardMenu
+            <MangaDeleteButton
                 title={manga.title}
                 removing={removing}
                 onDelete={() => onDelete(manga.slug, manga.title)}
