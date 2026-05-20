@@ -8,6 +8,7 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
+import { ExploreLink } from "@/components/explore-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { MangaDescription } from "@/components/manga-description";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -106,6 +107,7 @@ export default async function MangaPage({ params }: PageProps) {
                         <BrandLink />
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
+                        <ExploreLink />
                         <ChatDrawer
                             currentUser={{
                                 id: session.user.id,
