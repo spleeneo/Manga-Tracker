@@ -203,9 +203,7 @@ export default async function MangaPage({ params }: PageProps) {
                                     <div className="grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:shrink-0">
                                         {primaryReadTarget?.url && (
                                             <a
-                                                href={primaryReadTarget.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                                href={primaryReadTarget.id ? `/manga/${manga.slug}/chapter/${primaryReadTarget.id}` : primaryReadTarget.url}
                                                 className="ui-button ui-button-primary justify-center"
                                             >
                                                 <BookOpen className="h-4 w-4" />
@@ -213,9 +211,7 @@ export default async function MangaPage({ params }: PageProps) {
                                             </a>
                                         )}
                                         <a
-                                            href={summary.latestChapter.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            href={summary.latestChapter.id ? `/manga/${manga.slug}/chapter/${summary.latestChapter.id}` : summary.latestChapter.url}
                                             className="ui-button ui-button-secondary justify-center"
                                         >
                                             Latest

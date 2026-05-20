@@ -1,4 +1,4 @@
-import { ScrapedChapter, Scraper, MangaMetadata, SearchResult } from "./types";
+import { ScrapedChapter, Scraper, MangaMetadata, ReaderResult, SearchResult } from "./types";
 import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "./nelomanga-config";
 import { fetchWithRetry, ScraperRequestError } from "./http";
 
@@ -23,7 +23,7 @@ interface NeloChapterApiResponse {
 
 export class NeloMangaScraper implements Scraper {
     name = "NeloManga";
-    capabilities = { search: true, metadata: true, chapters: true };
+    capabilities = { search: true, metadata: true, chapters: true, reader: true };
 
     canHandle(url: string): boolean {
         return url.includes("nelomanga.net");
@@ -44,6 +44,22 @@ export class NeloMangaScraper implements Scraper {
         // Handle: https://www.nelomanga.net/manga/one-piece/chapter-1170 (should still give one-piece)
         const match = url.match(/manga\/([^/?#]+)/);
         return match ? match[1] : null;
+    }
+
+    private toAbsoluteUrl(url: string): string {
+        return new URL(url.replace(/&amp;/g, "&"), NELOMANGA_BASE).toString();
+    }
+
+    private getImageSrc(tag: string): string | undefined {
+        return tag.match(/\s(?:data-src|data-original|src)=["']([^"']+)["']/i)?.[1];
+    }
+
+    private isReaderImage(url: string): boolean {
+        const lower = url.toLowerCase();
+        if (!/^https?:\/\//.test(lower)) return false;
+        if (!/\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)) return false;
+        if (lower.includes("logo") || lower.includes("avatar") || lower.includes("banner") || /[/?&_-]ads?[/?&_.-]/.test(lower)) return false;
+        return lower.includes("nelomanga") || lower.includes("blogspot") || lower.includes("wp-content/uploads");
     }
 
     async fetchChapters(url: string): Promise<ScrapedChapter[]> {
@@ -191,6 +207,50 @@ export class NeloMangaScraper implements Scraper {
                 console.error("[NeloManga] Search parse error", e);
             }
             return [];
+        }
+    }
+
+    async fetchReaderPages(chapter: { url: string }): Promise<ReaderResult> {
+        try {
+            const res = await fetchWithRetry(chapter.url, {
+                headers: {
+                    ...this.getHeaders(),
+                    "Accept": "text/html,application/xhtml+xml",
+                },
+                timeoutMs: 10_000,
+                retries: 1,
+            });
+            const html = await res.text();
+            const pages = Array.from(html.matchAll(/<img\b[^>]*>/gi))
+                .map((match) => this.getImageSrc(match[0]))
+                .filter((url): url is string => Boolean(url))
+                .map((url) => this.toAbsoluteUrl(url))
+                .filter((url) => this.isReaderImage(url));
+
+            if (pages.length === 0) {
+                return {
+                    status: "EXTERNAL_ONLY",
+                    pages: [],
+                    externalUrl: chapter.url,
+                    reason: "NeloManga did not expose public page images for this chapter.",
+                };
+            }
+
+            return {
+                status: "READABLE",
+                pages: pages.map((imageUrl, index) => ({ index, imageUrl })),
+                externalUrl: chapter.url,
+            };
+        } catch (error) {
+            const isBlocked = error instanceof ScraperRequestError && error.kind === "blocked";
+            return {
+                status: isBlocked ? "BLOCKED" : "ERROR",
+                pages: [],
+                externalUrl: chapter.url,
+                reason: isBlocked
+                    ? "NeloManga blocked Mangateo from loading this chapter directly."
+                    : "NeloManga reader pages could not be loaded.",
+            };
         }
     }
 }

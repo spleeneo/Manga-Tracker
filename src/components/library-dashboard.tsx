@@ -47,6 +47,12 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                 return (bChapter ? new Date(bChapter).getTime() : 0) - (aChapter ? new Date(aChapter).getTime() : 0);
             })[0] ?? sortedItems[0]
     ), [sortedItems]);
+    const continueReadTarget = continueManga?.nextUnreadChapter ?? continueManga?.latestChapter;
+    const continueReadHref = continueManga && continueReadTarget
+        ? continueReadTarget.id
+            ? `/manga/${continueManga.slug}/chapter/${continueReadTarget.id}`
+            : continueReadTarget.url
+        : null;
 
     const filteredMangas = sortedItems.filter((manga) => {
         switch (filter) {
@@ -160,15 +166,13 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                                 <p className="mt-2 text-sm text-muted-foreground">Add a manga to start building your reading queue.</p>
                             )}
                             <div className="mt-4 grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
-                                {(continueManga?.nextUnreadChapter ?? continueManga?.latestChapter)?.url && (
+                                {continueReadHref && (
                                     <a
-                                        href={(continueManga.nextUnreadChapter ?? continueManga.latestChapter)?.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={continueReadHref}
                                         className="ui-button ui-button-primary"
                                     >
                                         <BookOpen className="h-4 w-4" />
-                                        {continueManga.unreadChapters > 0 && continueManga.nextUnreadChapter
+                                        {continueManga?.unreadChapters && continueManga.nextUnreadChapter
                                             ? `Read chapter ${continueManga.nextUnreadChapter.chapterNumber}`
                                             : "Open latest"}
                                     </a>

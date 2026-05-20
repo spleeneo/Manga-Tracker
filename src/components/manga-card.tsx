@@ -122,6 +122,8 @@ export function MangaCard({
     const router = useRouter();
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
     const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
+    const readHref = readTarget?.id ? `/manga/${manga.slug}/chapter/${readTarget.id}` : readTarget?.url;
+    const readChapterNumber = readTarget?.chapterNumber;
     const isSyncing = manga.syncStatus === "SYNCING";
     const hasUnread = manga.unreadChapters > 0;
     const openManga = () => router.push(`/manga/${manga.slug}`);
@@ -183,16 +185,14 @@ export function MangaCard({
                         </div>
                     </div>
 
-                    {readTarget ? (
+                    {readHref ? (
                         <a
-                            href={readTarget.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={readHref}
                             onClick={(event) => event.stopPropagation()}
                             className="shrink-0 rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold uppercase text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
-                            title={`Read chapter ${readTarget.chapterNumber}`}
+                            title={readChapterNumber != null ? `Read chapter ${readChapterNumber}` : "Read chapter"}
                         >
-                            Ch. {readTarget.chapterNumber}
+                            Ch. {readChapterNumber}
                         </a>
                     ) : null}
                 </div>
@@ -289,16 +289,14 @@ export function MangaCard({
                             <span>{manga.readChapters} / {manga.totalChapters} READ</span>
                         )}
                     </div>
-                    {readTarget ? (
+                    {readHref ? (
                         <a
-                            href={readTarget.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={readHref}
                             onClick={(event) => event.stopPropagation()}
                             className="rounded-full border border-border bg-background px-2 py-1 text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
-                            title={`Read chapter ${readTarget.chapterNumber}`}
+                            title={readChapterNumber != null ? `Read chapter ${readChapterNumber}` : "Read chapter"}
                         >
-                            Ch. {readTarget.chapterNumber}
+                            Ch. {readChapterNumber}
                         </a>
                     ) : null}
                 </div>

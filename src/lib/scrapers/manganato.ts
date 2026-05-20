@@ -1,11 +1,35 @@
 import { fetchWithRetry } from "./http";
-import { MangaMetadata, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { MangaMetadata, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE = "https://manganato.com";
 
+function decodeHtml(value: string): string {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .trim();
+}
+
+function toAbsoluteUrl(url: string, base: string): string {
+  return new URL(decodeHtml(url), base).toString();
+}
+
+function getImageSrc(tag: string): string | undefined {
+  return tag.match(/\s(?:data-src|src)=["']([^"']+)["']/i)?.[1];
+}
+
+function isReaderImage(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (!/^https?:\/\//.test(lower)) return false;
+  if (!/\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)) return false;
+  if (lower.includes("logo") || lower.includes("avatar") || /[/?&_-]ads?[/?&_.-]/.test(lower)) return false;
+  return lower.includes("manganato") || lower.includes("mncdn") || lower.includes("blogspot");
+}
+
 export class ManganatoScraper implements Scraper {
   name = "Manganato";
-  capabilities = { search: true, metadata: true, chapters: true };
+  capabilities = { search: true, metadata: true, chapters: true, reader: true };
 
   canHandle(url: string): boolean {
     return url.includes("manganato.com") || url.includes("chapmanganato.com");
@@ -78,5 +102,37 @@ export class ManganatoScraper implements Scraper {
         releaseDate: Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate,
       };
     });
+  }
+
+  async fetchReaderPages(chapter: { url: string }): Promise<ReaderResult> {
+    const res = await fetchWithRetry(chapter.url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": BASE,
+      },
+      timeoutMs: 10_000,
+      retries: 1,
+    });
+    const html = await res.text();
+    const pages = Array.from(html.matchAll(/<img\b[^>]*>/gi))
+      .map((match) => getImageSrc(match[0]))
+      .filter((url): url is string => Boolean(url))
+      .map((url) => toAbsoluteUrl(url, chapter.url))
+      .filter(isReaderImage);
+
+    if (pages.length === 0) {
+      return {
+        status: "EXTERNAL_ONLY",
+        pages: [],
+        externalUrl: chapter.url,
+        reason: "Manganato did not expose public page images for this chapter.",
+      };
+    }
+
+    return {
+      status: "READABLE",
+      pages: pages.map((imageUrl, index) => ({ index, imageUrl })),
+      externalUrl: chapter.url,
+    };
   }
 }

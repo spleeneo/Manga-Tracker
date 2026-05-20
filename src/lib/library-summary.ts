@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export interface SummaryChapter {
+  id: string;
   chapterNumber: number;
   url: string;
   releaseDate: Date | null;
@@ -39,10 +40,12 @@ type SummaryRow = {
   syncError: string | null;
   lastReadChapterNumber: number | Prisma.Decimal | null;
   latestChapterNumber: number | Prisma.Decimal | null;
+  latestChapterId: string | null;
   latestUrl: string | null;
   latestReleaseDate: Date | null;
   latestAvailableAt: Date | null;
   nextUnreadChapterNumber: number | Prisma.Decimal | null;
+  nextUnreadChapterId: string | null;
   nextUnreadUrl: string | null;
   nextUnreadReleaseDate: Date | null;
   totalChapters: number | bigint | null;
@@ -77,6 +80,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
     lastReadChapterNumber,
     latestChapter: row.latestChapterNumber != null && row.latestUrl
       ? {
+          id: row.latestChapterId ?? "",
           chapterNumber: toNumber(row.latestChapterNumber) ?? 0,
           url: row.latestUrl,
           releaseDate: row.latestReleaseDate,
@@ -85,6 +89,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
     latestAvailableAt: row.latestAvailableAt,
     nextUnreadChapter: row.nextUnreadChapterNumber != null && row.nextUnreadUrl
       ? {
+          id: row.nextUnreadChapterId ?? "",
           chapterNumber: toNumber(row.nextUnreadChapterNumber) ?? 0,
           url: row.nextUnreadUrl,
           releaseDate: row.nextUnreadReleaseDate,
@@ -100,6 +105,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 const SOURCE_RANK_SQL = Prisma.sql`
   CASE LOWER(COALESCE(s."sourceName", ''))
     WHEN 'urek mazino' THEN 6
+    WHEN 'bleach live' THEN 6
     WHEN 'mangaplus' THEN 5
     WHEN 'mangadex' THEN 4
     WHEN 'webtoon' THEN 3
@@ -123,10 +129,12 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       um."syncError" AS "syncError",
       um."lastReadChapterNumber" AS "lastReadChapterNumber",
       latest."chapterNumber" AS "latestChapterNumber",
+      latest."id" AS "latestChapterId",
       latest."url" AS "latestUrl",
       latest."releaseDate" AS "latestReleaseDate",
       latest."availableAt" AS "latestAvailableAt",
       next_unread."chapterNumber" AS "nextUnreadChapterNumber",
+      next_unread."id" AS "nextUnreadChapterId",
       next_unread."url" AS "nextUnreadUrl",
       next_unread."releaseDate" AS "nextUnreadReleaseDate",
       COALESCE(counts."totalChapters", 0) AS "totalChapters",
@@ -145,6 +153,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
     ) counts ON true
     LEFT JOIN LATERAL (
       SELECT DISTINCT ON (c."chapterNumber")
+        c."id",
         c."chapterNumber",
         c."url",
         c."releaseDate",
@@ -161,6 +170,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
     ) latest ON true
     LEFT JOIN LATERAL (
       SELECT DISTINCT ON (c."chapterNumber")
+        c."id",
         c."chapterNumber",
         c."url",
         c."releaseDate"

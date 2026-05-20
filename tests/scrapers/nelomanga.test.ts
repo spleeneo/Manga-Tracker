@@ -26,6 +26,12 @@ function jsonResponse(body: unknown) {
   };
 }
 
+function textResponse(body: string) {
+  return {
+    text: vi.fn().mockResolvedValue(body),
+  };
+}
+
 describe("NeloMangaScraper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,5 +66,26 @@ describe("NeloMangaScraper", () => {
     expect(fetchWithRetryMock).toHaveBeenCalledTimes(2);
     expect(fetchWithRetryMock.mock.calls[0][0]).toBe("https://www.nelomanga.net/api/manga/tongari-boushi-no-atelier/chapters");
     expect(fetchWithRetryMock.mock.calls[1][0]).toBe("https://www.nelomanga.net/api/manga/tongari-boushi-no-atelier/chapters?offset=2");
+  });
+
+  it("maps public chapter images for the in-app reader", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <div class="chapter-reader">
+        <img src="https://www.nelomanga.net/uploads/tongari/001.jpg" />
+        <img data-src="https://www.nelomanga.net/uploads/tongari/002.webp" />
+        <img src="/images/logo.png" />
+      </div>
+    `));
+
+    const scraper = new NeloMangaScraper();
+    const result = await scraper.fetchReaderPages({
+      url: "https://www.nelomanga.net/manga/tongari-boushi-no-atelier/chapter-1",
+    });
+
+    expect(result.status).toBe("READABLE");
+    expect(result.pages).toEqual([
+      { index: 0, imageUrl: "https://www.nelomanga.net/uploads/tongari/001.jpg" },
+      { index: 1, imageUrl: "https://www.nelomanga.net/uploads/tongari/002.webp" },
+    ]);
   });
 });

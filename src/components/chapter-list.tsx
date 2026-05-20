@@ -180,14 +180,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const openChapter = (chapter?: Chapter) => {
         if (!chapter?.url) return;
-        const sourceName = chapter.sourceName ?? (chapter.sourceId ? sourceById.get(chapter.sourceId)?.sourceName : undefined);
-        const canUseReader = chapter.readerStatus === "READABLE"
-            || (chapter.readerStatus == null && sourceName?.toLowerCase() === "mangadex");
-        if (canUseReader) {
-            window.location.assign(`/manga/${slug}/chapter/${chapter.id}`);
-            return;
-        }
-        window.open(chapter.url, "_blank", "noopener,noreferrer");
+        window.location.assign(`/manga/${slug}/chapter/${chapter.id}`);
     };
 
     const selectBest = () => {
