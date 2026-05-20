@@ -74,6 +74,19 @@ export function ChatDrawer({ currentUser }: { currentUser: CurrentChatUser }) {
 
   useEffect(() => {
     if (!isOpen) return;
+
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     fetch("/api/chat/messages")
       .then(async (res) => {
         if (!res.ok) throw new Error(`Chat load failed: ${res.status}`);

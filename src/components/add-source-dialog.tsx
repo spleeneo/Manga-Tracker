@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, X, Loader2, Link2, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +17,19 @@ export function AddSourceDialog({ mangaId }: AddSourceDialogProps) {
         sourceName: "",
         sourceUrl: "",
     });
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+            }
+        };
+
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

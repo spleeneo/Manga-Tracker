@@ -93,6 +93,19 @@ export function AddMangaDialog() {
         }
     };
 
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+            }
+        };
+
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [isOpen]);
+
     const trackSearchResult = async (manga: SearchResult, initialSourceUrl?: string) => {
         const key = `${manga.title}:${initialSourceUrl || "all"}`;
         const payload = getMangaFormData(manga, initialSourceUrl);
