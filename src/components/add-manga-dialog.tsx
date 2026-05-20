@@ -288,7 +288,20 @@ export function AddMangaDialog() {
                                     visibleSearchResults.map((manga, idx) => (
                                         <div
                                             key={manga.title || idx}
-                                            className="interactive-surface group grid min-w-0 grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
+                                            role="button"
+                                            tabIndex={loading ? -1 : 0}
+                                            onClick={() => {
+                                                if (!loading) void trackSearchResult(manga);
+                                            }}
+                                            onKeyDown={(event) => {
+                                                if (loading) return;
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    void trackSearchResult(manga);
+                                                }
+                                            }}
+                                            className="interactive-surface group grid min-w-0 cursor-pointer grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4"
+                                            aria-label={`Track ${manga.title}`}
                                         >
                                             <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
                                                 {manga.coverUrl ? (
@@ -300,7 +313,10 @@ export function AddMangaDialog() {
                                             <div className="min-w-0 overflow-hidden py-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => void trackSearchResult(manga)}
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        void trackSearchResult(manga);
+                                                    }}
                                                     disabled={loading}
                                                     className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                 >
@@ -316,7 +332,10 @@ export function AddMangaDialog() {
                                                             <button
                                                                 type="button"
                                                                 key={source.url || sourceIdx}
-                                                                onClick={() => void trackSearchResult(manga, source.url)}
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    void trackSearchResult(manga, source.url);
+                                                                }}
                                                                 disabled={loading}
                                                                 className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                             >
@@ -332,7 +351,10 @@ export function AddMangaDialog() {
                                                     ) : null}
                                                     <button
                                                         type="button"
-                                                        onClick={() => void trackSearchResult(manga)}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            void trackSearchResult(manga);
+                                                        }}
                                                         disabled={loading}
                                                         className="inline-flex items-center gap-1.5 rounded border bg-primary px-2 py-1 text-[10px] font-bold uppercase text-primary-foreground transition-colors hover:bg-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
                                                     >
@@ -341,7 +363,10 @@ export function AddMangaDialog() {
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => selectManga(manga)}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            selectManga(manga);
+                                                        }}
                                                         disabled={loading}
                                                         className="rounded border bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                     >
