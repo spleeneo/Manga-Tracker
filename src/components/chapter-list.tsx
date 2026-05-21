@@ -98,6 +98,10 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
 
     const getSourceRank = (sourceName?: string) => {
+        if (slug === "bleach" && sourceName?.toLowerCase() === "bleach live") {
+            return 8;
+        }
+
         switch (sourceName?.toLowerCase()) {
             case "nelomanga":
                 return 7;

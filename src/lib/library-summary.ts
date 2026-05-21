@@ -103,7 +103,9 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 }
 
 const SOURCE_RANK_SQL = Prisma.sql`
-  CASE LOWER(COALESCE(s."sourceName", ''))
+  CASE
+    WHEN LOWER(m."slug") = 'bleach' AND LOWER(COALESCE(s."sourceName", '')) = 'bleach live' THEN 8
+    ELSE CASE LOWER(COALESCE(s."sourceName", ''))
     WHEN 'nelomanga' THEN 7
     WHEN 'urek mazino' THEN 6
     WHEN 'bleach live' THEN 6
@@ -112,6 +114,7 @@ const SOURCE_RANK_SQL = Prisma.sql`
     WHEN 'webtoon' THEN 3
     WHEN 'manganato' THEN 1
     ELSE 0
+    END
   END
 `;
 
