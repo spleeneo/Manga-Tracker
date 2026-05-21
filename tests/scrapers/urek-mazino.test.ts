@@ -93,4 +93,36 @@ describe("UrekMazinoScraper", () => {
       },
     ]);
   });
+
+  it("maps public chapter images for the in-app reader", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <main>
+        <img src="https://assets.urekmazino.com/urekmazino/chapter-1/thumb.webp" alt="cover" />
+        <img class="l w" src="https://assets.urekmazino.com/urekmazino/chapter-1/1.jpeg" width="864" height="6450" />
+        <img class="l w" src="https://assets.urekmazino.com/urekmazino/chapter-1/2.jpeg" width="864" height="8000" />
+        <img src="https://urekmazino.com/og-image.png" />
+      </main>
+    `));
+
+    const scraper = new UrekMazinoScraper();
+    const result = await scraper.fetchReaderPages({
+      url: "https://urekmazino.com/chapter/1/",
+    });
+
+    expect(result.status).toBe("READABLE");
+    expect(result.pages).toEqual([
+      {
+        index: 0,
+        imageUrl: "https://assets.urekmazino.com/urekmazino/chapter-1/1.jpeg",
+        width: 864,
+        height: 6450,
+      },
+      {
+        index: 1,
+        imageUrl: "https://assets.urekmazino.com/urekmazino/chapter-1/2.jpeg",
+        width: 864,
+        height: 8000,
+      },
+    ]);
+  });
 });

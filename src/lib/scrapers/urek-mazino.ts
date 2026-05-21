@@ -1,5 +1,5 @@
 import { fetchWithRetry } from "./http";
-import { MangaMetadata, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { MangaMetadata, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://urekmazino.com";
 
@@ -53,6 +53,18 @@ function toAbsoluteUrl(url: string): string {
   return new URL(url, BASE_URL).toString();
 }
 
+function getAttribute(tag: string, attribute: string): string | undefined {
+  const match = tag.match(new RegExp(`\\s${attribute}=["']([^"']+)["']`, "i"));
+  return match?.[1] ? decodeHtml(match[1]) : undefined;
+}
+
+function isReaderImage(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.startsWith("https://assets.urekmazino.com/urekmazino/chapter-")
+    && /\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)
+    && !lower.includes("/thumb.");
+}
+
 function parseJsonLdItemLists(html: string): JsonLdItemList[] {
   return Array.from(html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))
     .flatMap((match) => {
@@ -68,7 +80,7 @@ function parseJsonLdItemLists(html: string): JsonLdItemList[] {
 
 export class UrekMazinoScraper implements Scraper {
   name = "Urek Mazino";
-  capabilities = { search: true, metadata: true, chapters: true };
+  capabilities = { search: true, metadata: true, chapters: true, reader: true };
 
   canHandle(url: string): boolean {
     try {
@@ -171,5 +183,45 @@ export class UrekMazinoScraper implements Scraper {
         releaseDate: latestId === String(chapterNumber) ? latestDate : undefined,
       }];
     }).sort((a, b) => b.chapterNumber - a.chapterNumber);
+  }
+
+  async fetchReaderPages(chapter: { url: string }): Promise<ReaderResult> {
+    const html = await this.fetchHtml(chapter.url);
+    const pages = Array.from(html.matchAll(/<img\b[^>]*>/gi))
+      .map((match) => {
+        const tag = match[0];
+        const imageUrl = getAttribute(tag, "src");
+        if (!imageUrl) return null;
+
+        const absoluteUrl = toAbsoluteUrl(imageUrl);
+        if (!isReaderImage(absoluteUrl)) return null;
+
+        const width = Number(getAttribute(tag, "width"));
+        const height = Number(getAttribute(tag, "height"));
+        const page: ReaderPage = {
+          index: 0,
+          imageUrl: absoluteUrl,
+        };
+        if (Number.isFinite(width)) page.width = width;
+        if (Number.isFinite(height)) page.height = height;
+        return page;
+      })
+      .filter((page): page is ReaderPage => Boolean(page))
+      .map((page, index) => ({ ...page, index }));
+
+    if (pages.length === 0) {
+      return {
+        status: "EXTERNAL_ONLY",
+        pages: [],
+        externalUrl: chapter.url,
+        reason: "Urek Mazino did not expose public page images for this chapter.",
+      };
+    }
+
+    return {
+      status: "READABLE",
+      pages,
+      externalUrl: chapter.url,
+    };
   }
 }
