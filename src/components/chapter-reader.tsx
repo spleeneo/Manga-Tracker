@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
 
 type ReaderStatus = "READABLE" | "EXTERNAL_ONLY" | "PAYWALLED" | "BLOCKED" | "UNSUPPORTED" | "ERROR";
 
@@ -135,6 +136,29 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     return () => window.removeEventListener("scroll", onScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reader?.status]);
+
+  useEffect(() => {
+    if (reader?.status !== "READABLE") return;
+
+    const controller = new AbortController();
+    void prefetchReaderPages(reader.pages, controller.signal);
+
+    const cancelAdjacentPrefetch = scheduleReaderPrefetch(() => {
+      const adjacentChapters = [nextChapter, previousChapter].filter((item): item is ReaderNavChapter => Boolean(item));
+      for (const adjacentChapter of adjacentChapters) {
+        void prefetchReaderChapter({
+          slug,
+          chapterId: adjacentChapter.id,
+          signal: controller.signal,
+        });
+      }
+    });
+
+    return () => {
+      cancelAdjacentPrefetch();
+      controller.abort();
+    };
+  }, [nextChapter, previousChapter, reader?.pages, reader?.status, slug]);
 
   const sourceLabel = chapter.sourceName ?? "Source";
   const fallbackUrl = reader?.externalUrl || chapter.url;
