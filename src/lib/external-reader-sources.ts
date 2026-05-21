@@ -1,4 +1,4 @@
-const EXTERNAL_READER_SOURCES = new Set(["nelomanga"]);
+const EXTERNAL_READER_SOURCES = new Set(["comikey", "mangaplus", "nelomanga"]);
 
 export function isExternalReaderSource(sourceName?: string | null) {
   return EXTERNAL_READER_SOURCES.has(sourceName?.trim().toLowerCase() ?? "");

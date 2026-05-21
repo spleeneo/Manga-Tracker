@@ -17,14 +17,9 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const mode = getChapterMode(searchParams.get("mode"));
     const sourceId = searchParams.get("sourceId") || undefined;
-    const cursorParam = searchParams.get("cursor");
-    const cursor = cursorParam ? Number(cursorParam) : undefined;
+    const cursor = searchParams.get("cursor") || undefined;
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? Number(limitParam) : undefined;
-
-    if (cursorParam && !Number.isFinite(cursor)) {
-      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
-    }
 
     const manga = await prisma.manga.findUnique({
       where: { slug },

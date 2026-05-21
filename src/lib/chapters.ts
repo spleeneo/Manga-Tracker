@@ -16,6 +16,10 @@ export interface ChapterView {
   readerStatus: string | null;
 }
 
+type ChapterCursor = {
+  id: string;
+};
+
 export function getChapterMode(value: string | null): ChapterListMode {
   return value === "all" ? "all" : "best";
 }
@@ -28,25 +32,25 @@ export async function getMangaChapterPage({
   lastReadChapterNumber,
 }: {
   mangaId: string;
-  cursor?: number;
+  cursor?: string;
   limit?: number;
   sourceId?: string;
   lastReadChapterNumber?: number | null;
 }) {
   const pageSize = Math.min(Math.max(limit, 1), 100);
+  const parsedCursor = parseChapterCursor(cursor);
 
   const chapters = await prisma.chapter.findMany({
     where: {
       mangaId,
       ...(sourceId ? { sourceId } : {}),
-      ...(typeof cursor === "number"
-        ? { chapterNumber: { lt: cursor } }
-        : {}),
     },
+    ...(parsedCursor ? { cursor: { id: parsedCursor.id }, skip: 1 } : {}),
     orderBy: [
       { chapterNumber: "desc" },
       { releaseDate: "desc" },
       { createdAt: "desc" },
+      { id: "desc" },
     ],
     take: pageSize + 1,
     select: {
@@ -79,8 +83,24 @@ export async function getMangaChapterPage({
       readerStatus: chapter.readerStatus,
       isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
     })),
-    nextCursor: chapters.length > pageSize
-      ? visibleChapters[visibleChapters.length - 1]?.chapterNumber ?? null
+    nextCursor: chapters.length > pageSize && visibleChapters.length > 0
+      ? createChapterCursor(visibleChapters[visibleChapters.length - 1]?.id)
       : null,
   };
+}
+
+function createChapterCursor(id?: string) {
+  if (!id) return null;
+  return Buffer.from(JSON.stringify({ id } satisfies ChapterCursor), "utf8").toString("base64url");
+}
+
+function parseChapterCursor(cursor?: string): ChapterCursor | null {
+  if (!cursor) return null;
+
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<ChapterCursor>;
+    return typeof parsed.id === "string" && parsed.id ? { id: parsed.id } : null;
+  } catch {
+    return null;
+  }
 }

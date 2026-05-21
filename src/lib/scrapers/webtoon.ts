@@ -39,19 +39,27 @@ function parseWebtoonDate(value?: string): Date | undefined {
 
 function isFreeEpisodeListItem(html: string): boolean {
   const normalized = stripTags(html).toLowerCase();
-  const raw = html.toLowerCase();
+  const raw = html.toLowerCase().replace(/[_-]+/g, " ");
 
   return ![
-    "fast pass",
-    "daily pass",
+    "ad pass",
+    "badge lock",
     "coin",
     "coins",
-    "locked",
-    "unlock",
-    "only on the app",
+    "daily pass",
+    "dailypass",
     "download app",
-    "ico_lock",
-    "lock_icon",
+    "fast pass",
+    "fastpass",
+    "free with ads",
+    "ico daily",
+    "ico fast",
+    "ico lock",
+    "lock icon",
+    "locked",
+    "only on the app",
+    "unlock",
+    "watch ad",
   ].some((marker) => normalized.includes(marker) || raw.includes(marker));
 }
 
@@ -141,9 +149,10 @@ export class WebtoonScraper implements Scraper {
         headers: { "User-Agent": "Mozilla/5.0" },
       });
       const html = await res.text();
+      const episodeCount = this.countEpisodeRows(html);
       const pageChapters = this.parseChapterList(html);
 
-      if (pageChapters.length === 0) break;
+      if (episodeCount === 0) break;
 
       let newOnPage = 0;
       for (const chapter of pageChapters) {
@@ -154,7 +163,9 @@ export class WebtoonScraper implements Scraper {
         }
       }
 
-      if (newOnPage === 0 || !this.hasNextPage(html, page)) break;
+      const hasNextPage = this.hasNextPage(html, page);
+      if (pageChapters.length === 0 && hasNextPage) continue;
+      if (newOnPage === 0 || !hasNextPage) break;
     }
 
     return Array.from(chapters.values()).sort((a, b) => b.chapterNumber - a.chapterNumber);
@@ -163,7 +174,7 @@ export class WebtoonScraper implements Scraper {
   private parseChapterList(html: string): ScrapedChapter[] {
     return Array.from(
       html.matchAll(/<a[^>]+href="([^"]*episode_no=(\d+)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi)
-    ).filter((entry) => isFreeEpisodeListItem(entry[3])).map((entry) => {
+    ).filter((entry) => isFreeEpisodeListItem(entry[0])).map((entry) => {
       const episodeNo = Number(entry[2]);
       const body = entry[3];
       const title = stripTags(
@@ -181,6 +192,10 @@ export class WebtoonScraper implements Scraper {
         releaseDate: parseWebtoonDate(date),
       };
     });
+  }
+
+  private countEpisodeRows(html: string): number {
+    return Array.from(html.matchAll(/<a[^>]+href="[^"]*episode_no=\d+[^"]*"[^>]*>[\s\S]*?<\/a>/gi)).length;
   }
 
   private hasNextPage(html: string, currentPage: number): boolean {

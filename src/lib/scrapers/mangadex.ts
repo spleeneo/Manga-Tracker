@@ -1,5 +1,6 @@
 import { ScrapedChapter, Scraper, MangaMetadata, SearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
 import { fetchWithRetry, ScraperRequestError } from "./http";
+import { normalizeMangaStatus } from "@/lib/manga-status";
 
 interface MangaDexRelationship {
     type: string;
@@ -117,7 +118,7 @@ export class MangaDexScraper implements Scraper {
             title: manga.attributes.title.en || Object.values(manga.attributes.title)[0],
             description: manga.attributes.description.en || Object.values(manga.attributes.description)[0],
             coverUrl: fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : undefined,
-            status: manga.attributes.status?.toUpperCase(),
+            status: normalizeMangaStatus(manga.attributes.status),
             author: author
         };
     }
@@ -186,7 +187,7 @@ export class MangaDexScraper implements Scraper {
                     title: manga.attributes.title.en || Object.values(manga.attributes.title)[0],
                     description: manga.attributes.description.en?.split('\n')[0],
                     coverUrl: fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : undefined,
-                    status: manga.attributes.status?.toUpperCase(),
+                    status: normalizeMangaStatus(manga.attributes.status),
                     sourceUrl: `https://mangadex.org/title/${manga.id}`,
                     sourceName: "MangaDex"
                 };

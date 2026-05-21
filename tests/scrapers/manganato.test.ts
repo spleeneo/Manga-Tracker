@@ -55,4 +55,18 @@ describe("ManganatoScraper", () => {
     expect(result.status).toBe("EXTERNAL_ONLY");
     expect(result.pages).toEqual([]);
   });
+
+  it("extracts completed status from story metadata", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <h1>Finished Story</h1>
+      <span class="info-image"><img src="https://chapmanganato.to/cover.jpg"></span>
+      <div class="panel-story-info-description">Description : A finished manga.</div>
+      <li><h3>Status :</h3>Completed</li>
+    `));
+
+    const scraper = new ManganatoScraper();
+    const metadata = await scraper.fetchMetadata("https://chapmanganato.to/manga-aa000000");
+
+    expect(metadata.status).toBe("COMPLETED");
+  });
 });

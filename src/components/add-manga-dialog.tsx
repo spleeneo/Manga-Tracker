@@ -39,8 +39,6 @@ export function AddMangaDialog() {
             try {
                 const res = await fetch(`/api/manga/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                console.log("Search API response:", data);
-                console.log("Search results:", data.results);
                 setSearchResults((data.results || []) as SearchResult[]);
             } catch (e) {
                 console.error(e);
@@ -217,38 +215,21 @@ export function AddMangaDialog() {
                                             )}
                                         </div>
                                         <div className="flex min-w-0 flex-col overflow-hidden py-1">
-                                            <button
-                                                type="button"
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    void trackSearchResult(manga);
-                                                }}
-                                                disabled={loading}
-                                                className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                            >
-                                                <h3 className="flex items-center gap-2 truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">
-                                                    {trackingKey === `${manga.title}:all` && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
-                                                    <span className="truncate">{manga.title}</span>
-                                                </h3>
-                                            </button>
+                                            <h3 className="flex items-center gap-2 truncate pr-2 text-base font-bold leading-tight transition-colors group-hover:text-primary">
+                                                {trackingKey === `${manga.title}:all` && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+                                                <span className="truncate">{manga.title}</span>
+                                            </h3>
                                             <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{manga.description || "No description available."}</p>
                                             <div className="mt-auto flex min-w-0 items-end justify-between gap-3 pt-3">
                                                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                                                     {manga.sources && Array.isArray(manga.sources) && manga.sources.length > 0 ? (
                                                         manga.sources.map((source: SearchSource, sourceIdx: number) => (
-                                                            <button
-                                                                type="button"
+                                                            <span
                                                                 key={source.url || sourceIdx}
-                                                                onClick={(event) => {
-                                                                    event.stopPropagation();
-                                                                    void trackSearchResult(manga, source.url);
-                                                                }}
-                                                                disabled={loading}
-                                                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-transparent bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground transition-all hover:border-primary/40 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                                className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[10px] font-bold uppercase text-secondary-foreground"
                                                             >
-                                                                {trackingKey === `${manga.title}:${source.url}` && <Loader2 className="h-3 w-3 animate-spin" />}
                                                                 <span className="truncate">{source.name}</span>
-                                                            </button>
+                                                            </span>
                                                         ))
                                                     ) : (
                                                         <span className="text-xs font-bold text-red-500">No sources</span>

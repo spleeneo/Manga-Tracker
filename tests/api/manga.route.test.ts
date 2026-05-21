@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, checkForUpdatesMock, mangaFindUnique, mangaCreate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaCreate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
   afterMock: vi.fn(),
-  checkForUpdatesMock: vi.fn(),
+  enqueueMangaSyncJobMock: vi.fn(),
+  processSyncJobMock: vi.fn(),
   mangaFindUnique: vi.fn(),
   mangaCreate: vi.fn(),
   sourceCreate: vi.fn(),
@@ -40,8 +41,9 @@ vi.mock("@/lib/scrapers/registry", () => ({
   fetchMetadata: vi.fn(),
 }));
 
-vi.mock("@/lib/manga-updater", () => ({
-  checkForUpdates: checkForUpdatesMock,
+vi.mock("@/lib/sync-jobs", () => ({
+  enqueueMangaSyncJob: enqueueMangaSyncJobMock,
+  processSyncJob: processSyncJobMock,
 }));
 
 vi.mock("@/lib/session", () => ({
@@ -88,7 +90,7 @@ describe("POST /api/manga", () => {
     userMangaUpsert.mockResolvedValue({ id: "um1" });
     sourceFindUnique.mockResolvedValue(null);
     sourceCreate.mockResolvedValue({ id: "s1" });
-    checkForUpdatesMock.mockResolvedValue([{ status: "Added 1 new chapter" }]);
+    enqueueMangaSyncJobMock.mockResolvedValue({ id: "job1" });
 
     const req = new Request("http://localhost", {
       method: "POST",
@@ -104,8 +106,9 @@ describe("POST /api/manga", () => {
 
     expect(res.status).toBe(200);
     expect(sourceCreate).toHaveBeenCalledOnce();
+    expect(enqueueMangaSyncJobMock).toHaveBeenCalledWith("u1", "m1");
     expect(afterMock).toHaveBeenCalledOnce();
-    expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    expect(processSyncJobMock).not.toHaveBeenCalled();
     expect(userMangaUpsert).toHaveBeenCalledWith(expect.objectContaining({
       update: expect.objectContaining({ syncStatus: "SYNCING" }),
       create: expect.objectContaining({ syncStatus: "SYNCING" }),

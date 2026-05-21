@@ -30,7 +30,7 @@ interface ChapterListProps {
     slug: string;
     initialSources: Source[];
     initialChapters: Chapter[];
-    initialNextCursor: number | null;
+    initialNextCursor: string | null;
     initialLastReadChapterNumber: number | null;
 }
 
@@ -43,7 +43,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [searchQuery, setSearchQuery] = useState("");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
-    const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
+    const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
     const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
     const hasLoadedInitialPage = useRef(initialChapters.length > 0);
@@ -56,7 +56,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         nextSourceId = selectedSourceId,
     }: {
         reset: boolean;
-        cursor?: number | null;
+        cursor?: string | null;
         nextMode?: ChapterMode;
         nextSourceId?: string | "all";
     }) => {
@@ -65,7 +65,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             const params = new URLSearchParams({
                 mode: nextMode,
             });
-            if (typeof cursor === "number") {
+            if (cursor) {
                 params.set("cursor", String(cursor));
             }
             if (nextSourceId !== "all") {

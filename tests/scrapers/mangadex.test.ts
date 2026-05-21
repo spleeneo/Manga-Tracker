@@ -96,4 +96,23 @@ describe("MangaDexScraper", () => {
       { index: 1, imageUrl: "https://uploads.mangadex.org/data/hash/p2.jpg" },
     ]);
   });
+
+  it("normalizes MangaDex metadata statuses", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
+      data: {
+        id: "11111111-1111-1111-1111-111111111111",
+        attributes: {
+          title: { en: "Done" },
+          description: { en: "Finished series." },
+          status: "completed",
+        },
+        relationships: [],
+      },
+    }));
+
+    const scraper = new MangaDexScraper();
+    const metadata = await scraper.fetchMetadata("https://mangadex.org/title/11111111-1111-1111-1111-111111111111/done");
+
+    expect(metadata.status).toBe("COMPLETED");
+  });
 });

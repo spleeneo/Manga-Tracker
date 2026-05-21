@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { fetchMetadata } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
+import { inferSourceName } from "@/lib/source-name";
+import { normalizeMangaStatus } from "@/lib/manga-status";
+import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 
 export async function POST(request: Request) {
     try {
@@ -20,16 +23,7 @@ export async function POST(request: Request) {
         if (sourceUrl && !sourcesToProcess.some(s => s.url === sourceUrl)) {
             sourcesToProcess.push({
                 url: sourceUrl,
-                name:
-                    sourceUrl.includes("mangadex") ? "MangaDex" :
-                        sourceUrl.includes("nelomanga") ? "NeloManga" :
-                            sourceUrl.includes("mangaplus") ? "MangaPlus" :
-                                sourceUrl.includes("viz.com") ? "VIZ" :
-                                    sourceUrl.includes("urekmazino.com") ? "Urek Mazino" :
-                                        sourceUrl.includes("bleach.live") ? "Bleach Live" :
-                                            sourceUrl.includes("webtoons") ? "Webtoon" :
-                                                (sourceUrl.includes("manganato") || sourceUrl.includes("chapmanganato")) ? "Manganato" :
-                                                    "Source"
+                name: inferSourceName(sourceUrl),
             });
         }
 
@@ -46,7 +40,7 @@ export async function POST(request: Request) {
                     title: title || meta.title,
                     slug: slug || meta.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 50),
                     coverUrl: coverUrl || meta.coverUrl,
-                    status: (status || meta.status || "ONGOING").toUpperCase(),
+                    status: normalizeMangaStatus(status || meta.status, "ONGOING"),
                     description: description || meta.description,
                 };
             } catch (e) {
@@ -73,7 +67,7 @@ export async function POST(request: Request) {
                 title: finalMangaData.title,
                 slug: finalMangaData.slug,
                 coverUrl: finalMangaData.coverUrl,
-                status: finalMangaData.status,
+                status: normalizeMangaStatus(finalMangaData.status, "ONGOING"),
                 description: finalMangaData.description,
             }
         })).id;
@@ -88,17 +82,7 @@ export async function POST(request: Request) {
                 const url = source.url || source.sourceUrl; // handle different naming
                 if (!url) continue;
 
-                const name = source.name || (
-                    url.includes("mangadex") ? "MangaDex" :
-                        url.includes("nelomanga") ? "NeloManga" :
-                            url.includes("mangaplus") ? "MangaPlus" :
-                                url.includes("viz.com") ? "VIZ" :
-                                    url.includes("urekmazino.com") ? "Urek Mazino" :
-                                        url.includes("bleach.live") ? "Bleach Live" :
-                                            url.includes("webtoons") ? "Webtoon" :
-                                                (url.includes("manganato") || url.includes("chapmanganato")) ? "Manganato" :
-                                                    "Source"
-                );
+                const name = source.name || inferSourceName(url);
 
                 try {
                     // Upsert source
@@ -160,39 +144,9 @@ export async function POST(request: Request) {
         });
 
         if (shouldScrape) {
+            const job = await enqueueMangaSyncJob(userId, mangaId);
             after(async () => {
-                try {
-                    const { checkForUpdates } = await import("@/lib/manga-updater");
-                    await checkForUpdates(mangaId);
-                    await prisma.userManga.update({
-                        where: {
-                            userId_mangaId: {
-                                userId,
-                                mangaId,
-                            },
-                        },
-                        data: {
-                            syncStatus: "UPDATED",
-                            syncFinishedAt: new Date(),
-                            syncError: null,
-                        },
-                    });
-                } catch (error) {
-                    console.error(`[API] Background update failed for ${finalMangaData.title}:`, error);
-                    await prisma.userManga.update({
-                        where: {
-                            userId_mangaId: {
-                                userId,
-                                mangaId,
-                            },
-                        },
-                        data: {
-                            syncStatus: "FAILED",
-                            syncFinishedAt: new Date(),
-                            syncError: error instanceof Error ? error.message : "Unknown update error",
-                        },
-                    });
-                }
+                await processSyncJob(job.id);
             });
         }
 

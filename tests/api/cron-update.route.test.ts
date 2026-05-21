@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { checkForUpdates } = vi.hoisted(() => ({
+const { checkForUpdates, processQueuedSyncJobs } = vi.hoisted(() => ({
   checkForUpdates: vi.fn(),
+  processQueuedSyncJobs: vi.fn(),
 }));
 
 vi.mock("@/lib/manga-updater", () => ({
   checkForUpdates,
+}));
+
+vi.mock("@/lib/sync-jobs", () => ({
+  processQueuedSyncJobs,
 }));
 
 import { GET } from "@/app/api/cron/update/route";
@@ -21,6 +26,7 @@ describe("GET /api/cron/update", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "secret123";
+    processQueuedSyncJobs.mockResolvedValue(0);
   });
 
   it("returns 401 without valid secret", async () => {
@@ -39,5 +45,6 @@ describe("GET /api/cron/update", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
+    expect(body.processedJobs).toBe(0);
   });
 });

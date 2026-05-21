@@ -1,4 +1,5 @@
 import { checkForUpdates } from "@/lib/manga-updater";
+import { processQueuedSyncJobs } from "@/lib/sync-jobs";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic'; // Ensure this isn't cached
@@ -19,8 +20,9 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const results = await checkForUpdates();
-        return NextResponse.json({ success: true, results });
+        const processedJobs = await processQueuedSyncJobs(10);
+        const results = processedJobs > 0 ? [] : await checkForUpdates();
+        return NextResponse.json({ success: true, processedJobs, results });
     } catch (error) {
         console.error("Cron update failed:", error);
         return NextResponse.json(

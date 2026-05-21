@@ -16,6 +16,11 @@ interface ReaderPrefetchChapter {
 type IdleWindow = Window & typeof globalThis & {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
+  navigator: Navigator & {
+    connection?: {
+      saveData?: boolean;
+    };
+  };
 };
 
 const prefetchedUrls = new Set<string>();
@@ -23,7 +28,8 @@ const PREFETCH_CONCURRENCY = 3;
 const IMAGE_TIMEOUT_MS = 20_000;
 
 function canPrefetch() {
-  return typeof window !== "undefined" && typeof Image !== "undefined";
+  if (typeof window === "undefined" || typeof Image === "undefined") return false;
+  return !(window as IdleWindow).navigator.connection?.saveData;
 }
 
 function prefetchImage(url: string, signal?: AbortSignal) {

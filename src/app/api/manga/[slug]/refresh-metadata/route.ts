@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { fetchMetadata } from "@/lib/scrapers/registry";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
+import { normalizeMangaStatus } from "@/lib/manga-status";
 
 export async function POST(
     request: NextRequest,
@@ -51,7 +52,7 @@ export async function POST(
             data: {
                 title: meta.title || manga.title,
                 coverUrl: meta.coverUrl || manga.coverUrl,
-                status: (meta.status || manga.status || "ONGOING").toUpperCase(),
+                status: normalizeMangaStatus(meta.status || manga.status, "ONGOING"),
                 description: meta.description || manga.description,
                 updatedAt: new Date()
             }

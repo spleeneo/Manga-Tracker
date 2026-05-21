@@ -57,7 +57,8 @@ describe("GET /api/manga/[slug]/chapters", () => {
       { id: "c3", chapterNumber: 0, title: "Zero", url: "u3", releaseDate: null, sourceId: "s1" },
     ]);
 
-    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?limit=2&cursor=3&sourceId=s1&mode=all") };
+    const cursor = Buffer.from(JSON.stringify({ id: "after-this" }), "utf8").toString("base64url");
+    const req = { nextUrl: new URL(`http://localhost/api/manga/one-piece/chapters?limit=2&cursor=${cursor}&sourceId=s1&mode=all`) };
     const res = await GET(req as never, {
       params: Promise.resolve({ slug: "one-piece" }),
     });
@@ -65,17 +66,18 @@ describe("GET /api/manga/[slug]/chapters", () => {
 
     expect(res.status).toBe(200);
     expect(body.mode).toBe("all");
-    expect(body.nextCursor).toBe(1);
+    expect(body.nextCursor).toBe(Buffer.from(JSON.stringify({ id: "c2" }), "utf8").toString("base64url"));
     expect(body.chapters).toEqual([
       expect.objectContaining({ id: "c1", isRead: false }),
       expect.objectContaining({ id: "c2", isRead: true }),
     ]);
     expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
       take: 3,
+      cursor: { id: "after-this" },
+      skip: 1,
       where: expect.objectContaining({
         mangaId: "m1",
         sourceId: "s1",
-        chapterNumber: { lt: 3 },
       }),
     }));
   });

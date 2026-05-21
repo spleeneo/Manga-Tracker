@@ -1,6 +1,6 @@
-import { checkForUpdates } from "@/lib/manga-updater";
 import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/session";
+import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { after } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -23,55 +23,17 @@ export async function POST() {
             },
         });
 
+        const jobs: Array<{ id: string }> = [];
         for (const entry of library) {
-            await prisma.userManga.update({
-                where: {
-                    userId_mangaId: {
-                        userId,
-                        mangaId: entry.mangaId,
-                    },
-                },
-                data: {
-                    syncStatus: "SYNCING",
-                    syncStartedAt: new Date(),
-                    syncFinishedAt: null,
-                    syncError: null,
-                },
-            });
+            jobs.push(await enqueueMangaSyncJob(userId, entry.mangaId));
         }
 
         after(async () => {
-            for (const entry of library) {
+            for (const job of jobs) {
                 try {
-                    await checkForUpdates(entry.mangaId);
-                    await prisma.userManga.update({
-                        where: {
-                            userId_mangaId: {
-                                userId,
-                                mangaId: entry.mangaId,
-                            },
-                        },
-                        data: {
-                            syncStatus: "UPDATED",
-                            syncFinishedAt: new Date(),
-                            syncError: null,
-                        },
-                    });
+                    await processSyncJob(job.id);
                 } catch (error) {
-                    console.error(`Library update failed for ${entry.manga.title}:`, error);
-                    await prisma.userManga.update({
-                        where: {
-                            userId_mangaId: {
-                                userId,
-                                mangaId: entry.mangaId,
-                            },
-                        },
-                        data: {
-                            syncStatus: "FAILED",
-                            syncFinishedAt: new Date(),
-                            syncError: error instanceof Error ? error.message : "Unknown update error",
-                        },
-                    });
+                    console.error("Library update job failed:", error);
                 }
             }
         });

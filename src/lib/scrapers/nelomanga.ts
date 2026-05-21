@@ -1,6 +1,7 @@
 import { ScrapedChapter, Scraper, MangaMetadata, ReaderResult, SearchResult } from "./types";
 import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "./nelomanga-config";
 import { fetchWithRetry, ScraperRequestError } from "./http";
+import { normalizeMangaStatus } from "@/lib/manga-status";
 
 interface NeloChapterApiItem {
     chapter_slug: string;
@@ -19,6 +20,21 @@ interface NeloChapterApiResponse {
             has_more?: boolean;
         };
     };
+}
+
+function decodeHtml(value: string): string {
+    return value
+        .replace(/&amp;/g, "&")
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, "\"")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function extractStatus(html: string): string | undefined {
+    return html.match(/(?:status|estado)\s*:?\s*<\/?[^>]*>\s*([^<\n]+)/i)?.[1]?.trim()
+        ?? html.match(/<[^>]+class=["'][^"']*(?:status|info-status)[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1]?.replace(/<[^>]+>/g, " ").trim();
 }
 
 export class NeloMangaScraper implements Scraper {
@@ -173,9 +189,9 @@ export class NeloMangaScraper implements Scraper {
 
         const metadata = {
             title: titleMatch ? titleMatch[1].trim() : "Unknown",
-            description: descMatch ? descMatch[1].replace(/<[^>]*>?/gm, '').replace(/summary:/i, '').replace(/One Piece summary:/i, '').trim().substring(0, 500) : "",
+            description: descMatch ? decodeHtml(descMatch[1].replace(/<[^>]*>?/gm, '').replace(/summary:/i, '').replace(/One Piece summary:/i, '')).substring(0, 500) : "",
             coverUrl,
-            status: "ONGOING",
+            status: normalizeMangaStatus(extractStatus(html), "ONGOING"),
         };
 
         console.log(`[NeloManga] Fetched metadata for: ${metadata.title}`);

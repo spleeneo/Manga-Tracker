@@ -61,7 +61,7 @@ export default async function ReaderPage({ params }: PageProps) {
     redirect(chapter.url);
   }
 
-  const [previousChapter, nextChapter] = await Promise.all([
+  const [previousChapter, nextChapters] = await Promise.all([
     prisma.chapter.findFirst({
       where: {
         mangaId: manga.id,
@@ -71,19 +71,31 @@ export default async function ReaderPage({ params }: PageProps) {
       orderBy: { chapterNumber: "desc" },
       select: { id: true, chapterNumber: true, title: true },
     }),
-    prisma.chapter.findFirst({
+    prisma.chapter.findMany({
       where: {
         mangaId: manga.id,
         ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
         chapterNumber: { gt: chapter.chapterNumber },
       },
       orderBy: { chapterNumber: "asc" },
-      select: { id: true, chapterNumber: true, title: true },
+      take: 8,
+      select: {
+        id: true,
+        chapterNumber: true,
+        title: true,
+        url: true,
+        source: {
+          select: {
+            sourceName: true,
+          },
+        },
+      },
     }),
   ]);
 
   return (
     <ChapterReader
+      key={chapter.id}
       slug={manga.slug}
       mangaTitle={manga.title}
       chapter={{
@@ -94,7 +106,13 @@ export default async function ReaderPage({ params }: PageProps) {
         sourceName: chapter.source?.sourceName ?? null,
       }}
       previousChapter={previousChapter}
-      nextChapter={nextChapter}
+      nextChapters={nextChapters.map((nextChapter) => ({
+        id: nextChapter.id,
+        chapterNumber: nextChapter.chapterNumber,
+        title: nextChapter.title,
+        url: nextChapter.url,
+        sourceName: nextChapter.source?.sourceName ?? null,
+      }))}
     />
   );
 }

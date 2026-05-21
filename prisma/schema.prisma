@@ -21,6 +21,7 @@ model Manga {
   chapters    Chapter[]
   sources     Source[]
   userManga   UserManga[]
+  syncJobs    SyncJob[]
 }
 
 model Source {
@@ -63,8 +64,8 @@ model Chapter {
   userChapters UserChapter[]
 
   @@unique([sourceId, providerChapterId])
+  @@unique([sourceId, chapterNumber])
   @@index([mangaId, chapterNumber])
-  @@index([sourceId, chapterNumber])
 }
 
 model User {
@@ -78,6 +79,7 @@ model User {
   library       UserManga[]
   chapters      UserChapter[]
   chatMessages  ChatMessage[]
+  syncJobs      SyncJob[]
 }
 
 model Account {
@@ -164,4 +166,25 @@ model ChatMessage {
 
   @@index([createdAt(sort: Desc)])
   @@index([userId])
+}
+
+model SyncJob {
+  id          String    @id @default(cuid())
+  type        String
+  status      String    @default("QUEUED")
+  userId      String?
+  mangaId     String
+  attempts    Int       @default(0)
+  runAfter    DateTime  @default(now())
+  lockedAt    DateTime?
+  finishedAt  DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga       Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter])
+  @@index([userId, status])
+  @@index([mangaId, status])
 }

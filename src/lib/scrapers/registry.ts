@@ -2,6 +2,7 @@ import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderC
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
+import { ComikeyScraper } from "./comikey";
 import { VizScraper } from "./viz";
 import { WebtoonScraper } from "./webtoon";
 import { UrekMazinoScraper } from "./urek-mazino";
@@ -12,6 +13,7 @@ const scrapers: Scraper[] = [
     new MangaDexScraper(),
     new NeloMangaScraper(),
     new MangaPlusScraper(),
+    new ComikeyScraper(),
     new VizScraper(),
     new UrekMazinoScraper(),
     new BleachLiveScraper(),

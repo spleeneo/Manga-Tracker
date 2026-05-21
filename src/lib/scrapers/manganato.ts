@@ -1,5 +1,6 @@
 import { fetchWithRetry } from "./http";
 import { MangaMetadata, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { normalizeMangaStatus } from "@/lib/manga-status";
 
 const BASE = "https://manganato.com";
 
@@ -25,6 +26,12 @@ function isReaderImage(url: string): boolean {
   if (!/\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)) return false;
   if (lower.includes("logo") || lower.includes("avatar") || /[/?&_-]ads?[/?&_.-]/.test(lower)) return false;
   return lower.includes("manganato") || lower.includes("mncdn") || lower.includes("blogspot");
+}
+
+function extractInfoValue(html: string, label: string): string | undefined {
+  const pattern = new RegExp(`<li[^>]*>[\\s\\S]*?<h(?:2|3)[^>]*>\\s*${label}\\s*:?\\s*<\\/h(?:2|3)>\\s*([^<]+)`, "i");
+  const match = html.match(pattern);
+  return match?.[1]?.trim();
 }
 
 export class ManganatoScraper implements Scraper {
@@ -72,12 +79,13 @@ export class ManganatoScraper implements Scraper {
       .replace(/Description\s*:/i, "")
       .trim();
     const coverUrl = html.match(/<span[^>]+class="info-image"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1];
+    const rawStatus = extractInfoValue(html, "Status");
 
     return {
       title,
       description,
       coverUrl,
-      status: "ONGOING",
+      status: normalizeMangaStatus(rawStatus, "ONGOING"),
     };
   }
 

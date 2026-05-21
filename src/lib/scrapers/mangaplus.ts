@@ -57,6 +57,13 @@ function parseChapterNumber(name?: string): number | null {
     return Number.isFinite(chapterNumber) ? chapterNumber : null;
 }
 
+function getPublicWindowChapters(groups: MangaPlusChapterGroup[]): MangaPlusChapter[] {
+    return groups.flatMap((group) => [
+        ...(group.firstChapterList ?? []),
+        ...(group.lastChapterList ?? []),
+    ]);
+}
+
 export class MangaPlusScraper implements Scraper {
     name = "MangaPlus";
     capabilities = { search: true, metadata: true, chapters: true };
@@ -132,13 +139,9 @@ export class MangaPlusScraper implements Scraper {
 
             if (!detail) return [];
 
-            const allChapters = (detail.chapterListGroup ?? []).flatMap((group) => [
-                ...(group.firstChapterList ?? []),
-                ...(group.midChapterList ?? []),
-                ...(group.lastChapterList ?? []),
-            ]);
+            const publicChapters = getPublicWindowChapters(detail.chapterListGroup ?? []);
 
-            return allChapters
+            return publicChapters
                 .filter((chapter) => typeof chapter.chapterId === "number")
                 .filter((chapter) => parseChapterNumber(chapter.name) !== null)
                 .map((chapter) => {

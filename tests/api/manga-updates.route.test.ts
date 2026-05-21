@@ -1,26 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, checkForUpdatesMock, getCurrentUserIdMock, userMangaFindManyMock, userMangaUpdateMock } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, getCurrentUserIdMock, processSyncJobMock, userMangaFindManyMock } = vi.hoisted(() => ({
   afterMock: vi.fn(),
-  checkForUpdatesMock: vi.fn(),
+  enqueueMangaSyncJobMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
+  processSyncJobMock: vi.fn(),
   userMangaFindManyMock: vi.fn(),
-  userMangaUpdateMock: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({
   getCurrentUserId: getCurrentUserIdMock,
 }));
 
-vi.mock("@/lib/manga-updater", () => ({
-  checkForUpdates: checkForUpdatesMock,
+vi.mock("@/lib/sync-jobs", () => ({
+  enqueueMangaSyncJob: enqueueMangaSyncJobMock,
+  processSyncJob: processSyncJobMock,
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     userManga: {
       findMany: userMangaFindManyMock,
-      update: userMangaUpdateMock,
     },
   },
 }));
@@ -43,8 +43,9 @@ describe("POST /api/manga/updates", () => {
       { mangaId: "m1", manga: { title: "One Piece" } },
       { mangaId: "m2", manga: { title: "Berserk" } },
     ]);
-    checkForUpdatesMock.mockResolvedValue([{ status: "ok" }]);
-    userMangaUpdateMock.mockResolvedValue({});
+    enqueueMangaSyncJobMock
+      .mockResolvedValueOnce({ id: "job1" })
+      .mockResolvedValueOnce({ id: "job2" });
   });
 
   it("requires authentication", async () => {
@@ -53,7 +54,7 @@ describe("POST /api/manga/updates", () => {
     const res = await POST();
 
     expect(res.status).toBe(401);
-    expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    expect(enqueueMangaSyncJobMock).not.toHaveBeenCalled();
   });
 
   it("queues updates for the signed-in user's tracked manga", async () => {
@@ -63,8 +64,8 @@ describe("POST /api/manga/updates", () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.queued).toBe(2);
-    expect(userMangaUpdateMock).toHaveBeenCalledTimes(2);
+    expect(enqueueMangaSyncJobMock).toHaveBeenCalledTimes(2);
     expect(afterMock).toHaveBeenCalledOnce();
-    expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    expect(processSyncJobMock).not.toHaveBeenCalled();
   });
 });

@@ -95,11 +95,44 @@ describe("WebtoonScraper", () => {
         <em class="ico_lock">locked</em>
         <span class="date">Jan 15, 2025</span>
       </a>
+      <a class="_dailyPass" href="https://www.webtoons.com/en/fantasy/tower-of-god/daily-pass/viewer?title_no=95&episode_no=13">
+        <span class="subj"><span>Episode 13</span></span>
+        <span class="date">Jan 22, 2025</span>
+      </a>
+      <a class="_adPass" href="https://www.webtoons.com/en/fantasy/tower-of-god/ad-pass/viewer?title_no=95&episode_no=14">
+        <span class="subj"><span>Episode 14</span></span>
+        <span class="date">Jan 29, 2025</span>
+      </a>
     `));
 
     const scraper = new WebtoonScraper();
     const chapters = await scraper.fetchChapters("https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95");
 
     expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([10]);
+  });
+
+  it("continues pagination when a page contains only gated episodes", async () => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce(textResponse(`
+        <a class="_fastPass" href="https://www.webtoons.com/en/fantasy/tower-of-god/fast-pass/viewer?title_no=95&episode_no=12">
+          <span class="subj"><span>Episode 12</span></span>
+          <span class="date">Jan 15, 2025</span>
+        </a>
+        <div class="paginate">
+          <a href="/en/fantasy/tower-of-god/list?title_no=95&page=2"><span>2</span></a>
+        </div>
+      `))
+      .mockResolvedValueOnce(textResponse(`
+        <a href="https://www.webtoons.com/en/fantasy/tower-of-god/free/viewer?title_no=95&episode_no=9">
+          <span class="subj"><span>Episode 9</span></span>
+          <span class="date">Dec 25, 2024</span>
+        </a>
+      `));
+
+    const scraper = new WebtoonScraper();
+    const chapters = await scraper.fetchChapters("https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95");
+
+    expect(fetchWithRetryMock).toHaveBeenCalledTimes(2);
+    expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([9]);
   });
 });

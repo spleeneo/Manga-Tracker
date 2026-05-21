@@ -88,4 +88,18 @@ describe("NeloMangaScraper", () => {
       { index: 1, imageUrl: "https://www.nelomanga.net/uploads/tongari/002.webp" },
     ]);
   });
+
+  it("normalizes completed status from metadata pages", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <h1>Finished Manga</h1>
+      <div id="contentBox">Summary: Done.</div>
+      <div class="manga-info-pic"><img src="/cover.jpg"></div>
+      <div class="info-status">Finished</div>
+    `));
+
+    const scraper = new NeloMangaScraper();
+    const metadata = await scraper.fetchMetadata("https://www.nelomanga.net/manga/finished-manga");
+
+    expect(metadata.status).toBe("COMPLETED");
+  });
 });
