@@ -53,8 +53,10 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const [reader, setReader] = useState<ReaderResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fitWidth, setFitWidth] = useState(true);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   const markedReadRef = useRef(false);
+  const lastScrollYRef = useRef(0);
   const { showToast } = useToast();
 
   const readerUrl = useMemo(() => `/api/manga/${slug}/chapter/${chapter.id}/reader`, [chapter.id, slug]);
@@ -145,6 +147,26 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   }, [reader?.status]);
 
   useEffect(() => {
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      const isScrollingDown = currentScrollY > lastScrollYRef.current;
+      const scrollDelta = Math.abs(currentScrollY - lastScrollYRef.current);
+
+      if (currentScrollY < 80) {
+        setIsHeaderHidden(false);
+      } else if (scrollDelta > 8) {
+        setIsHeaderHidden(isScrollingDown);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    lastScrollYRef.current = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
     if (reader?.status !== "READABLE") return;
 
     const controller = new AbortController();
@@ -173,7 +195,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="app-header">
+      <header className={`app-header transition-transform duration-300 ease-out ${isHeaderHidden ? "-translate-y-full" : "translate-y-0"}`}>
         <div className="page-wrap flex min-h-16 flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <Link href={`/manga/${slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
@@ -220,7 +242,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
             ))}
           </div>
         ) : reader?.status === "READABLE" ? (
-          <div className={`mx-auto space-y-3 ${fitWidth ? "max-w-5xl" : "max-w-none overflow-x-auto"}`}>
+          <div className={`mx-auto space-y-3 ${fitWidth ? "max-w-4xl" : "max-w-none overflow-x-auto"}`}>
             {reader.usedAlternative && (
               <div className="surface mx-auto max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
                 The original source could not open in Mangateo, so this reader is using {sourceLabel} for the same chapter.
