@@ -82,7 +82,7 @@ describe("BleachLiveScraper", () => {
       <main class="entry-content">
         <img src="https://w42.bleach.live/wp-content/uploads/bleach/001.jpg" />
         <img src="https://w42.bleach.live/wp-content/uploads/bleach/002.jpg" />
-        <img src="https://w42.bleach.live/wp-content/uploads/bleach/003.jpg" />
+        <img src="https://blogger.googleusercontent.com/img/b/example/s1600/003.jpg" />
         <img src="https://w42.bleach.live/wp-content/themes/toivo-lite/logo.png" />
       </main>
     `));
@@ -98,7 +98,7 @@ describe("BleachLiveScraper", () => {
     expect(result.pages).toEqual([
       { index: 0, imageUrl: "https://w42.bleach.live/wp-content/uploads/bleach/001.jpg" },
       { index: 1, imageUrl: "https://w42.bleach.live/wp-content/uploads/bleach/002.jpg" },
-      { index: 2, imageUrl: "https://w42.bleach.live/wp-content/uploads/bleach/003.jpg" },
+      { index: 2, imageUrl: "https://blogger.googleusercontent.com/img/b/example/s1600/003.jpg" },
     ]);
   });
 

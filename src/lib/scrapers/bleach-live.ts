@@ -1,5 +1,5 @@
 import { fetchWithRetry } from "./http";
-import { MangaMetadata, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { MangaMetadata, ReaderChapterInput, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://w42.bleach.live/";
 const COVER_FALLBACK = "https://bleach.live/wp-content/uploads/2022/11/ezgif-1-2666aed46a.jpg";
@@ -61,7 +61,7 @@ function isContentImage(url: string): boolean {
   if (!/\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)) return false;
   if (lower.includes("logo") || lower.includes("avatar") || lower.includes("emoji")) return false;
   if (lower.includes("/wp-content/themes/") || lower.includes("/wp-includes/")) return false;
-  return lower.includes("/wp-content/uploads/");
+  return lower.includes("/wp-content/uploads/") || lower.includes("blogger.googleusercontent.com/img/");
 }
 
 export class BleachLiveScraper implements Scraper {
@@ -153,7 +153,7 @@ export class BleachLiveScraper implements Scraper {
     return uniqueByChapterNumber(chapters).sort((a, b) => b.chapterNumber - a.chapterNumber);
   }
 
-  async fetchReaderPages(chapter: { url: string }): Promise<ReaderResult> {
+  async fetchReaderPages(chapter: ReaderChapterInput): Promise<ReaderResult> {
     const html = await this.fetchHtml(chapter.url);
     const pageUrls = Array.from(html.matchAll(/<img\b[^>]*>/gi))
       .map((match) => extractImageSrc(match[0]))
