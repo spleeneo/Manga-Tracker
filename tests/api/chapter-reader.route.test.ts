@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   chapterFindFirstMock,
+  chapterFindManyMock,
   chapterUpdateMock,
   fetchReaderPagesMock,
   getCurrentUserIdMock,
@@ -9,6 +10,7 @@ const {
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
   chapterFindFirstMock: vi.fn(),
+  chapterFindManyMock: vi.fn(),
   chapterUpdateMock: vi.fn(),
   fetchReaderPagesMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     chapter: {
       findFirst: chapterFindFirstMock,
+      findMany: chapterFindManyMock,
       update: chapterUpdateMock,
     },
     manga: {
@@ -64,6 +67,7 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
       pages: [{ index: 0, imageUrl: "https://uploads.mangadex.org/data/hash/p1.jpg" }],
       externalUrl: "https://mangadex.org/chapter/md-c1",
     });
+    chapterFindManyMock.mockResolvedValue([]);
     chapterUpdateMock.mockResolvedValue({});
   });
 
@@ -134,6 +138,69 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
         readerPageCount: 0,
         readerError: "Provider is not supported yet.",
       }),
+    }));
+  });
+
+  it("uses a readable same-number chapter from another source when the clicked source is blocked", async () => {
+    chapterFindFirstMock.mockResolvedValue({
+      id: "c1",
+      providerChapterId: "nelo-c1",
+      chapterNumber: 12,
+      title: "Twelve",
+      url: "https://www.nelomanga.net/manga/example/chapter-12",
+      source: {
+        id: "s1",
+        sourceName: "NeloManga",
+        sourceUrl: "https://www.nelomanga.net/manga/example",
+      },
+    });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "c2",
+        providerChapterId: "md-c2",
+        chapterNumber: 12,
+        title: "Twelve",
+        url: "https://mangadex.org/chapter/md-c2",
+        source: {
+          id: "s2",
+          sourceName: "MangaDex",
+          sourceUrl: "https://mangadex.org/title/title-id",
+        },
+      },
+    ]);
+    fetchReaderPagesMock
+      .mockResolvedValueOnce({
+        status: "BLOCKED",
+        pages: [],
+        externalUrl: "https://www.nelomanga.net/manga/example/chapter-12",
+        reason: "NeloManga blocked Mangateo from loading this chapter directly.",
+      })
+      .mockResolvedValueOnce({
+        status: "READABLE",
+        pages: [{ index: 0, imageUrl: "https://uploads.mangadex.org/data/hash/p1.jpg" }],
+        externalUrl: "https://mangadex.org/chapter/md-c2",
+      });
+
+    const res = await GET(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "one-piece", chapterId: "c1" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe("READABLE");
+    expect(body.usedAlternative).toBe(true);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "c2",
+      sourceName: "MangaDex",
+    }));
+    expect(fetchReaderPagesMock).toHaveBeenCalledTimes(2);
+    expect(chapterUpdateMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "c1" },
+      data: expect.objectContaining({ readerStatus: "BLOCKED" }),
+    }));
+    expect(chapterUpdateMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "c2" },
+      data: expect.objectContaining({ readerStatus: "READABLE", readerError: null }),
     }));
   });
 });

@@ -20,6 +20,13 @@ interface ReaderResponse {
   pages: ReaderPage[];
   externalUrl?: string | null;
   reason?: string;
+  usedAlternative?: boolean;
+  chapter?: {
+    id: string;
+    chapterNumber: number;
+    title: string | null;
+    sourceName: string | null;
+  };
 }
 
 interface ReaderNavChapter {
@@ -160,7 +167,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     };
   }, [nextChapter, previousChapter, reader?.pages, reader?.status, slug]);
 
-  const sourceLabel = chapter.sourceName ?? "Source";
+  const displayChapter = reader?.chapter ?? chapter;
+  const sourceLabel = displayChapter.sourceName ?? "Source";
   const fallbackUrl = reader?.externalUrl || chapter.url;
 
   return (
@@ -173,8 +181,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
               Back to {mangaTitle}
             </Link>
             <h1 className="mt-1 truncate text-xl font-bold md:text-2xl">
-              Chapter {chapter.chapterNumber}
-              {chapter.title ? `: ${chapter.title}` : ""}
+              Chapter {displayChapter.chapterNumber}
+              {displayChapter.title ? `: ${displayChapter.title}` : ""}
             </h1>
             <p className="text-xs font-bold uppercase text-muted-foreground">{sourceLabel}</p>
           </div>
@@ -213,11 +221,16 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           </div>
         ) : reader?.status === "READABLE" ? (
           <div className={`mx-auto space-y-3 ${fitWidth ? "max-w-5xl" : "max-w-none overflow-x-auto"}`}>
+            {reader.usedAlternative && (
+              <div className="surface mx-auto max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
+                The original source could not open in Mangateo, so this reader is using {sourceLabel} for the same chapter.
+              </div>
+            )}
             {reader.pages.map((page) => (
               <img
                 key={`${page.index}-${page.imageUrl}`}
                 src={page.imageUrl}
-                alt={`Chapter ${chapter.chapterNumber} page ${page.index + 1}`}
+                alt={`Chapter ${displayChapter.chapterNumber} page ${page.index + 1}`}
                 className={fitWidth ? "mx-auto h-auto w-full max-w-full rounded-sm bg-card" : "mx-auto h-auto max-w-none rounded-sm bg-card"}
                 loading={page.index < 2 ? "eager" : "lazy"}
               />

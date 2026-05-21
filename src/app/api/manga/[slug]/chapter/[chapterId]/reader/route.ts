@@ -1,7 +1,65 @@
 import { prisma } from "@/lib/db";
 import { fetchReaderPages } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
+import type { ReaderResult } from "@/lib/scrapers/types";
 import { NextResponse } from "next/server";
+
+const READER_SOURCE_PRIORITY = [
+  "MangaDex",
+  "Urek Mazino",
+  "Bleach Live",
+  "Manganato",
+  "NeloManga",
+];
+
+type ReaderChapter = {
+  id: string;
+  providerChapterId: string | null;
+  chapterNumber: number;
+  title: string | null;
+  url: string;
+  source: {
+    id: string;
+    sourceName: string;
+    sourceUrl: string;
+  } | null;
+};
+
+function sourceRank(sourceName?: string | null) {
+  const index = READER_SOURCE_PRIORITY.indexOf(sourceName ?? "");
+  return index === -1 ? READER_SOURCE_PRIORITY.length : index;
+}
+
+async function readChapter(chapter: ReaderChapter): Promise<ReaderResult> {
+  if (!chapter.source) {
+    return {
+      status: "UNSUPPORTED",
+      pages: [],
+      externalUrl: chapter.url,
+      reason: "This chapter has no source provider.",
+    };
+  }
+
+  return fetchReaderPages({
+    id: chapter.id,
+    providerChapterId: chapter.providerChapterId,
+    url: chapter.url,
+    chapterNumber: chapter.chapterNumber,
+    title: chapter.title,
+  }, chapter.source);
+}
+
+async function persistReaderMetadata(chapterId: string, result: ReaderResult) {
+  await prisma.chapter.update({
+    where: { id: chapterId },
+    data: {
+      readerStatus: result.status,
+      readerCheckedAt: new Date(),
+      readerPageCount: result.pages.length,
+      readerError: result.status === "READABLE" ? null : result.reason ?? null,
+    },
+  });
+}
 
 export async function GET(
   _request: Request,
@@ -59,38 +117,56 @@ export async function GET(
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     }
 
-    const result = chapter.source
-      ? await fetchReaderPages({
-        id: chapter.id,
-        providerChapterId: chapter.providerChapterId,
-        url: chapter.url,
-        chapterNumber: chapter.chapterNumber,
-        title: chapter.title,
-      }, chapter.source)
-      : {
-        status: "UNSUPPORTED" as const,
-        pages: [],
-        externalUrl: chapter.url,
-        reason: "This chapter has no source provider.",
-      };
+    let result = await readChapter(chapter);
+    await persistReaderMetadata(chapter.id, result);
+    let activeChapter = chapter;
+    let usedAlternative = false;
 
-    await prisma.chapter.update({
-      where: { id: chapter.id },
-      data: {
-        readerStatus: result.status,
-        readerCheckedAt: new Date(),
-        readerPageCount: result.pages.length,
-        readerError: result.status === "READABLE" ? null : result.reason ?? null,
-      },
-    });
+    if (result.status !== "READABLE") {
+      const alternatives = await prisma.chapter.findMany({
+        where: {
+          mangaId: manga.id,
+          chapterNumber: chapter.chapterNumber,
+          id: { not: chapter.id },
+        },
+        select: {
+          id: true,
+          providerChapterId: true,
+          chapterNumber: true,
+          title: true,
+          url: true,
+          source: {
+            select: {
+              id: true,
+              sourceName: true,
+              sourceUrl: true,
+            },
+          },
+        },
+      });
+
+      alternatives.sort((a, b) => sourceRank(a.source?.sourceName) - sourceRank(b.source?.sourceName));
+
+      for (const alternative of alternatives) {
+        const alternativeResult = await readChapter(alternative);
+        await persistReaderMetadata(alternative.id, alternativeResult);
+        if (alternativeResult.status === "READABLE") {
+          result = alternativeResult;
+          activeChapter = alternative;
+          usedAlternative = true;
+          break;
+        }
+      }
+    }
 
     return NextResponse.json({
       ...result,
+      usedAlternative,
       chapter: {
-        id: chapter.id,
-        chapterNumber: chapter.chapterNumber,
-        title: chapter.title,
-        sourceName: chapter.source?.sourceName ?? null,
+        id: activeChapter.id,
+        chapterNumber: activeChapter.chapterNumber,
+        title: activeChapter.title,
+        sourceName: activeChapter.source?.sourceName ?? null,
       },
     });
   } catch (error) {
