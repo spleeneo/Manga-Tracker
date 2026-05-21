@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { ChapterItem } from "./chapter-item";
 import { ArrowDownUp, BookOpen, ExternalLink, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 interface Source {
     id: string;
@@ -98,6 +99,8 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const getSourceRank = (sourceName?: string) => {
         switch (sourceName?.toLowerCase()) {
+            case "nelomanga":
+                return 7;
             case "urek mazino":
             case "bleach live":
                 return 6;
@@ -107,8 +110,6 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                 return 4;
             case "webtoon":
                 return 3;
-            case "nelomanga":
-                return 2;
             case "manganato":
                 return 1;
             default:
@@ -180,7 +181,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const openChapter = (chapter?: Chapter) => {
         if (!chapter?.url) return;
-        window.location.assign(`/manga/${slug}/chapter/${chapter.id}`);
+        window.location.assign(isExternalReaderSource(chapter.sourceName) ? chapter.url : `/manga/${slug}/chapter/${chapter.id}`);
     };
 
     const selectBest = () => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 interface ChapterItemProps {
     slug: string;
@@ -25,8 +26,9 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
     const readerHref = `/manga/${slug}/chapter/${chapter.id}`;
+    const opensExternally = isExternalReaderSource(chapter.sourceName);
     const openChapter = () => {
-        window.location.assign(readerHref);
+        window.location.assign(opensExternally ? chapter.url : readerHref);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -77,7 +79,7 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             onKeyDown={handleKeyDown}
             role="link"
             tabIndex={0}
-            aria-label={`Open chapter ${chapter.chapterNumber} in Mangateo`}
+            aria-label={`Open chapter ${chapter.chapterNumber}${opensExternally ? ` on ${chapter.sourceName}` : " in Mangateo"}`}
         >
             <div className="flex items-center justify-between mb-1">
                 <span
@@ -108,7 +110,7 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-2">
                 {chapter.sourceName && (
                     <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
-                        {chapter.sourceName}
+                        {chapter.sourceName}{opensExternally ? " · external" : ""}
                     </span>
                 )}
                 {chapter.alternativeCount ? (

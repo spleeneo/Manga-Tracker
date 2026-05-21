@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ChapterReader } from "@/components/chapter-reader";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { auth } from "../../../../../../auth";
 
 interface PageProps {
@@ -55,6 +56,10 @@ export default async function ReaderPage({ params }: PageProps) {
     },
   });
   if (!chapter) notFound();
+
+  if (isExternalReaderSource(chapter.source?.sourceName)) {
+    redirect(chapter.url);
+  }
 
   const [previousChapter, nextChapter] = await Promise.all([
     prisma.chapter.findFirst({
