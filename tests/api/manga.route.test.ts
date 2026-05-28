@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, sourceFindFirst, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   enqueueMangaSyncJobMock: vi.fn(),
   processSyncJobMock: vi.fn(),
@@ -10,6 +10,7 @@ const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique,
   mangaUpdate: vi.fn(),
   sourceCreate: vi.fn(),
   sourceFindUnique: vi.fn(),
+  sourceFindFirst: vi.fn(),
   userMangaUpsert: vi.fn(),
   userMangaUpdate: vi.fn(),
 }));
@@ -24,6 +25,7 @@ vi.mock("@/lib/db", () => ({
     },
     source: {
       findUnique: sourceFindUnique,
+      findFirst: sourceFindFirst,
       create: sourceCreate,
     },
     userManga: {
@@ -60,6 +62,7 @@ describe("POST /api/manga", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mangaFindFirst.mockResolvedValue(null);
+    sourceFindFirst.mockResolvedValue(null);
   });
 
   it("returns 400 when title and slug are missing", async () => {
@@ -181,5 +184,48 @@ describe("POST /api/manga", () => {
       data: { title: "Witch Hat Atelier", slug: "witch-hat-atelier" },
     }));
     expect(mangaCreate).not.toHaveBeenCalled();
+  });
+
+  it("reuses existing manga when any incoming source URL is already tracked", async () => {
+    mangaFindUnique.mockResolvedValue(null);
+    sourceFindFirst.mockResolvedValue({
+      manga: {
+        id: "m-existing",
+        title: "Existing Canonical Title",
+        slug: "existing-canonical-title",
+        coverUrl: "cover",
+        status: "ONGOING",
+        description: "Existing description",
+        _count: { chapters: 22 },
+      },
+    });
+    sourceFindUnique.mockResolvedValue({ id: "s1" });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Alternate Language Title",
+        slug: "alternate-language-title",
+        sources: [{ name: "MangaDex", url: "https://mangadex.org/title/existing" }],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data).toEqual(expect.objectContaining({
+      id: "m-existing",
+      title: "Existing Canonical Title",
+      slug: "existing-canonical-title",
+      syncStatus: "UPDATED",
+    }));
+    expect(sourceFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { sourceUrl: { in: ["https://mangadex.org/title/existing"] } },
+    }));
+    expect(mangaCreate).not.toHaveBeenCalled();
+    expect(afterMock).not.toHaveBeenCalled();
   });
 });

@@ -87,10 +87,12 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
     const flatResults = allResults.flat();
 
     const aggregated: Map<string, AggregatedSearchResult> = new Map();
+    const sourceUrlToKey: Map<string, string> = new Map();
 
     for (const result of flatResults) {
         const key = getCanonicalSearchTitle(result.title);
-        const existing = aggregated.get(key);
+        const existingKey = sourceUrlToKey.get(result.sourceUrl) ?? key;
+        const existing = aggregated.get(existingKey);
 
         if (existing) {
             // Add source to existing entry if not already present
@@ -100,6 +102,7 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                     url: result.sourceUrl
                 });
             }
+            sourceUrlToKey.set(result.sourceUrl, existingKey);
             // Prefer more complete metadata if available
             if (!existing.description && result.description) existing.description = result.description;
             if (!existing.coverUrl && result.coverUrl) existing.coverUrl = result.coverUrl;
@@ -117,6 +120,7 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                     url: result.sourceUrl
                 }]
             });
+            sourceUrlToKey.set(result.sourceUrl, key);
         }
     }
 

@@ -58,6 +58,9 @@ export async function POST(request: Request) {
             title: getCanonicalMangaTitle(finalMangaData.title),
             slug: getCanonicalMangaSlug(finalMangaData.title, finalMangaData.slug),
         };
+        const sourceUrls = sourcesToProcess
+            .map((source) => source.url || source.sourceUrl)
+            .filter((url): url is string => Boolean(url));
 
         // Check for existing manga
         let existingManga = await prisma.manga.findUnique({
@@ -93,6 +96,33 @@ export async function POST(request: Request) {
                         },
                     },
                 });
+            }
+        }
+
+        if (!existingManga && sourceUrls.length > 0) {
+            const existingSource = await prisma.source.findFirst({
+                where: { sourceUrl: { in: sourceUrls } },
+                include: {
+                    manga: {
+                        include: {
+                            _count: {
+                                select: { chapters: true },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (existingSource) {
+                existingManga = existingSource.manga;
+                finalMangaData = {
+                    ...finalMangaData,
+                    title: existingManga.title,
+                    slug: existingManga.slug,
+                    coverUrl: finalMangaData.coverUrl || existingManga.coverUrl,
+                    status: finalMangaData.status || existingManga.status,
+                    description: finalMangaData.description || existingManga.description,
+                };
             }
         }
 
