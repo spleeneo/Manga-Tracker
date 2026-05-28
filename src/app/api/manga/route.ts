@@ -6,6 +6,7 @@ import { getCurrentUserId } from "@/lib/session";
 import { inferSourceName } from "@/lib/source-name";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
+import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
 
 export async function POST(request: Request) {
     try {
@@ -52,8 +53,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Title and slug are required" }, { status: 400 });
         }
 
+        finalMangaData = {
+            ...finalMangaData,
+            title: getCanonicalMangaTitle(finalMangaData.title),
+            slug: getCanonicalMangaSlug(finalMangaData.title, finalMangaData.slug),
+        };
+
         // Check for existing manga
-        const existingManga = await prisma.manga.findUnique({
+        let existingManga = await prisma.manga.findUnique({
             where: { slug: finalMangaData.slug },
             include: {
                 _count: {
@@ -61,6 +68,33 @@ export async function POST(request: Request) {
                 },
             },
         });
+
+        if (!existingManga) {
+            const aliasSlugs = getMangaAliasSlugs(finalMangaData.title, finalMangaData.slug);
+            const aliasManga = aliasSlugs.length > 0 ? await prisma.manga.findFirst({
+                where: { slug: { in: aliasSlugs } },
+                include: {
+                    _count: {
+                        select: { chapters: true },
+                    },
+                },
+            }) : null;
+
+            if (aliasManga) {
+                existingManga = await prisma.manga.update({
+                    where: { id: aliasManga.id },
+                    data: {
+                        title: finalMangaData.title,
+                        slug: finalMangaData.slug,
+                    },
+                    include: {
+                        _count: {
+                            select: { chapters: true },
+                        },
+                    },
+                });
+            }
+        }
 
         const mangaId = existingManga ? existingManga.id : (await prisma.manga.create({
             data: {

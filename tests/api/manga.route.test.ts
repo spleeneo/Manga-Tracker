@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaCreate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   enqueueMangaSyncJobMock: vi.fn(),
   processSyncJobMock: vi.fn(),
   mangaFindUnique: vi.fn(),
+  mangaFindFirst: vi.fn(),
   mangaCreate: vi.fn(),
+  mangaUpdate: vi.fn(),
   sourceCreate: vi.fn(),
   sourceFindUnique: vi.fn(),
   userMangaUpsert: vi.fn(),
@@ -16,7 +18,9 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     manga: {
       findUnique: mangaFindUnique,
+      findFirst: mangaFindFirst,
       create: mangaCreate,
+      update: mangaUpdate,
     },
     source: {
       findUnique: sourceFindUnique,
@@ -55,6 +59,7 @@ import { POST } from "@/app/api/manga/route";
 describe("POST /api/manga", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mangaFindFirst.mockResolvedValue(null);
   });
 
   it("returns 400 when title and slug are missing", async () => {
@@ -142,5 +147,39 @@ describe("POST /api/manga", () => {
       update: expect.objectContaining({ syncStatus: "UPDATED" }),
       create: expect.objectContaining({ syncStatus: "UPDATED" }),
     }));
+  });
+
+  it("reuses known title aliases instead of creating duplicate manga", async () => {
+    mangaFindUnique.mockResolvedValue(null);
+    mangaFindFirst.mockResolvedValue({ id: "m1", _count: { chapters: 12 } });
+    mangaUpdate.mockResolvedValue({ id: "m1", _count: { chapters: 12 } });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+    sourceFindUnique.mockResolvedValue({ id: "s1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Witch Hat Atelier",
+        slug: "witch-hat-atelier",
+        sources: [{ name: "MangaDex", url: "https://mangadex.org/title/x" }],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.slug).toBe("witch-hat-atelier");
+    expect(mangaFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        slug: { in: expect.arrayContaining(["tongari-boushi-no-atelier"]) },
+      }),
+    }));
+    expect(mangaUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "m1" },
+      data: { title: "Witch Hat Atelier", slug: "witch-hat-atelier" },
+    }));
+    expect(mangaCreate).not.toHaveBeenCalled();
   });
 });

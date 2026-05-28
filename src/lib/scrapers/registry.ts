@@ -9,6 +9,7 @@ import { UrekMazinoScraper } from "./urek-mazino";
 import { ManganatoScraper } from "./manganato";
 import { BleachLiveScraper } from "./bleach-live";
 import { WitchHatAtelierScraper } from "./witch-hat-atelier";
+import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
 
 const scrapers: Scraper[] = [
     new WitchHatAtelierScraper(),
@@ -21,10 +22,6 @@ const scrapers: Scraper[] = [
     new BleachLiveScraper(),
     new WebtoonScraper(),
     new ManganatoScraper(),
-];
-
-const TITLE_ALIAS_GROUPS = [
-    ["witch hat atelier", "tongari booshi no atorie", "tongari boushi no atelier", "tongari boshi no atelier"],
 ];
 
 function normalizeSearchTitle(title: string) {
@@ -41,17 +38,7 @@ function normalizeSearchTitle(title: string) {
 
 function getCanonicalSearchTitle(title: string) {
     const normalized = normalizeSearchTitle(title);
-    const aliasGroup = TITLE_ALIAS_GROUPS.find((aliases) => aliases.includes(normalized));
-    return aliasGroup?.[0] ?? normalized;
-}
-
-function getDisplayTitleForKey(key: string, fallback: string) {
-    switch (key) {
-        case "witch hat atelier":
-            return "Witch Hat Atelier";
-        default:
-            return fallback;
-    }
+    return getMangaAliasGroup(normalized)?.slug ?? normalized;
 }
 
 export function getRegisteredScrapers(): Scraper[] {
@@ -119,9 +106,8 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             if (!existing.status && result.status) existing.status = result.status;
             if (!existing.author && result.author) existing.author = result.author;
         } else {
-            const title = getDisplayTitleForKey(key, result.title);
             aggregated.set(key, {
-                title,
+                title: getCanonicalMangaTitle(result.title),
                 description: result.description,
                 coverUrl: result.coverUrl,
                 status: result.status,
