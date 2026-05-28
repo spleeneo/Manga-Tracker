@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 export const CHAPTER_PAGE_SIZE = 60;
 
 export type ChapterListMode = "best" | "all";
+export type ChapterSortDirection = "desc" | "asc";
 
 export interface ChapterView {
   id: string;
@@ -24,18 +25,24 @@ export function getChapterMode(value: string | null): ChapterListMode {
   return value === "all" ? "all" : "best";
 }
 
+export function getChapterSortDirection(value: string | null): ChapterSortDirection {
+  return value === "asc" ? "asc" : "desc";
+}
+
 export async function getMangaChapterPage({
   mangaId,
   cursor,
   limit = CHAPTER_PAGE_SIZE,
   sourceId,
   lastReadChapterNumber,
+  sortDirection = "desc",
 }: {
   mangaId: string;
   cursor?: string;
   limit?: number;
   sourceId?: string;
   lastReadChapterNumber?: number | null;
+  sortDirection?: ChapterSortDirection;
 }) {
   const pageSize = Math.min(Math.max(limit, 1), 100);
   const parsedCursor = parseChapterCursor(cursor);
@@ -47,10 +54,10 @@ export async function getMangaChapterPage({
     },
     ...(parsedCursor ? { cursor: { id: parsedCursor.id }, skip: 1 } : {}),
     orderBy: [
-      { chapterNumber: "desc" },
-      { releaseDate: "desc" },
-      { createdAt: "desc" },
-      { id: "desc" },
+      { chapterNumber: sortDirection },
+      { releaseDate: sortDirection },
+      { createdAt: sortDirection },
+      { id: sortDirection },
     ],
     take: pageSize + 1,
     select: {

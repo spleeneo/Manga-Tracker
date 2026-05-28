@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getMangaChapterPage, getChapterMode } from "@/lib/chapters";
+import { getMangaChapterPage, getChapterMode, getChapterSortDirection } from "@/lib/chapters";
 import { getCurrentUserId } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,6 +16,7 @@ export async function GET(
     const { slug } = await params;
     const searchParams = request.nextUrl.searchParams;
     const mode = getChapterMode(searchParams.get("mode"));
+    const sortDirection = getChapterSortDirection(searchParams.get("sort"));
     const sourceId = searchParams.get("sourceId") || undefined;
     const cursor = searchParams.get("cursor") || undefined;
     const limitParam = searchParams.get("limit");
@@ -61,9 +62,10 @@ export async function GET(
       limit,
       sourceId,
       lastReadChapterNumber: tracked.lastReadChapterNumber,
+      sortDirection,
     });
 
-    return NextResponse.json({ ...page, mode });
+    return NextResponse.json({ ...page, mode, sortDirection });
   } catch (error) {
     console.error("Error fetching chapter page:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

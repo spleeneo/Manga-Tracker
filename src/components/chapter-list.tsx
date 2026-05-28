@@ -54,16 +54,19 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         cursor,
         nextMode = mode,
         nextSourceId = selectedSourceId,
+        nextSortDirection = sortDirection,
     }: {
         reset: boolean;
         cursor?: string | null;
         nextMode?: ChapterMode;
         nextSourceId?: string | "all";
+        nextSortDirection?: SortDirection;
     }) => {
         setIsLoadingPage(true);
         try {
             const params = new URLSearchParams({
                 mode: nextMode,
+                sort: nextSortDirection,
             });
             if (cursor) {
                 params.set("cursor", String(cursor));
@@ -87,7 +90,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         } finally {
             setIsLoadingPage(false);
         }
-    }, [mode, selectedSourceId, showToast, slug]);
+    }, [mode, selectedSourceId, showToast, slug, sortDirection]);
 
     useEffect(() => {
         if (hasLoadedInitialPage.current) return;
@@ -220,6 +223,17 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         void loadChapterPage({ reset: true, nextMode: "all", nextSourceId: sourceId });
     };
 
+    const toggleSortDirection = () => {
+        const nextSortDirection = sortDirection === "desc" ? "asc" : "desc";
+        setSortDirection(nextSortDirection);
+        void loadChapterPage({
+            reset: true,
+            nextMode: mode,
+            nextSourceId: selectedSourceId,
+            nextSortDirection,
+        });
+    };
+
     const chapterControls = (
         <>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -274,7 +288,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                     </label>
                     <button
                         type="button"
-                        onClick={() => setSortDirection((current) => current === "desc" ? "asc" : "desc")}
+                        onClick={toggleSortDirection}
                         className="ui-button ui-button-secondary h-9 justify-center px-3 text-[11px] uppercase sm:h-10 sm:text-xs"
                         aria-label={`Sort chapters ${sortDirection === "desc" ? "oldest first" : "newest first"}`}
                     >

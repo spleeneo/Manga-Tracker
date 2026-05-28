@@ -66,6 +66,7 @@ describe("GET /api/manga/[slug]/chapters", () => {
 
     expect(res.status).toBe(200);
     expect(body.mode).toBe("all");
+    expect(body.sortDirection).toBe("desc");
     expect(body.nextCursor).toBe(Buffer.from(JSON.stringify({ id: "c2" }), "utf8").toString("base64url"));
     expect(body.chapters).toEqual([
       expect.objectContaining({ id: "c1", isRead: false }),
@@ -79,6 +80,40 @@ describe("GET /api/manga/[slug]/chapters", () => {
         mangaId: "m1",
         sourceId: "s1",
       }),
+      orderBy: [
+        { chapterNumber: "desc" },
+        { releaseDate: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+    }));
+  });
+
+  it("supports loading the oldest chapter page from the database", async () => {
+    chapterFindManyMock.mockResolvedValue([
+      { id: "c0", chapterNumber: 0, title: "Zero", url: "u0", releaseDate: null, sourceId: "s1" },
+      { id: "c1", chapterNumber: 1, title: "One", url: "u1", releaseDate: null, sourceId: "s1" },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?limit=2&sort=asc") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.sortDirection).toBe("asc");
+    expect(body.chapters).toEqual([
+      expect.objectContaining({ id: "c0", chapterNumber: 0 }),
+      expect.objectContaining({ id: "c1", chapterNumber: 1 }),
+    ]);
+    expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [
+        { chapterNumber: "asc" },
+        { releaseDate: "asc" },
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
     }));
   });
 });
