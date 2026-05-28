@@ -5,6 +5,7 @@ import type { ReaderResult } from "@/lib/scrapers/types";
 import { NextResponse } from "next/server";
 
 const READER_SOURCE_PRIORITY = [
+  "Witch Hat Atelier Manga",
   "MangaDex",
   "Urek Mazino",
   "Bleach Live",

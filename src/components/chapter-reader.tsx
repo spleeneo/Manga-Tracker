@@ -10,7 +10,9 @@ type ReaderStatus = "READABLE" | "EXTERNAL_ONLY" | "PAYWALLED" | "BLOCKED" | "UN
 
 const MARK_READ_THRESHOLD_PX = 420;
 const APPEND_CHAPTER_THRESHOLD_PX = 1400;
-const MAX_STREAM_CHAPTERS = 8;
+const NEXT_CHAPTER_BATCH_SIZE = 1;
+const READER_WINDOW_BEFORE = 1;
+const READER_WINDOW_AFTER = 1;
 
 interface ReaderPage {
   index: number;
@@ -59,6 +61,7 @@ interface ChapterReaderProps {
 }
 
 export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, nextChapters }: ChapterReaderProps) {
+  const [nextChapterQueue, setNextChapterQueue] = useState(nextChapters);
   const [loadedChapters, setLoadedChapters] = useState<LoadedReaderChapter[]>([{
     chapter,
     reader: null,
@@ -69,21 +72,26 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   const markedReadRef = useRef(new Set<number>());
+  const activeChapterIdRef = useRef(chapter.id);
+  const nextChapterQueueRef = useRef(nextChapters);
   const loadedChaptersRef = useRef<LoadedReaderChapter[]>([{
     chapter,
     reader: null,
     isLoading: true,
   }]);
   const loadingChapterIdsRef = useRef(new Set<string>());
+  const isLoadingNextChaptersRef = useRef(false);
+  const hasMoreNextChaptersRef = useRef(nextChapters.length >= NEXT_CHAPTER_BATCH_SIZE);
   const lastScrollYRef = useRef(0);
   const scrollFrameRef = useRef<number | null>(null);
   const upwardScrollDistanceRef = useRef(0);
+  const sourceRedirectedRef = useRef(false);
   const { showToast } = useToast();
 
   const activeIndex = loadedChapters.findIndex((item) => item.chapter.id === activeChapterId);
   const activeLoadedChapter = loadedChapters[activeIndex >= 0 ? activeIndex : 0] ?? loadedChapters[0];
   const previousNavChapter = activeIndex > 0 ? loadedChapters[activeIndex - 1]?.chapter : previousChapter;
-  const nextChapter = activeIndex >= 0 ? (loadedChapters[activeIndex + 1]?.chapter ?? nextChapters[activeIndex]) : nextChapters[0];
+  const nextChapter = activeIndex >= 0 ? (loadedChapters[activeIndex + 1]?.chapter ?? nextChapterQueue[activeIndex]) : nextChapterQueue[0];
   const firstReader = loadedChapters[0]?.reader;
   const firstChapterLoading = loadedChapters[0]?.isLoading ?? true;
 
@@ -97,6 +105,40 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   useEffect(() => {
     loadedChaptersRef.current = loadedChapters;
   }, [loadedChapters]);
+
+  useEffect(() => {
+    activeChapterIdRef.current = activeChapterId;
+  }, [activeChapterId]);
+
+  useEffect(() => {
+    nextChapterQueueRef.current = nextChapterQueue;
+  }, [nextChapterQueue]);
+
+  const keepReaderWindow = useCallback((items: LoadedReaderChapter[], anchorChapterId: string) => {
+    const anchorIndex = items.findIndex((item) => item.chapter.id === anchorChapterId);
+    if (anchorIndex === -1) return items;
+
+    const start = Math.max(0, anchorIndex - READER_WINDOW_BEFORE);
+    const end = Math.min(items.length, anchorIndex + READER_WINDOW_AFTER + 1);
+    if (start === 0 && end === items.length) return items;
+
+    const anchorSection = document.querySelector<HTMLElement>(`[data-reader-chapter-id="${anchorChapterId}"]`);
+    const anchorTop = anchorSection?.getBoundingClientRect().top;
+    const keptItems = items.slice(start, end);
+
+    if (anchorTop != null) {
+      window.requestAnimationFrame(() => {
+        const nextAnchorSection = document.querySelector<HTMLElement>(`[data-reader-chapter-id="${anchorChapterId}"]`);
+        const nextAnchorTop = nextAnchorSection?.getBoundingClientRect().top;
+        if (nextAnchorTop != null) {
+          window.scrollBy(0, nextAnchorTop - anchorTop);
+          lastScrollYRef.current = window.scrollY;
+        }
+      });
+    }
+
+    return keptItems;
+  }, []);
 
   const markRead = async (targetChapter = activeLoadedChapter?.chapter, { silent = false }: { silent?: boolean } = {}) => {
     if (!targetChapter || markedReadRef.current.has(targetChapter.chapterNumber) || isMarkingRead) return;
@@ -136,7 +178,12 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
 
     loadingChapterIdsRef.current.add(targetChapter.id);
     if (!existingChapter) {
-      setLoadedChapters((current) => [...current, { chapter: targetChapter, reader: null, isLoading: true }]);
+      setLoadedChapters((current) => (
+        keepReaderWindow([
+          ...current,
+          { chapter: targetChapter, reader: null, isLoading: true },
+        ], activeChapterIdRef.current)
+      ));
     } else if (!existingChapter.isLoading) {
       setLoadedChapters((current) => current.map((item) => (
         item.chapter.id === targetChapter.id ? { ...item, isLoading: true } : item
@@ -146,34 +193,73 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     const controller = new AbortController();
     fetchReader(targetChapter, controller.signal)
       .then((data) => {
-        setLoadedChapters((current) => current.map((item) => (
-          item.chapter.id === targetChapter.id ? { ...item, reader: data, isLoading: false } : item
-        )));
+        setLoadedChapters((current) => (
+          keepReaderWindow(current.map((item) => (
+            item.chapter.id === targetChapter.id ? { ...item, reader: data, isLoading: false } : item
+          )), activeChapterIdRef.current)
+        ));
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
         console.error(error);
-        setLoadedChapters((current) => current.map((item) => (
-          item.chapter.id === targetChapter.id
-            ? {
-                ...item,
-                isLoading: false,
-                reader: {
-                  status: "ERROR",
-                  pages: [],
-                  externalUrl: targetChapter.url,
-                  reason: error instanceof Error ? error.message : "Reader failed.",
-                },
-              }
-            : item
-        )));
+        setLoadedChapters((current) => (
+          keepReaderWindow(current.map((item) => (
+            item.chapter.id === targetChapter.id
+              ? {
+                  ...item,
+                  isLoading: false,
+                  reader: {
+                    status: "ERROR",
+                    pages: [],
+                    externalUrl: targetChapter.url,
+                    reason: error instanceof Error ? error.message : "Reader failed.",
+                  },
+                }
+              : item
+          )), activeChapterIdRef.current)
+        ));
       })
       .finally(() => {
         loadingChapterIdsRef.current.delete(targetChapter.id);
       });
 
     return () => controller.abort();
-  }, [fetchReader]);
+  }, [fetchReader, keepReaderWindow]);
+
+  const loadMoreNextChapters = useCallback(async () => {
+    if (isLoadingNextChaptersRef.current || !hasMoreNextChaptersRef.current) return null;
+
+    const currentQueue = nextChapterQueueRef.current;
+    const afterChapterId = currentQueue[currentQueue.length - 1]?.id ?? chapter.id;
+    isLoadingNextChaptersRef.current = true;
+
+    try {
+      const params = new URLSearchParams({ limit: String(NEXT_CHAPTER_BATCH_SIZE) });
+      const res = await fetch(`/api/manga/${slug}/chapter/${afterChapterId}/next?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Next chapters failed: ${res.status}`);
+
+      const incoming = Array.isArray(data.chapters) ? data.chapters as ReaderStreamChapter[] : [];
+      hasMoreNextChaptersRef.current = Boolean(data.hasMore);
+
+      const seen = new Set(currentQueue.map((item) => item.id));
+      const additions = incoming.filter((item) => !seen.has(item.id));
+      const firstNewChapter = additions[0] ?? null;
+      if (additions.length > 0) {
+        const updated = [...currentQueue, ...additions];
+        nextChapterQueueRef.current = updated;
+        setNextChapterQueue(updated);
+      }
+
+      return firstNewChapter;
+    } catch (error) {
+      console.error(error);
+      hasMoreNextChaptersRef.current = false;
+      return null;
+    } finally {
+      isLoadingNextChaptersRef.current = false;
+    }
+  }, [chapter.id, slug]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -181,6 +267,14 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     }, 0);
     return () => window.clearTimeout(timer);
   }, [chapter, loadChapter]);
+
+  useEffect(() => {
+    if (sourceRedirectedRef.current || firstChapterLoading || !firstReader) return;
+    if (firstReader.status === "READABLE") return;
+
+    sourceRedirectedRef.current = true;
+    window.open(firstReader.externalUrl || chapter.url, "_blank", "noopener,noreferrer");
+  }, [chapter.url, firstChapterLoading, firstReader]);
 
   useEffect(() => {
     const updateActiveChapterForScroll = (currentLoadedChapters: LoadedReaderChapter[]) => {
@@ -201,7 +295,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
         window.history.replaceState(null, "", nextPath);
       }
 
+      activeChapterIdRef.current = nextActiveId;
       setActiveChapterId((current) => (current === nextActiveId ? current : nextActiveId));
+      setLoadedChapters((current) => keepReaderWindow(current, nextActiveId));
     };
 
     const runScrollWork = () => {
@@ -214,12 +310,25 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
         void markRead(activeLoadedChapter?.chapter, { silent: true });
       }
 
-      if (remaining < APPEND_CHAPTER_THRESHOLD_PX && currentLoadedChapters.length < MAX_STREAM_CHAPTERS) {
-        const nextUnloadedChapter = nextChapters.find((candidate) => (
-          !currentLoadedChapters.some((item) => item.chapter.id === candidate.id)
-          && !loadingChapterIdsRef.current.has(candidate.id)
-        ));
-        if (nextUnloadedChapter) loadChapter(nextUnloadedChapter);
+      if (remaining < APPEND_CHAPTER_THRESHOLD_PX) {
+        const currentNextChapters = nextChapterQueueRef.current;
+        const activeChapter = currentLoadedChapters.find((item) => item.chapter.id === activeChapterIdRef.current)?.chapter;
+        const immediateNextChapter = activeChapter
+          ? currentNextChapters.find((candidate) => (
+            candidate.chapterNumber > activeChapter.chapterNumber
+          ))
+          : null;
+        const isImmediateNextLoaded = immediateNextChapter
+          ? currentLoadedChapters.some((item) => item.chapter.id === immediateNextChapter.id)
+            || loadingChapterIdsRef.current.has(immediateNextChapter.id)
+          : false;
+        if (immediateNextChapter && !isImmediateNextLoaded) {
+          loadChapter(immediateNextChapter);
+        } else if (!immediateNextChapter) {
+          void loadMoreNextChapters().then((chapterToLoad) => {
+            if (chapterToLoad) loadChapter(chapterToLoad);
+          });
+        }
       }
 
       const currentScrollY = window.scrollY;
@@ -259,7 +368,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLoadedChapter?.chapter, nextChapters, loadChapter, slug]);
+  }, [activeLoadedChapter?.chapter, loadChapter, loadMoreNextChapters, slug]);
 
   useEffect(() => {
     const activeReader = activeLoadedChapter?.reader;

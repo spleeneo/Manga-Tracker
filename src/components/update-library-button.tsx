@@ -49,7 +49,7 @@ export function UpdateLibraryButton() {
             aria-label={loading ? "Updating library" : "Update library"}
         >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">{loading ? "Updating..." : "Update Library"}</span>
+            <span className="hidden xl:inline">{loading ? "Updating..." : "Update Library"}</span>
         </button>
     );
 }

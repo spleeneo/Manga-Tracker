@@ -6,6 +6,7 @@ const SOURCE_PATTERNS: Array<[string, string[]]> = [
   ["VIZ", ["viz.com"]],
   ["Urek Mazino", ["urekmazino.com"]],
   ["Bleach Live", ["bleach.live"]],
+  ["Witch Hat Atelier Manga", ["witchhatateliermanga.com"]],
   ["Webtoon", ["webtoons"]],
   ["Manganato", ["manganato", "chapmanganato"]],
 ];

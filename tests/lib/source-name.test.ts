@@ -7,6 +7,7 @@ describe("inferSourceName", () => {
     expect(inferSourceName("https://comikey.com/comics/kengan-omega-manga/10/")).toBe("Comikey");
     expect(inferSourceName("https://www.viz.com/naruto")).toBe("VIZ");
     expect(inferSourceName("https://chapmanganato.to/manga-aa000000")).toBe("Manganato");
+    expect(inferSourceName("https://witchhatateliermanga.com/")).toBe("Witch Hat Atelier Manga");
   });
 
   it("falls back for unknown provider URLs", () => {

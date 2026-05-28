@@ -98,6 +98,10 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
 
     const getSourceRank = (sourceName?: string) => {
+        if ((slug === "witch-hat-atelier" || slug === "witch-hat-atelier-manga") && sourceName?.toLowerCase() === "witch hat atelier manga") {
+            return 9;
+        }
+
         if (slug === "bleach" && sourceName?.toLowerCase() === "bleach live") {
             return 8;
         }
@@ -185,7 +189,17 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const openChapter = (chapter?: Chapter) => {
         if (!chapter?.url) return;
-        window.location.assign(isExternalReaderSource(chapter.sourceName) ? chapter.url : `/manga/${slug}/chapter/${chapter.id}`);
+        const opensExternally = isExternalReaderSource(chapter.sourceName) || (
+            Boolean(chapter.readerStatus)
+            && chapter.readerStatus !== "READABLE"
+        );
+
+        if (opensExternally) {
+            window.open(chapter.url, "_blank", "noopener,noreferrer");
+            return;
+        }
+
+        window.location.assign(`/manga/${slug}/chapter/${chapter.id}`);
     };
 
     const selectBest = () => {

@@ -29,8 +29,8 @@ export async function AuthButton() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="hidden text-right sm:block">
+    <div className="flex items-center gap-2 xl:gap-3">
+      <div className="hidden text-right xl:block">
         <p className="text-sm font-medium leading-none">{session.user.name ?? "Signed in"}</p>
         <p className="mt-1 text-xs text-muted-foreground">{session.user.email}</p>
       </div>
@@ -40,9 +40,9 @@ export async function AuthButton() {
           await signOut();
         }}
       >
-        <button className="ui-button ui-button-secondary h-10 w-10 px-0 sm:w-auto sm:px-3.5" aria-label="Sign out" title="Sign out">
-          <LogOut className="h-4 w-4 sm:hidden" />
-          <span className="hidden sm:inline">Sign out</span>
+        <button className="ui-button ui-button-secondary h-10 w-10 px-0 xl:w-auto xl:px-3.5" aria-label="Sign out" title="Sign out">
+          <LogOut className="h-4 w-4 xl:hidden" />
+          <span className="hidden xl:inline">Sign out</span>
         </button>
       </form>
     </div>

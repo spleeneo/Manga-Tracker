@@ -8,8 +8,10 @@ import { WebtoonScraper } from "./webtoon";
 import { UrekMazinoScraper } from "./urek-mazino";
 import { ManganatoScraper } from "./manganato";
 import { BleachLiveScraper } from "./bleach-live";
+import { WitchHatAtelierScraper } from "./witch-hat-atelier";
 
 const scrapers: Scraper[] = [
+    new WitchHatAtelierScraper(),
     new MangaDexScraper(),
     new NeloMangaScraper(),
     new MangaPlusScraper(),
@@ -20,6 +22,37 @@ const scrapers: Scraper[] = [
     new WebtoonScraper(),
     new ManganatoScraper(),
 ];
+
+const TITLE_ALIAS_GROUPS = [
+    ["witch hat atelier", "tongari booshi no atorie", "tongari boushi no atelier", "tongari boshi no atelier"],
+];
+
+function normalizeSearchTitle(title: string) {
+    return title
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/\bmanga\b/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function getCanonicalSearchTitle(title: string) {
+    const normalized = normalizeSearchTitle(title);
+    const aliasGroup = TITLE_ALIAS_GROUPS.find((aliases) => aliases.includes(normalized));
+    return aliasGroup?.[0] ?? normalized;
+}
+
+function getDisplayTitleForKey(key: string, fallback: string) {
+    switch (key) {
+        case "witch hat atelier":
+            return "Witch Hat Atelier";
+        default:
+            return fallback;
+    }
+}
 
 export function getRegisteredScrapers(): Scraper[] {
     return [...scrapers];
@@ -69,8 +102,7 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
     const aggregated: Map<string, AggregatedSearchResult> = new Map();
 
     for (const result of flatResults) {
-        // Use normalized title as key for grouping
-        const key = result.title.toLowerCase().trim();
+        const key = getCanonicalSearchTitle(result.title);
         const existing = aggregated.get(key);
 
         if (existing) {
@@ -87,8 +119,9 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             if (!existing.status && result.status) existing.status = result.status;
             if (!existing.author && result.author) existing.author = result.author;
         } else {
+            const title = getDisplayTitleForKey(key, result.title);
             aggregated.set(key, {
-                title: result.title,
+                title,
                 description: result.description,
                 coverUrl: result.coverUrl,
                 status: result.status,

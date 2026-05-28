@@ -7,13 +7,13 @@ import { AddSourceDialog } from "@/components/add-source-dialog";
 import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
-import { ChatDrawer } from "@/components/chat-drawer";
 import { ChapterList } from "@/components/chapter-list";
 import { LegalFooter } from "@/components/legal-footer";
 import { MangaDescription } from "@/components/manga-description";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
 import { getLibraryMangaSummary } from "@/lib/library-summary";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 interface PageProps {
     params: Promise<{
@@ -82,6 +82,8 @@ export default async function MangaPage({ params }: PageProps) {
 
     const summary = await getLibraryMangaSummary(session.user.id, manga.id);
     const primaryReadTarget = summary?.nextUnreadChapter ?? summary?.latestChapter;
+    const primaryReadOpensExternally = isExternalReaderSource(primaryReadTarget?.sourceName);
+    const latestOpensExternally = isExternalReaderSource(summary?.latestChapter?.sourceName);
 
     return (
         <div className="min-h-screen bg-background pb-12">
@@ -95,27 +97,21 @@ export default async function MangaPage({ params }: PageProps) {
                 <div className="absolute inset-0 hidden bg-gradient-to-t from-background via-background/70 to-background/20 md:block" />
 
                 <div className="page-wrap app-header-row relative h-full">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <Link
-                            href="/"
-                            className="ui-icon-button shrink-0"
-                            aria-label="Back to library"
-                            title="Back to library"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </Link>
-                        <BrandLink />
+                    <div className="contents md:flex md:min-w-0 md:items-center md:gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Link
+                                href="/"
+                                className="ui-icon-button shrink-0"
+                                aria-label="Back to library"
+                                title="Back to library"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                            <BrandLink />
+                        </div>
+                        <AppNav />
                     </div>
-                    <AppNav />
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <ChatDrawer
-                            currentUser={{
-                                id: session.user.id,
-                                name: session.user.name,
-                                email: session.user.email,
-                                image: session.user.image,
-                            }}
-                        />
+                    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                         <ThemeSelector />
                         <AuthButton />
                     </div>
@@ -151,7 +147,7 @@ export default async function MangaPage({ params }: PageProps) {
                                                 href={source.sourceUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:border-0 md:bg-transparent md:px-2"
+                                                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:px-2"
                                             >
                                                 <ExternalLink className="h-3 w-3" />
                                                 {source.sourceName}
@@ -203,7 +199,9 @@ export default async function MangaPage({ params }: PageProps) {
                                     <div className="grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:shrink-0">
                                         {primaryReadTarget?.url && (
                                             <a
-                                                href={primaryReadTarget.id ? `/manga/${manga.slug}/chapter/${primaryReadTarget.id}` : primaryReadTarget.url}
+                                                href={primaryReadOpensExternally ? primaryReadTarget.url : primaryReadTarget.id ? `/manga/${manga.slug}/chapter/${primaryReadTarget.id}` : primaryReadTarget.url}
+                                                target={primaryReadOpensExternally ? "_blank" : undefined}
+                                                rel={primaryReadOpensExternally ? "noopener noreferrer" : undefined}
                                                 className="ui-button ui-button-primary justify-center"
                                             >
                                                 <BookOpen className="h-4 w-4" />
@@ -211,7 +209,9 @@ export default async function MangaPage({ params }: PageProps) {
                                             </a>
                                         )}
                                         <a
-                                            href={summary.latestChapter.id ? `/manga/${manga.slug}/chapter/${summary.latestChapter.id}` : summary.latestChapter.url}
+                                            href={latestOpensExternally ? summary.latestChapter.url : summary.latestChapter.id ? `/manga/${manga.slug}/chapter/${summary.latestChapter.id}` : summary.latestChapter.url}
+                                            target={latestOpensExternally ? "_blank" : undefined}
+                                            rel={latestOpensExternally ? "noopener noreferrer" : undefined}
                                             className="ui-button ui-button-secondary justify-center"
                                         >
                                             Latest

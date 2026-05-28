@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="pointer-events-auto flex items-start gap-3 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-[0_8px_0_hsl(var(--border)),0_18px_48px_hsl(0_0%_0%/0.22)]"
+            className="toast-surface pointer-events-auto flex items-start gap-3 rounded-lg p-3"
           >
             <div className="mt-0.5 shrink-0 text-primary">
               {toast.type === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

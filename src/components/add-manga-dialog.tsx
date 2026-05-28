@@ -140,7 +140,7 @@ export function AddMangaDialog() {
                 title="Track new manga"
             >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Track New Manga</span>
+                <span className="hidden xl:inline">Track New Manga</span>
             </button>
         );
     }

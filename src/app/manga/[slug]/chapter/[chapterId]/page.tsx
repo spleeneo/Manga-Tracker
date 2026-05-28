@@ -78,7 +78,7 @@ export default async function ReaderPage({ params }: PageProps) {
         chapterNumber: { gt: chapter.chapterNumber },
       },
       orderBy: { chapterNumber: "asc" },
-      take: 8,
+      take: 1,
       select: {
         id: true,
         chapterNumber: true,

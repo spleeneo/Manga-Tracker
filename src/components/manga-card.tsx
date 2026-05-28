@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, CheckCircle2, Loader2, Trash2, X } from "lucide-react";
+import { BookOpen, CalendarClock, CheckCircle2, Loader2, Trash2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 export type MangaCardData = LibraryMangaSummary;
 
@@ -106,6 +107,26 @@ function MangaDeleteButton({
     );
 }
 
+function formatNextChapterEstimate(manga: MangaCardData) {
+    if (manga.status?.toUpperCase() !== "ONGOING" || !manga.estimatedNextChapterAt || manga.releaseEstimateSampleSize < 2) {
+        return null;
+    }
+
+    const date = new Date(manga.estimatedNextChapterAt);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+    }).format(date);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return date < startOfToday
+        ? `Expected after ${dateLabel}`
+        : `Est. next ${dateLabel}`;
+}
+
 export function MangaCard({
     manga,
     loadingAction,
@@ -122,10 +143,14 @@ export function MangaCard({
     const router = useRouter();
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
     const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
-    const readHref = readTarget?.id ? `/manga/${manga.slug}/chapter/${readTarget.id}` : readTarget?.url;
+    const readTargetOpensExternally = isExternalReaderSource(readTarget?.sourceName);
+    const readHref = readTargetOpensExternally
+        ? readTarget?.url
+        : readTarget?.id ? `/manga/${manga.slug}/chapter/${readTarget.id}` : readTarget?.url;
     const readChapterNumber = readTarget?.chapterNumber;
     const isSyncing = manga.syncStatus === "SYNCING";
     const hasUnread = manga.unreadChapters > 0;
+    const nextReleaseEstimate = formatNextChapterEstimate(manga);
     const openManga = () => router.push(`/manga/${manga.slug}`);
 
     return (
@@ -188,6 +213,8 @@ export function MangaCard({
                     {readHref ? (
                         <a
                             href={readHref}
+                            target={readTargetOpensExternally ? "_blank" : undefined}
+                            rel={readTargetOpensExternally ? "noopener noreferrer" : undefined}
                             onClick={(event) => event.stopPropagation()}
                             className="shrink-0 rounded-full border border-border bg-background px-2 py-1 text-[11px] font-bold uppercase text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
                             title={readChapterNumber != null ? `Read chapter ${readChapterNumber}` : "Read chapter"}
@@ -201,6 +228,12 @@ export function MangaCard({
                     <span>
                         {manga.isCaughtUp ? "Caught up" : `${manga.readChapters} / ${manga.totalChapters} read`}
                     </span>
+                    {nextReleaseEstimate ? (
+                        <span className="flex min-w-0 items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-foreground">
+                            <CalendarClock className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{nextReleaseEstimate}</span>
+                        </span>
+                    ) : null}
                     {isSyncing ? (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
                             syncing
@@ -292,6 +325,8 @@ export function MangaCard({
                     {readHref ? (
                         <a
                             href={readHref}
+                            target={readTargetOpensExternally ? "_blank" : undefined}
+                            rel={readTargetOpensExternally ? "noopener noreferrer" : undefined}
                             onClick={(event) => event.stopPropagation()}
                             className="rounded-full border border-border bg-background px-2 py-1 text-foreground shadow-[0_1px_0_hsl(var(--border))] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-card"
                             title={readChapterNumber != null ? `Read chapter ${readChapterNumber}` : "Read chapter"}
@@ -302,6 +337,12 @@ export function MangaCard({
                 </div>
 
                 <div className="mt-auto pt-3">
+                    {nextReleaseEstimate ? (
+                        <div className="mb-2 flex min-h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-bold uppercase text-foreground">
+                            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 truncate">{nextReleaseEstimate}</span>
+                        </div>
+                    ) : null}
                     {manga.latestChapter && !manga.isCaughtUp ? (
                         <button
                             type="button"

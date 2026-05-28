@@ -26,11 +26,19 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const readerHref = `/manga/${slug}/chapter/${chapter.id}`;
-  const opensExternally = isExternalReaderSource(chapter.sourceName);
+  const opensExternally = isExternalReaderSource(chapter.sourceName) || (
+    Boolean(chapter.readerStatus)
+    && chapter.readerStatus !== "READABLE"
+  );
   const isCurrentLastRead = currentLastReadChapterNumber === chapter.chapterNumber;
 
   const openChapter = () => {
-    window.location.assign(opensExternally ? chapter.url : readerHref);
+    if (opensExternally) {
+      window.open(chapter.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    window.location.assign(readerHref);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {

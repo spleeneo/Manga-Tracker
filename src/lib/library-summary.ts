@@ -6,6 +6,7 @@ export interface SummaryChapter {
   chapterNumber: number;
   url: string;
   releaseDate: Date | null;
+  sourceName: string | null;
 }
 
 export interface LibraryMangaSummary {
@@ -21,6 +22,9 @@ export interface LibraryMangaSummary {
   lastReadChapterNumber: number | null;
   latestChapter: SummaryChapter | null;
   latestAvailableAt: Date | null;
+  estimatedNextChapterAt: Date | null;
+  releaseCadenceDays: number | null;
+  releaseEstimateSampleSize: number;
   nextUnreadChapter: SummaryChapter | null;
   totalChapters: number;
   readChapters: number;
@@ -42,11 +46,16 @@ type SummaryRow = {
   latestChapterNumber: number | Prisma.Decimal | null;
   latestChapterId: string | null;
   latestUrl: string | null;
+  latestSourceName: string | null;
   latestReleaseDate: Date | null;
   latestAvailableAt: Date | null;
+  estimatedNextChapterAt: Date | null;
+  releaseCadenceDays: number | Prisma.Decimal | null;
+  releaseEstimateSampleSize: number | bigint | null;
   nextUnreadChapterNumber: number | Prisma.Decimal | null;
   nextUnreadChapterId: string | null;
   nextUnreadUrl: string | null;
+  nextUnreadSourceName: string | null;
   nextUnreadReleaseDate: Date | null;
   totalChapters: number | bigint | null;
   readChapters: number | bigint | null;
@@ -84,15 +93,20 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
           chapterNumber: toNumber(row.latestChapterNumber) ?? 0,
           url: row.latestUrl,
           releaseDate: row.latestReleaseDate,
+          sourceName: row.latestSourceName,
         }
       : null,
     latestAvailableAt: row.latestAvailableAt,
+    estimatedNextChapterAt: row.status?.toUpperCase() === "ONGOING" ? row.estimatedNextChapterAt : null,
+    releaseCadenceDays: row.status?.toUpperCase() === "ONGOING" ? toNumber(row.releaseCadenceDays) : null,
+    releaseEstimateSampleSize: row.status?.toUpperCase() === "ONGOING" ? toCount(row.releaseEstimateSampleSize) : 0,
     nextUnreadChapter: row.nextUnreadChapterNumber != null && row.nextUnreadUrl
       ? {
           id: row.nextUnreadChapterId ?? "",
           chapterNumber: toNumber(row.nextUnreadChapterNumber) ?? 0,
           url: row.nextUnreadUrl,
           releaseDate: row.nextUnreadReleaseDate,
+          sourceName: row.nextUnreadSourceName,
         }
       : null,
     totalChapters,
@@ -104,6 +118,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 
 const SOURCE_RANK_SQL = Prisma.sql`
   CASE
+    WHEN LOWER(m."slug") IN ('witch-hat-atelier', 'witch-hat-atelier-manga') AND LOWER(COALESCE(s."sourceName", '')) = 'witch hat atelier manga' THEN 9
     WHEN LOWER(m."slug") = 'bleach' AND LOWER(COALESCE(s."sourceName", '')) = 'bleach live' THEN 8
     ELSE CASE LOWER(COALESCE(s."sourceName", ''))
     WHEN 'nelomanga' THEN 7
@@ -134,11 +149,16 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       latest."chapterNumber" AS "latestChapterNumber",
       latest."id" AS "latestChapterId",
       latest."url" AS "latestUrl",
+      latest."sourceName" AS "latestSourceName",
       latest."releaseDate" AS "latestReleaseDate",
       latest."availableAt" AS "latestAvailableAt",
+      release_estimate."estimatedNextChapterAt" AS "estimatedNextChapterAt",
+      release_estimate."releaseCadenceDays" AS "releaseCadenceDays",
+      COALESCE(release_estimate."releaseEstimateSampleSize", 0) AS "releaseEstimateSampleSize",
       next_unread."chapterNumber" AS "nextUnreadChapterNumber",
       next_unread."id" AS "nextUnreadChapterId",
       next_unread."url" AS "nextUnreadUrl",
+      next_unread."sourceName" AS "nextUnreadSourceName",
       next_unread."releaseDate" AS "nextUnreadReleaseDate",
       COALESCE(counts."totalChapters", 0) AS "totalChapters",
       COALESCE(counts."readChapters", 0) AS "readChapters"
@@ -159,6 +179,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         c."id",
         c."chapterNumber",
         c."url",
+        s."sourceName",
         c."releaseDate",
         COALESCE(c."releaseDate", c."createdAt") AS "availableAt"
       FROM "Chapter" c
@@ -172,10 +193,53 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       LIMIT 1
     ) latest ON true
     LEFT JOIN LATERAL (
+      WITH releases AS (
+        SELECT DISTINCT ON (c."chapterNumber")
+          c."chapterNumber",
+          c."releaseDate"
+        FROM "Chapter" c
+        LEFT JOIN "Source" s ON s."id" = c."sourceId"
+        WHERE c."mangaId" = m."id"
+          AND c."releaseDate" IS NOT NULL
+          AND c."releaseDate" <= now()
+        ORDER BY
+          c."chapterNumber" DESC,
+          ${SOURCE_RANK_SQL} DESC,
+          c."releaseDate" DESC,
+          c."createdAt" DESC
+        LIMIT 10
+      ),
+      gaps AS (
+        SELECT
+          EXTRACT(EPOCH FROM (r."releaseDate" - LEAD(r."releaseDate") OVER (ORDER BY r."releaseDate" DESC))) AS "gapSeconds"
+        FROM releases r
+      ),
+      valid_gaps AS (
+        SELECT "gapSeconds"
+        FROM gaps
+        WHERE "gapSeconds" BETWEEN 43200 AND 10368000
+      )
+      SELECT
+        CASE
+          WHEN COUNT(*) >= 2 THEN
+            (SELECT MAX("releaseDate") FROM releases)
+            + (percentile_cont(0.5) WITHIN GROUP (ORDER BY "gapSeconds") * INTERVAL '1 second')
+          ELSE NULL
+        END AS "estimatedNextChapterAt",
+        CASE
+          WHEN COUNT(*) >= 2 THEN
+            ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY "gapSeconds") / 86400)::numeric, 1)
+          ELSE NULL
+        END AS "releaseCadenceDays",
+        COUNT(*)::int AS "releaseEstimateSampleSize"
+      FROM valid_gaps
+    ) release_estimate ON LOWER(COALESCE(m."status", '')) = 'ongoing'
+    LEFT JOIN LATERAL (
       SELECT DISTINCT ON (c."chapterNumber")
         c."id",
         c."chapterNumber",
         c."url",
+        s."sourceName",
         c."releaseDate"
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"

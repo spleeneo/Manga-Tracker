@@ -76,6 +76,8 @@ Increase cron frequency only after checking provider rate limits and free-tier u
 
 ## Routine Checks
 
+After completing changes, push them to `main` and deploy the Vercel project unless the user explicitly asks to keep the work local.
+
 Before pushing meaningful changes:
 
 ```bash

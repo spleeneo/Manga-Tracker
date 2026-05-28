@@ -22,6 +22,56 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
     },
   });
 
+  const existingJobs = await prisma.syncJob.findMany({
+    where: {
+      type: SYNC_JOB_TYPE,
+      userId,
+      mangaId,
+    },
+    select: {
+      id: true,
+      status: true,
+    },
+    orderBy: [
+      { status: "asc" },
+      { updatedAt: "desc" },
+    ],
+  });
+
+  const runningJob = existingJobs.find((job) => job.status === "RUNNING");
+  const existingJob = runningJob ?? existingJobs[0];
+
+  if (existingJob) {
+    const duplicateJobIds = existingJobs
+      .filter((job) => job.id !== existingJob.id)
+      .map((job) => job.id);
+
+    if (duplicateJobIds.length > 0) {
+      await prisma.syncJob.deleteMany({
+        where: {
+          id: { in: duplicateJobIds },
+        },
+      });
+    }
+
+    if (existingJob.status === "RUNNING") {
+      return { id: existingJob.id };
+    }
+
+    return prisma.syncJob.update({
+      where: { id: existingJob.id },
+      data: {
+        status: "QUEUED",
+        attempts: 0,
+        runAfter: now,
+        lockedAt: null,
+        finishedAt: null,
+        error: null,
+      },
+      select: { id: true },
+    });
+  }
+
   return prisma.syncJob.create({
     data: {
       type: SYNC_JOB_TYPE,

@@ -5,9 +5,31 @@ import { BookOpen, CheckCircle2, Clock3, Library, Loader2, Sparkles } from "luci
 import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 import { useToast } from "@/components/toast-provider";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 type LibraryFilter = "all" | "unread" | "caught-up" | "ongoing" | "completed";
 type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
+
+function formatNextChapterEstimate(manga?: MangaCardData) {
+    if (!manga || manga.status?.toUpperCase() !== "ONGOING" || !manga.estimatedNextChapterAt || manga.releaseEstimateSampleSize < 2) {
+        return null;
+    }
+
+    const date = new Date(manga.estimatedNextChapterAt);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+    }).format(date);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const cadence = manga.releaseCadenceDays ? `, about every ${Math.round(manga.releaseCadenceDays)} days` : "";
+
+    return date < startOfToday
+        ? `Next chapter is overdue based on recent releases${cadence}. Last estimate was ${dateLabel}.`
+        : `Next chapter is estimated around ${dateLabel}${cadence}.`;
+}
 
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
@@ -48,11 +70,15 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             })[0] ?? sortedItems[0]
     ), [sortedItems]);
     const continueReadTarget = continueManga?.nextUnreadChapter ?? continueManga?.latestChapter;
+    const continueReadOpensExternally = isExternalReaderSource(continueReadTarget?.sourceName);
     const continueReadHref = continueManga && continueReadTarget
-        ? continueReadTarget.id
+        ? continueReadOpensExternally
+            ? continueReadTarget.url
+            : continueReadTarget.id
             ? `/manga/${continueManga.slug}/chapter/${continueReadTarget.id}`
             : continueReadTarget.url
         : null;
+    const continueNextEstimate = formatNextChapterEstimate(continueManga);
 
     const filteredMangas = sortedItems.filter((manga) => {
         switch (filter) {
@@ -165,10 +191,17 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                             ) : (
                                 <p className="mt-2 text-sm text-muted-foreground">Add a manga to start building your reading queue.</p>
                             )}
+                            {continueNextEstimate ? (
+                                <p className="mt-2 max-w-xl rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground">
+                                    {continueNextEstimate}
+                                </p>
+                            ) : null}
                             <div className="mt-4 grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
                                 {continueReadHref && (
                                     <a
                                         href={continueReadHref}
+                                        target={continueReadOpensExternally ? "_blank" : undefined}
+                                        rel={continueReadOpensExternally ? "noopener noreferrer" : undefined}
                                         className="ui-button ui-button-primary"
                                     >
                                         <BookOpen className="h-4 w-4" />
