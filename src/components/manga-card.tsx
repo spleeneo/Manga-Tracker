@@ -19,6 +19,8 @@ function UpdateLight({ className = "" }: { className?: string }) {
     );
 }
 
+const syncingBadgeClass = "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase text-foreground shadow-[0_4px_12px_hsl(var(--background)/0.65)] ring-1 ring-background/80 backdrop-blur-sm [background-color:hsl(var(--card))] [border-color:hsl(var(--primary))]";
+
 function MangaDeleteButton({
     title,
     removing,
@@ -190,7 +192,7 @@ export function MangaCard({
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                     <div className="min-w-0">
                         {isSyncing ? (
-                            <span className="mb-1 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-foreground">
+                            <span className={`mb-1 ${syncingBadgeClass}`}>
                                 Syncing
                             </span>
                         ) : manga.status ? (
@@ -235,7 +237,7 @@ export function MangaCard({
                         </span>
                     ) : null}
                     {isSyncing ? (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-foreground">
+                        <span className={syncingBadgeClass}>
                             syncing
                         </span>
                     ) : manga.latestChapter && !manga.isCaughtUp ? (
@@ -282,7 +284,7 @@ export function MangaCard({
 
                 {isSyncing && (
                     <div className="absolute left-2 top-2 flex items-center gap-2">
-                        <span className="rounded-full border border-border bg-background px-2 py-1 text-[10px] font-bold uppercase text-foreground shadow-[0_2px_0_hsl(var(--border))] dark:bg-card">
+                        <span className={`${syncingBadgeClass} py-1`}>
                             Syncing
                         </span>
                     </div>
