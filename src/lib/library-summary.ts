@@ -20,6 +20,7 @@ export interface LibraryMangaSummary {
   syncFinishedAt: Date | null;
   syncError: string | null;
   lastReadChapterNumber: number | null;
+  lastReadAt: Date | null;
   latestChapter: SummaryChapter | null;
   latestAvailableAt: Date | null;
   estimatedNextChapterAt: Date | null;
@@ -43,6 +44,7 @@ type SummaryRow = {
   syncFinishedAt: Date | null;
   syncError: string | null;
   lastReadChapterNumber: number | Prisma.Decimal | null;
+  lastReadAt: Date | null;
   latestChapterNumber: number | Prisma.Decimal | null;
   latestChapterId: string | null;
   latestUrl: string | null;
@@ -87,6 +89,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
     syncFinishedAt: row.syncFinishedAt,
     syncError: row.syncError,
     lastReadChapterNumber,
+    lastReadAt: row.lastReadAt,
     latestChapter: row.latestChapterNumber != null && row.latestUrl
       ? {
           id: row.latestChapterId ?? "",
@@ -146,6 +149,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       um."syncFinishedAt" AS "syncFinishedAt",
       um."syncError" AS "syncError",
       um."lastReadChapterNumber" AS "lastReadChapterNumber",
+      um."lastReadAt" AS "lastReadAt",
       latest."chapterNumber" AS "latestChapterNumber",
       latest."id" AS "latestChapterId",
       latest."url" AS "latestUrl",

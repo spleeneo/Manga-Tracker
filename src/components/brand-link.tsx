@@ -10,11 +10,11 @@ export function BrandLink() {
     >
       <span className="flex h-10 w-12 items-center justify-center rounded-md p-0.5">
         <Image
-          src="/mangateo-logo.png"
+          src="/mangateo-logo.svg"
           alt=""
           width={48}
           height={34}
-          className="h-8 w-11 object-contain dark:invert dark:opacity-90"
+          className="h-8 w-11 object-contain"
           priority
         />
       </span>
