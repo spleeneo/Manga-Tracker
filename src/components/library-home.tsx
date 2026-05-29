@@ -65,8 +65,6 @@ export function LibraryHome() {
   const isPullRefreshActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const pullAnimationFrameRef = useRef<number | null>(null);
-  const wheelResetTimerRef = useRef<number | null>(null);
-  const wheelRefreshTimerRef = useRef<number | null>(null);
   const { showToast, updateToast } = useToast();
 
   const loadLibrary = useCallback(async () => {
@@ -111,20 +109,7 @@ export function LibraryHome() {
       && Boolean(target.closest("a, button, input, textarea, select, [role='button'], .dialog-overlay, .dialog-panel, .custom-scrollbar"))
     );
 
-    const clearWheelTimers = () => {
-      if (wheelResetTimerRef.current !== null) {
-        window.clearTimeout(wheelResetTimerRef.current);
-        wheelResetTimerRef.current = null;
-      }
-
-      if (wheelRefreshTimerRef.current !== null) {
-        window.clearTimeout(wheelRefreshTimerRef.current);
-        wheelRefreshTimerRef.current = null;
-      }
-    };
-
     const resetPull = () => {
-      clearWheelTimers();
       if (pullAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(pullAnimationFrameRef.current);
         pullAnimationFrameRef.current = null;
@@ -149,7 +134,6 @@ export function LibraryHome() {
     const refreshFromPull = async () => {
       if (isPullUpdateRunningRef.current) return;
       isPullUpdateRunningRef.current = true;
-      clearWheelTimers();
       setIsPulling(false);
       pullDistanceRef.current = pullThreshold;
       setPullDistance(pullThreshold);
@@ -223,87 +207,16 @@ export function LibraryHome() {
       }
     };
 
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse" || event.button !== 0) return;
-      if (startedOnIgnoredElement(event.target)) return;
-      if (window.scrollY > 0 || isLoadingRef.current || isPullUpdateRunningRef.current) return;
-      pullStartYRef.current = event.clientY;
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse" || pullStartYRef.current === null) return;
-
-      const rawDistance = event.clientY - pullStartYRef.current;
-      if (rawDistance <= 0) {
-        resetPull();
-        return;
-      }
-
-      event.preventDefault();
-      isPullRefreshActiveRef.current = true;
-
-      const easedDistance = Math.min(maxPullDistance, Math.round(rawDistance * 0.58));
-      setIsPulling(true);
-      updatePullDistance(easedDistance);
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      if (startedOnIgnoredElement(event.target)) return;
-      if (isPullUpdateRunningRef.current) return;
-
-      if (event.deltaY >= 0) {
-        if (isPullRefreshActiveRef.current) resetPull();
-        return;
-      }
-
-      if (window.scrollY > 0 || isLoadingRef.current) {
-        if (isPullRefreshActiveRef.current) resetPull();
-        return;
-      }
-
-      isPullRefreshActiveRef.current = true;
-
-      const nextDistance = Math.min(maxPullDistance, pullDistanceRef.current + Math.abs(event.deltaY) * 0.32);
-      setIsPulling(true);
-      updatePullDistance(nextDistance);
-
-      if (nextDistance >= pullThreshold) {
-        if (wheelRefreshTimerRef.current === null) {
-          wheelRefreshTimerRef.current = window.setTimeout(() => {
-            wheelRefreshTimerRef.current = null;
-            void refreshFromPull();
-          }, 160);
-        }
-        return;
-      }
-
-      if (wheelResetTimerRef.current !== null) {
-        window.clearTimeout(wheelResetTimerRef.current);
-      }
-      wheelResetTimerRef.current = window.setTimeout(resetPull, 420);
-    };
-
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("touchcancel", resetPull);
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handleTouchEnd);
-    window.addEventListener("pointercancel", resetPull);
-    window.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("touchcancel", resetPull);
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handleTouchEnd);
-      window.removeEventListener("pointercancel", resetPull);
-      window.removeEventListener("wheel", handleWheel);
-      clearWheelTimers();
       if (pullAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(pullAnimationFrameRef.current);
       }
