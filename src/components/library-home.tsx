@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { LibraryDashboard } from "@/components/library-dashboard";
+import { useToast } from "@/components/toast-provider";
 import type { MangaCardData } from "@/components/manga-card";
 
 function LibrarySkeleton() {
@@ -59,11 +60,14 @@ export function LibraryHome() {
   const [isPulling, setIsPulling] = useState(false);
   const [isTopRefreshing, setIsTopRefreshing] = useState(false);
   const isLoadingRef = useRef(false);
+  const isPullUpdateRunningRef = useRef(false);
   const pullStartYRef = useRef<number | null>(null);
   const isPullRefreshActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
+  const pullAnimationFrameRef = useRef<number | null>(null);
   const wheelResetTimerRef = useRef<number | null>(null);
   const wheelRefreshTimerRef = useRef<number | null>(null);
+  const { showToast, updateToast } = useToast();
 
   const loadLibrary = useCallback(async () => {
     if (isLoadingRef.current) return;
@@ -121,6 +125,10 @@ export function LibraryHome() {
 
     const resetPull = () => {
       clearWheelTimers();
+      if (pullAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(pullAnimationFrameRef.current);
+        pullAnimationFrameRef.current = null;
+      }
       pullStartYRef.current = null;
       isPullRefreshActiveRef.current = false;
       pullDistanceRef.current = 0;
@@ -128,18 +136,57 @@ export function LibraryHome() {
       setPullDistance(0);
     };
 
+    const updatePullDistance = (distance: number) => {
+      pullDistanceRef.current = distance;
+      if (pullAnimationFrameRef.current !== null) return;
+
+      pullAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        pullAnimationFrameRef.current = null;
+        setPullDistance(Math.round(pullDistanceRef.current));
+      });
+    };
+
     const refreshFromPull = async () => {
+      if (isPullUpdateRunningRef.current) return;
+      isPullUpdateRunningRef.current = true;
+      clearWheelTimers();
       setIsPulling(false);
+      pullDistanceRef.current = pullThreshold;
       setPullDistance(pullThreshold);
       setIsTopRefreshing(true);
-      await loadLibrary();
-      setIsTopRefreshing(false);
-      resetPull();
+      const toastId = showToast({
+        type: "loading",
+        title: "Library update started",
+        description: "Checking providers in the background.",
+      });
+      try {
+        const res = await fetch("/api/manga/updates", { method: "POST" });
+        if (!res.ok) throw new Error(`Library update failed: ${res.status}`);
+        const body = await res.json();
+        updateToast(toastId, {
+          type: "success",
+          title: "Library update queued",
+          description: `${body.queued ?? 0} manga will refresh in the background.`,
+        });
+      } catch (refreshError) {
+        console.error(refreshError);
+        updateToast(toastId, {
+          type: "error",
+          title: "Library update failed",
+          description: "Please try again.",
+        });
+        setError("Could not start a library update.");
+      } finally {
+        await loadLibrary();
+        isPullUpdateRunningRef.current = false;
+        setIsTopRefreshing(false);
+        resetPull();
+      }
     };
 
     const handleTouchStart = (event: TouchEvent) => {
       if (startedOnIgnoredElement(event.target)) return;
-      if (window.scrollY > 0 || isLoadingRef.current) return;
+      if (window.scrollY > 0 || isLoadingRef.current || isPullUpdateRunningRef.current) return;
       pullStartYRef.current = event.touches[0]?.clientY ?? null;
     };
 
@@ -158,12 +205,12 @@ export function LibraryHome() {
       isPullRefreshActiveRef.current = true;
 
       const easedDistance = Math.min(maxPullDistance, Math.round(rawDistance * 0.58));
-      pullDistanceRef.current = easedDistance;
       setIsPulling(true);
-      setPullDistance(easedDistance);
+      updatePullDistance(easedDistance);
     };
 
     const handleTouchEnd = () => {
+      if (isPullUpdateRunningRef.current) return;
       if (!isPullRefreshActiveRef.current) {
         resetPull();
         return;
@@ -179,7 +226,7 @@ export function LibraryHome() {
     const handlePointerDown = (event: PointerEvent) => {
       if (event.pointerType !== "mouse" || event.button !== 0) return;
       if (startedOnIgnoredElement(event.target)) return;
-      if (window.scrollY > 0 || isLoadingRef.current) return;
+      if (window.scrollY > 0 || isLoadingRef.current || isPullUpdateRunningRef.current) return;
       pullStartYRef.current = event.clientY;
     };
 
@@ -196,13 +243,13 @@ export function LibraryHome() {
       isPullRefreshActiveRef.current = true;
 
       const easedDistance = Math.min(maxPullDistance, Math.round(rawDistance * 0.58));
-      pullDistanceRef.current = easedDistance;
       setIsPulling(true);
-      setPullDistance(easedDistance);
+      updatePullDistance(easedDistance);
     };
 
     const handleWheel = (event: WheelEvent) => {
       if (startedOnIgnoredElement(event.target)) return;
+      if (isPullUpdateRunningRef.current) return;
 
       if (event.deltaY >= 0) {
         if (isPullRefreshActiveRef.current) resetPull();
@@ -214,10 +261,9 @@ export function LibraryHome() {
       event.preventDefault();
       isPullRefreshActiveRef.current = true;
 
-      const nextDistance = Math.min(maxPullDistance, pullDistanceRef.current + Math.abs(event.deltaY) * 0.42);
-      pullDistanceRef.current = nextDistance;
+      const nextDistance = Math.min(maxPullDistance, pullDistanceRef.current + Math.abs(event.deltaY) * 0.32);
       setIsPulling(true);
-      setPullDistance(Math.round(nextDistance));
+      updatePullDistance(nextDistance);
 
       if (nextDistance >= pullThreshold) {
         if (wheelRefreshTimerRef.current === null) {
@@ -256,8 +302,11 @@ export function LibraryHome() {
       window.removeEventListener("pointercancel", resetPull);
       window.removeEventListener("wheel", handleWheel);
       clearWheelTimers();
+      if (pullAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(pullAnimationFrameRef.current);
+      }
     };
-  }, [loadLibrary]);
+  }, [loadLibrary, showToast, updateToast]);
 
   useEffect(() => {
     if (!mangas?.some((manga) => manga.syncStatus === "SYNCING")) return;
@@ -329,15 +378,16 @@ function PullRefreshIndicator({
   distance: number;
 }) {
   const progress = Math.min(1, distance / 86);
+  const isTrackingPull = isActive && !isRefreshing;
 
   return (
     <div
       aria-hidden={!isActive}
-      aria-label={isRefreshing ? "Refreshing library" : "Pull to refresh library"}
-      className="pointer-events-none fixed left-1/2 top-0 z-[70] -translate-x-1/2 transition-[opacity,transform] duration-200"
+      aria-label={isRefreshing ? "Updating library" : "Pull to update library"}
+      className={`pointer-events-none fixed left-1/2 top-0 z-[70] -translate-x-1/2 will-change-transform ${isTrackingPull ? "transition-opacity duration-150" : "transition-[opacity,transform] duration-300 ease-out"}`}
       style={{
         opacity: isActive ? 1 : 0,
-        transform: `translate(-50%, ${isRefreshing ? 72 : Math.max(0, distance - 34)}px) scale(${0.82 + progress * 0.18})`,
+        transform: `translate3d(-50%, ${isRefreshing ? 72 : Math.max(0, distance - 34)}px, 0) scale(${0.82 + progress * 0.18})`,
       }}
     >
       <div className="pull-refresh-surface flex h-11 w-11 items-center justify-center rounded-full">
