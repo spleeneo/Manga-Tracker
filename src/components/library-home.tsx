@@ -65,6 +65,8 @@ export function LibraryHome() {
   const isPullRefreshActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const pullAnimationFrameRef = useRef<number | null>(null);
+  const wheelResetTimerRef = useRef<number | null>(null);
+  const wheelRefreshTimerRef = useRef<number | null>(null);
   const { showToast, updateToast } = useToast();
 
   const loadLibrary = useCallback(async () => {
@@ -109,7 +111,20 @@ export function LibraryHome() {
       && Boolean(target.closest("a, button, input, textarea, select, [role='button'], .dialog-overlay, .dialog-panel, .custom-scrollbar"))
     );
 
+    const clearWheelTimers = () => {
+      if (wheelResetTimerRef.current !== null) {
+        window.clearTimeout(wheelResetTimerRef.current);
+        wheelResetTimerRef.current = null;
+      }
+
+      if (wheelRefreshTimerRef.current !== null) {
+        window.clearTimeout(wheelRefreshTimerRef.current);
+        wheelRefreshTimerRef.current = null;
+      }
+    };
+
     const resetPull = () => {
+      clearWheelTimers();
       if (pullAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(pullAnimationFrameRef.current);
         pullAnimationFrameRef.current = null;
@@ -134,6 +149,7 @@ export function LibraryHome() {
     const refreshFromPull = async () => {
       if (isPullUpdateRunningRef.current) return;
       isPullUpdateRunningRef.current = true;
+      clearWheelTimers();
       setIsPulling(false);
       pullDistanceRef.current = pullThreshold;
       setPullDistance(pullThreshold);
@@ -207,16 +223,51 @@ export function LibraryHome() {
       }
     };
 
+    const handleWheel = (event: WheelEvent) => {
+      if (startedOnIgnoredElement(event.target)) return;
+      if (isLoadingRef.current || isPullUpdateRunningRef.current) return;
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+      if (event.deltaY >= 0 || window.scrollY > 0) {
+        if (isPullRefreshActiveRef.current) resetPull();
+        return;
+      }
+
+      isPullRefreshActiveRef.current = true;
+
+      const nextDistance = Math.min(maxPullDistance, pullDistanceRef.current + Math.abs(event.deltaY) * 0.28);
+      setIsPulling(true);
+      updatePullDistance(nextDistance);
+
+      if (nextDistance >= pullThreshold) {
+        if (wheelRefreshTimerRef.current === null) {
+          wheelRefreshTimerRef.current = window.setTimeout(() => {
+            wheelRefreshTimerRef.current = null;
+            void refreshFromPull();
+          }, 120);
+        }
+        return;
+      }
+
+      if (wheelResetTimerRef.current !== null) {
+        window.clearTimeout(wheelResetTimerRef.current);
+      }
+      wheelResetTimerRef.current = window.setTimeout(resetPull, 260);
+    };
+
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("touchcancel", resetPull);
+    window.addEventListener("wheel", handleWheel, { passive: true });
 
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("touchcancel", resetPull);
+      window.removeEventListener("wheel", handleWheel);
+      clearWheelTimers();
       if (pullAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(pullAnimationFrameRef.current);
       }
