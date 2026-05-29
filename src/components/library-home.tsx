@@ -256,9 +256,11 @@ export function LibraryHome() {
         return;
       }
 
-      if (window.scrollY > 0 || isLoadingRef.current) return;
+      if (window.scrollY > 0 || isLoadingRef.current) {
+        if (isPullRefreshActiveRef.current) resetPull();
+        return;
+      }
 
-      event.preventDefault();
       isPullRefreshActiveRef.current = true;
 
       const nextDistance = Math.min(maxPullDistance, pullDistanceRef.current + Math.abs(event.deltaY) * 0.32);
