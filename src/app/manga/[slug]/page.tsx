@@ -2,7 +2,7 @@ import { isDatabaseConfigured, prisma } from "@/lib/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, ExternalLink, Loader2 } from "lucide-react";
 import { AddSourceDialog } from "@/components/add-source-dialog";
 import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
@@ -216,6 +216,22 @@ export default async function MangaPage({ params }: PageProps) {
                                         >
                                             Latest
                                         </a>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {summary?.syncStatus === "SYNCING" && (
+                            <div className="surface rounded-lg border-primary/35 bg-card p-3 shadow-[0_6px_20px_hsl(var(--primary)/0.10)] sm:p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold uppercase text-primary">Syncing chapters</p>
+                                        <p className="mt-1 text-sm font-medium text-muted-foreground">
+                                            Mangateo is checking this manga&apos;s sources in the background.
+                                        </p>
                                     </div>
                                 </div>
                             </div>

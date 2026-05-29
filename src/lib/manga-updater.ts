@@ -22,9 +22,7 @@ export async function checkForUpdates(specificMangaId?: string) {
             continue;
         }
 
-        let totalNewChapters = 0;
-
-        for (const source of manga.sources) {
+        const sourceResults = await Promise.all(manga.sources.map(async (source) => {
             try {
                 console.log(`Scraping source: ${source.sourceName} (${source.sourceUrl})`);
                 const scrapedChapters = await scrapeChapters(source.sourceUrl);
@@ -44,6 +42,7 @@ export async function checkForUpdates(specificMangaId?: string) {
                 const seenProviderIds = new Set<string>();
                 const seenChapterNumbers = new Set<number>();
                 const newChapters = [];
+                let createdCount = 0;
 
                 for (const ch of scrapedChapters) {
                     const hasProviderMatch = ch.providerChapterId
@@ -71,7 +70,7 @@ export async function checkForUpdates(specificMangaId?: string) {
                         data: newChapters,
                         skipDuplicates: true,
                     });
-                    totalNewChapters += created.count;
+                    createdCount = created.count;
                 }
 
                 await prisma.source.update({
@@ -84,6 +83,7 @@ export async function checkForUpdates(specificMangaId?: string) {
                         disabledUntil: null,
                     },
                 });
+                return createdCount;
 
             } catch (e) {
                 console.error(`Failed to scrape source ${source.sourceName} for ${manga.title}`, e);
@@ -95,8 +95,11 @@ export async function checkForUpdates(specificMangaId?: string) {
                         failureCount: { increment: 1 },
                     },
                 });
+                return 0;
             }
-        }
+        }));
+
+        const totalNewChapters = sourceResults.reduce((total, count) => total + count, 0);
 
         if (totalNewChapters > 0) {
             await prisma.manga.update({
