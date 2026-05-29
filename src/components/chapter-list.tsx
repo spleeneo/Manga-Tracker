@@ -37,6 +37,9 @@ interface ChapterListProps {
 type ChapterMode = "best" | "all";
 type SortDirection = "desc" | "asc";
 
+const CHAPTER_FETCH_LIMIT = 100;
+const LOAD_MORE_BATCH_PAGES = 3;
+
 export function ChapterList({ slug, initialSources, initialChapters, initialNextCursor, initialLastReadChapterNumber }: ChapterListProps) {
     const [selectedSourceId, setSelectedSourceId] = useState<string | "all">("all");
     const [mode, setMode] = useState<ChapterMode>("best");
@@ -52,34 +55,49 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const loadChapterPage = useCallback(async ({
         reset,
         cursor,
+        batchPages = 1,
         nextMode = mode,
         nextSourceId = selectedSourceId,
         nextSortDirection = sortDirection,
     }: {
         reset: boolean;
         cursor?: string | null;
+        batchPages?: number;
         nextMode?: ChapterMode;
         nextSourceId?: string | "all";
         nextSortDirection?: SortDirection;
     }) => {
         setIsLoadingPage(true);
         try {
-            const params = new URLSearchParams({
-                mode: nextMode,
-                sort: nextSortDirection,
-            });
-            if (cursor) {
-                params.set("cursor", String(cursor));
-            }
-            if (nextSourceId !== "all") {
-                params.set("sourceId", nextSourceId);
+            let pageCursor = cursor ?? null;
+            let loadedChapters: Chapter[] = [];
+            let loadedNextCursor: string | null = pageCursor;
+
+            for (let pageIndex = 0; pageIndex < batchPages; pageIndex += 1) {
+                const params = new URLSearchParams({
+                    limit: String(CHAPTER_FETCH_LIMIT),
+                    mode: nextMode,
+                    sort: nextSortDirection,
+                });
+                if (pageCursor) {
+                    params.set("cursor", String(pageCursor));
+                }
+                if (nextSourceId !== "all") {
+                    params.set("sourceId", nextSourceId);
+                }
+
+                const res = await fetch(`/api/manga/${slug}/chapters?${params.toString()}`);
+                if (!res.ok) throw new Error(`Failed to load chapters: ${res.status}`);
+                const data = await res.json();
+                loadedChapters = [...loadedChapters, ...(data.chapters ?? [])];
+                loadedNextCursor = data.nextCursor ?? null;
+                pageCursor = loadedNextCursor;
+
+                if (!pageCursor) break;
             }
 
-            const res = await fetch(`/api/manga/${slug}/chapters?${params.toString()}`);
-            if (!res.ok) throw new Error(`Failed to load chapters: ${res.status}`);
-            const data = await res.json();
-            setChapters((current) => reset ? data.chapters : [...current, ...data.chapters]);
-            setNextCursor(data.nextCursor ?? null);
+            setChapters((current) => reset ? loadedChapters : [...current, ...loadedChapters]);
+            setNextCursor(loadedNextCursor);
         } catch (error) {
             console.error(error);
             showToast({
@@ -394,12 +412,12 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             )}
 
             {nextCursor !== null && (
-                <div className="flex justify-center">
+                <div className="sticky bottom-4 z-20 flex justify-center rounded-lg border border-border bg-background/95 p-3 shadow-[0_10px_30px_hsl(var(--background)/0.75)] backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
                     <button
                         type="button"
-                        onClick={() => void loadChapterPage({ reset: false, cursor: nextCursor })}
+                        onClick={() => void loadChapterPage({ reset: false, cursor: nextCursor, batchPages: LOAD_MORE_BATCH_PAGES })}
                         disabled={isLoadingPage}
-                        className="ui-button ui-button-secondary min-w-[180px]"
+                        className="ui-button ui-button-primary min-h-11 min-w-[220px] justify-center px-5 shadow-[0_8px_20px_hsl(var(--primary)/0.28)]"
                     >
                         {isLoadingPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         Load more chapters
