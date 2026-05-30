@@ -7,8 +7,14 @@ import { MangaCard, type MangaCardData } from "./manga-card";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
-type LibraryFilter = "all" | "unread" | "caught-up" | "ongoing" | "completed";
 type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
+
+type LibrarySection = {
+    id: string;
+    title: string;
+    description: string;
+    items: MangaCardData[];
+};
 
 function formatNextChapterEstimate(manga?: MangaCardData) {
     if (!manga || manga.status?.toUpperCase() !== "ONGOING" || !manga.estimatedNextChapterAt || manga.releaseEstimateSampleSize < 2) {
@@ -33,7 +39,6 @@ function formatNextChapterEstimate(manga?: MangaCardData) {
 
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
-    const [filter, setFilter] = useState<LibraryFilter>("all");
     const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
     const [removingSlug, setRemovingSlug] = useState<string | null>(null);
     const { showToast } = useToast();
@@ -86,28 +91,33 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         : null;
     const continueNextEstimate = formatNextChapterEstimate(continueManga);
 
-    const filteredMangas = sortedItems.filter((manga) => {
-        switch (filter) {
-            case "unread":
-                return manga.unreadChapters > 0;
-            case "caught-up":
-                return manga.isCaughtUp;
-            case "ongoing":
-                return manga.status?.toUpperCase() === "ONGOING";
-            case "completed":
-                return manga.status?.toUpperCase() === "COMPLETED";
-            default:
-                return true;
-        }
-    });
+    const sections = useMemo<LibrarySection[]>(() => {
+        const isCompleted = (manga: MangaCardData) => manga.status?.toUpperCase() === "COMPLETED";
+        const updates = sortedItems.filter((manga) => manga.unreadChapters > 0 && !isCompleted(manga));
+        const caughtUp = sortedItems.filter((manga) => manga.unreadChapters === 0 && !isCompleted(manga));
+        const completed = sortedItems.filter(isCompleted);
 
-    const filters: Array<{ value: LibraryFilter; label: string; count: number }> = [
-        { value: "all", label: "All", count: items.length },
-        { value: "unread", label: "Unread", count: stats.unreadTitles },
-        { value: "caught-up", label: "Caught up", count: stats.caughtUp },
-        { value: "ongoing", label: "Ongoing", count: stats.ongoing },
-        { value: "completed", label: "Completed", count: items.filter((manga) => manga.status?.toUpperCase() === "COMPLETED").length },
-    ];
+        return [
+            {
+                id: "updates",
+                title: "Updates to Read",
+                description: "Fresh chapters waiting for you.",
+                items: updates,
+            },
+            {
+                id: "caught-up",
+                title: "Caught Up",
+                description: "Ongoing titles with nothing new right now.",
+                items: caughtUp,
+            },
+            {
+                id: "completed",
+                title: "Completed",
+                description: "Finished series kept in your library.",
+                items: completed,
+            },
+        ];
+    }, [sortedItems]);
 
     const updateMangaSummary = (summary: MangaCardData) => {
         setItems((current) => current.map((manga) => manga.id === summary.id ? summary : manga));
@@ -176,6 +186,21 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             setRemovingSlug(null);
         }
     };
+
+    const renderMangaGrid = (sectionItems: MangaCardData[]) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {sectionItems.map((manga) => (
+                <MangaCard
+                    key={manga.id}
+                    manga={manga}
+                    loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
+                    removing={removingSlug === manga.slug}
+                    onDelete={(slug) => void deleteManga(slug)}
+                    onProgress={markProgress}
+                />
+            ))}
+        </div>
+    );
 
     return (
         <div className="space-y-6">
@@ -271,42 +296,47 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             </section>
 
             <section className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 className="text-xl font-bold tracking-tight">Library</h2>
-                        <p className="text-sm text-muted-foreground">Filter by reading state and jump back in quickly.</p>
+                        <p className="text-sm text-muted-foreground">Grouped by what needs attention first.</p>
                     </div>
                     <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-                        {filters.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                onClick={() => setFilter(item.value)}
-                                className={`ui-tab ${filter === item.value ? "ui-tab-active" : "bg-card"}`}
-                            >
-                                {item.label}
-                                <span className="ml-2 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] dark:bg-white/10">{item.count}</span>
-                            </button>
+                        {sections.map((section) => (
+                            <a key={section.id} href={`#library-${section.id}`} className="ui-tab bg-card">
+                                {section.title}
+                                <span className="ml-2 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] dark:bg-white/10">{section.items.length}</span>
+                            </a>
                         ))}
                     </div>
                 </div>
 
-                {filteredMangas.length === 0 ? (
+                {items.length === 0 ? (
                     <div className="empty-state min-h-[260px]">
-                        <h3 className="text-lg font-semibold">Nothing in this view</h3>
-                        <p className="mt-2 max-w-md text-sm text-muted-foreground">Try another filter or track a new manga.</p>
+                        <h3 className="text-lg font-semibold">Your library is empty</h3>
+                        <p className="mt-2 max-w-md text-sm text-muted-foreground">Track a manga to start building your reading queue.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                        {filteredMangas.map((manga) => (
-                            <MangaCard
-                                key={manga.id}
-                                manga={manga}
-                                loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
-                                removing={removingSlug === manga.slug}
-                                onDelete={(slug) => void deleteManga(slug)}
-                                onProgress={markProgress}
-                            />
+                    <div className="space-y-8">
+                        {sections.map((section) => (
+                            <section key={section.id} id={`library-${section.id}`} className="scroll-mt-24 space-y-3">
+                                <div className="flex items-end justify-between gap-3 border-b border-border pb-2">
+                                    <div>
+                                        <h3 className="text-lg font-bold tracking-tight">{section.title}</h3>
+                                        <p className="text-sm text-muted-foreground">{section.description}</p>
+                                    </div>
+                                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-bold uppercase text-muted-foreground">
+                                        {section.items.length}
+                                    </span>
+                                </div>
+                                {section.items.length > 0 ? (
+                                    renderMangaGrid(section.items)
+                                ) : (
+                                    <div className="rounded-lg border border-dashed border-border bg-card/55 px-4 py-8 text-sm font-medium text-muted-foreground">
+                                        Nothing here right now.
+                                    </div>
+                                )}
+                            </section>
                         ))}
                     </div>
                 )}
