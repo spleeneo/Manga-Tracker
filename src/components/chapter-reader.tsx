@@ -261,6 +261,21 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     }
   }, [chapter.id, slug]);
 
+  const getCompletedChapterForScroll = (currentLoadedChapters: LoadedReaderChapter[]) => {
+    const viewportBottom = window.innerHeight;
+    const completedChapters = currentLoadedChapters.filter((item) => {
+      const section = document.querySelector<HTMLElement>(`[data-reader-chapter-id="${item.chapter.id}"]`);
+      if (!section || item.reader?.status !== "READABLE") return false;
+
+      const rect = section.getBoundingClientRect();
+      const sectionWasEntered = rect.top < viewportBottom * 0.25;
+      const sectionEndReached = rect.bottom <= viewportBottom + MARK_READ_THRESHOLD_PX;
+      return sectionWasEntered && sectionEndReached;
+    });
+
+    return completedChapters[completedChapters.length - 1]?.chapter ?? null;
+  };
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadChapter(chapter);
@@ -306,8 +321,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
       const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
       updateActiveChapterForScroll(currentLoadedChapters);
 
-      if (remaining < MARK_READ_THRESHOLD_PX) {
-        void markRead(activeLoadedChapter?.chapter, { silent: true });
+      const completedChapter = getCompletedChapterForScroll(currentLoadedChapters);
+      if (completedChapter) {
+        void markRead(completedChapter, { silent: true });
       }
 
       if (remaining < APPEND_CHAPTER_THRESHOLD_PX) {
