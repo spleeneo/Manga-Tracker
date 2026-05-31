@@ -165,4 +165,31 @@ describe("SingleMangaSiteScraper", () => {
       sourceName: "Sakamoto Days Manga",
     }]);
   });
+
+  it("probes direct xyz chapter-index sites during background discovery", async () => {
+    fetchWithRetryMock.mockImplementation(async (url: string) => {
+      if (url === "https://fireforce.xyz/tag/chapter-0/index.html") {
+        return textResponse(`
+          <title>Fire Force Manga Online</title>
+          <meta name="description" content="Read Fire Force manga online." />
+          <a href="/comic/fire-force-chapter-1/index.html">Fire Force Chapter 1</a>
+        `);
+      }
+
+      throw new Error("not found");
+    });
+
+    const scraper = new SingleMangaSiteScraper();
+    const results = await scraper.discoverBackgroundSources("fire force");
+
+    expect(results).toEqual([{
+      title: "Fire Force",
+      description: "Read Fire Force manga online.",
+      coverUrl: undefined,
+      status: undefined,
+      author: undefined,
+      sourceUrl: "https://fireforce.xyz/tag/chapter-0/index.html",
+      sourceName: "Fire Force Manga",
+    }]);
+  });
 });

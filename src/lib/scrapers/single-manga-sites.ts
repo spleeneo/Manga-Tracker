@@ -185,9 +185,11 @@ function parseChapterNumber(value: string, config: SingleMangaSiteConfig): numbe
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
 }
 
-function buildChapterPatternFromSlug(slug: string) {
-  const escapedSlug = escapeRegExp(slug.replace(/-manga$/i, ""));
-  return new RegExp(`${escapedSlug}(?:-manga)?-chapter-(\\d+)(?:-(\\d+))?`, "i");
+function buildChapterPatternFromSlugs(slugs: string[]) {
+  const escapedSlugs = Array.from(new Set(slugs.map((slug) => slug.replace(/-manga$/i, "")).filter(Boolean)))
+    .map(escapeRegExp)
+    .join("|");
+  return new RegExp(`(?:${escapedSlugs})(?:-manga)?-chapter-(\\d+)(?:-(\\d+))?`, "i");
 }
 
 function buildDiscoveredConfig(baseUrl: string, titleHint: string): SingleMangaSiteConfig | null {
@@ -199,19 +201,22 @@ function buildDiscoveredConfig(baseUrl: string, titleHint: string): SingleMangaS
   }
 
   const domainParts = hostname.split(".");
-  if (domainParts.length < 3 || !/^w\d+$/.test(domainParts[0])) return null;
+  const isShardedDomain = domainParts.length >= 3 && /^w\d+$/.test(domainParts[0]);
+  const isDirectDomain = domainParts.length >= 2;
+  if (!isShardedDomain && !isDirectDomain) return null;
 
-  const domainSlug = domainParts.slice(1, -1).join("-").replace(/-manga$/i, "");
+  const domainSlug = (isShardedDomain ? domainParts.slice(1, -1) : domainParts.slice(0, -1)).join("-").replace(/-manga$/i, "");
   if (!domainSlug || domainSlug.length < 3) return null;
 
   const canonicalTitle = toTitleCase(titleHint || domainSlug).replace(/\s+Manga$/i, "");
+  const titleSlug = slugifyTitle(canonicalTitle);
   return {
     sourceName: `${canonicalTitle} Manga`,
     baseUrl,
     canonicalTitle,
     aliases: [canonicalTitle, domainSlug.replace(/-/g, " ")],
     fallbackDescription: `Read ${canonicalTitle} manga online.`,
-    chapterUrlPattern: buildChapterPatternFromSlug(domainSlug),
+    chapterUrlPattern: buildChapterPatternFromSlugs([domainSlug, titleSlug]),
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
     minimumReaderPages: 1,
   };
@@ -255,7 +260,15 @@ function generateDiscoveryCandidates(query: string, wide = false) {
     }
   }
 
-  return Array.from(urls).slice(0, wide ? 240 : 12);
+  if (wide) {
+    const compactSlug = slug.replace(/-/g, "");
+    for (const directSlug of new Set([slug, compactSlug])) {
+      urls.add(`https://${directSlug}.xyz/tag/chapter-0/index.html`);
+      urls.add(`https://${directSlug}.xyz/`);
+    }
+  }
+
+  return Array.from(urls).slice(0, wide ? 364 : 12);
 }
 
 function htmlLooksLikeTitle(html: string, query: string) {
