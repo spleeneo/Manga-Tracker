@@ -93,9 +93,10 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
 
     const sections = useMemo<LibrarySection[]>(() => {
         const isCompleted = (manga: MangaCardData) => manga.status?.toUpperCase() === "COMPLETED";
-        const updates = sortedItems.filter((manga) => manga.unreadChapters > 0 && !isCompleted(manga));
-        const caughtUp = sortedItems.filter((manga) => manga.unreadChapters === 0 && !isCompleted(manga));
-        const completed = sortedItems.filter(isCompleted);
+        const isFullyReadCompleted = (manga: MangaCardData) => isCompleted(manga) && manga.isCaughtUp;
+        const updates = sortedItems.filter((manga) => manga.unreadChapters > 0);
+        const caughtUp = sortedItems.filter((manga) => manga.unreadChapters === 0 && !isFullyReadCompleted(manga));
+        const completed = sortedItems.filter(isFullyReadCompleted);
 
         return [
             {
