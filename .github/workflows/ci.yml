@@ -55,16 +55,5 @@ jobs:
       - name: Pull Vercel production environment
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Run database migrations
-        shell: bash
-        run: |
-          set -a
-          source .vercel/.env.production.local
-          set +a
-          npm run db:migrate
-
-      - name: Build production artifact
-        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy production artifact
-        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy production
+        run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
