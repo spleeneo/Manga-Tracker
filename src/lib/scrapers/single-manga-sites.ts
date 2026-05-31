@@ -17,6 +17,11 @@ export type SingleMangaSiteConfig = {
   readerImageDenyPatterns?: RegExp[];
 };
 
+type DiscoveryProbe = {
+  config: SingleMangaSiteConfig;
+  html: string;
+};
+
 export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
   {
     sourceName: "Witch Hat Atelier Manga",
@@ -86,6 +91,16 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
 
 export const SINGLE_MANGA_SITE_SOURCE_NAMES = SINGLE_MANGA_SITE_CONFIGS.map((config) => config.sourceName.toLowerCase());
 
+const DISCOVERY_SHARDS = ["w45", "w42", "w1"];
+const DISCOVERY_PATTERNS: Array<{ suffix: string; tld: string }> = [
+  { suffix: "-manga", tld: "com" },
+  { suffix: "", tld: "online" },
+  { suffix: "", tld: "live" },
+  { suffix: "", tld: "com" },
+  { suffix: "-manga", tld: "online" },
+  { suffix: "-manga", tld: "live" },
+];
+
 function decodeHtml(value: string): string {
   return value
     .replace(/&amp;/g, "&")
@@ -111,6 +126,28 @@ function normalizeValue(value: string) {
     .trim();
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toTitleCase(value: string) {
+  return normalizeValue(value)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function slugifyTitle(value: string) {
+  return normalizeValue(value).replace(/\s+/g, "-");
+}
+
+function getMeaningfulTokens(value: string) {
+  return normalizeValue(value)
+    .split(" ")
+    .filter((token) => token.length > 2 && !["manga", "the", "and"].includes(token));
+}
+
 function getMeta(html: string, key: string): string | undefined {
   const match = html.match(new RegExp(`<meta\\s+[^>]*(?:property|name)=["']${key}["'][^>]*content=["']([^"']+)["'][^>]*>`, "i"));
   return match?.[1] ? decodeHtml(match[1]) : undefined;
@@ -127,6 +164,38 @@ function parseChapterNumber(value: string, config: SingleMangaSiteConfig): numbe
 
   const chapterNumber = Number(match[2] ? `${match[1]}.${match[2]}` : match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
+}
+
+function buildChapterPatternFromSlug(slug: string) {
+  const escapedSlug = escapeRegExp(slug.replace(/-manga$/i, ""));
+  return new RegExp(`${escapedSlug}(?:-manga)?-chapter-(\\d+)(?:-(\\d+))?`, "i");
+}
+
+function buildDiscoveredConfig(baseUrl: string, titleHint: string): SingleMangaSiteConfig | null {
+  let hostname: string;
+  try {
+    hostname = new URL(baseUrl).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return null;
+  }
+
+  const domainParts = hostname.split(".");
+  if (domainParts.length < 3 || !/^w\d+$/.test(domainParts[0])) return null;
+
+  const domainSlug = domainParts.slice(1, -1).join("-").replace(/-manga$/i, "");
+  if (!domainSlug || domainSlug.length < 3) return null;
+
+  const canonicalTitle = toTitleCase(titleHint || domainSlug).replace(/\s+Manga$/i, "");
+  return {
+    sourceName: `${canonicalTitle} Manga`,
+    baseUrl,
+    canonicalTitle,
+    aliases: [canonicalTitle, domainSlug.replace(/-/g, " ")],
+    fallbackDescription: `Read ${canonicalTitle} manga online.`,
+    chapterUrlPattern: buildChapterPatternFromSlug(domainSlug),
+    chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
+    minimumReaderPages: 1,
+  };
 }
 
 function uniqueByChapterNumber(chapters: ScrapedChapter[]): ScrapedChapter[] {
@@ -155,6 +224,41 @@ function isKnownContentImage(url: string, config: SingleMangaSiteConfig): boolea
   return lower.includes("/wp-content/uploads/") || lower.includes("blogger.googleusercontent.com/img/");
 }
 
+function generateDiscoveryCandidates(query: string) {
+  const slug = slugifyTitle(query);
+  if (!slug || slug.length < 3) return [];
+
+  const urls = new Set<string>();
+  for (const shard of DISCOVERY_SHARDS) {
+    for (const pattern of DISCOVERY_PATTERNS) {
+      urls.add(`https://${shard}.${slug}${pattern.suffix}.${pattern.tld}/`);
+    }
+  }
+
+  return Array.from(urls).slice(0, 12);
+}
+
+function htmlLooksLikeTitle(html: string, query: string) {
+  const tokens = getMeaningfulTokens(query);
+  if (tokens.length === 0) return false;
+
+  const haystack = normalizeValue([
+    getMeta(html, "og:title"),
+    getMeta(html, "twitter:title"),
+    getMeta(html, "description"),
+    getMeta(html, "og:description"),
+    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1],
+  ].filter(Boolean).join(" "));
+
+  const matchedTokens = tokens.filter((token) => haystack.includes(token));
+  return matchedTokens.length >= Math.min(tokens.length, 2);
+}
+
+function htmlHasChapterLinks(html: string, config: SingleMangaSiteConfig) {
+  return Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi))
+    .some((match) => parseChapterNumber(`${match[1]} ${decodeHtml(match[2])}`, config) != null);
+}
+
 export class SingleMangaSiteScraper implements Scraper {
   name = "Single Manga Sites";
   capabilities = { search: true, metadata: true, chapters: true, reader: true };
@@ -166,7 +270,9 @@ export class SingleMangaSiteScraper implements Scraper {
   private findConfigByUrl(url: string): SingleMangaSiteConfig | undefined {
     try {
       const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-      return SINGLE_MANGA_SITE_CONFIGS.find((config) => new URL(config.baseUrl).hostname.replace(/^www\./, "").toLowerCase() === hostname);
+      return SINGLE_MANGA_SITE_CONFIGS.find((config) => new URL(config.baseUrl).hostname.replace(/^www\./, "").toLowerCase() === hostname)
+        ?? buildDiscoveredConfig(new URL("/", url).toString(), hostname.split(".").slice(1, -1).join(" "))
+        ?? undefined;
     } catch {
       return SINGLE_MANGA_SITE_CONFIGS.find((config) => url.toLowerCase().includes(config.baseUrl.toLowerCase()));
     }
@@ -196,7 +302,7 @@ export class SingleMangaSiteScraper implements Scraper {
       })
     ));
 
-    const results = await Promise.all(matchedConfigs.map(async (config) => {
+    const configuredResults = await Promise.all(matchedConfigs.map(async (config) => {
       try {
         const metadata = await this.fetchMetadata(config.baseUrl);
         return {
@@ -221,7 +327,56 @@ export class SingleMangaSiteScraper implements Scraper {
       }
     }));
 
-    return results;
+    if (configuredResults.length > 0) return configuredResults;
+
+    const discovered = await this.discoverCandidateSites(query);
+    return discovered.map(({ config, html }) => ({
+      title: config.canonicalTitle,
+      description: getMeta(html, "description") ?? getMeta(html, "og:description") ?? config.fallbackDescription,
+      coverUrl: getMeta(html, "twitter:image") ?? getMeta(html, "og:image") ?? config.fallbackCoverUrl,
+      status: config.status,
+      author: config.author,
+      sourceUrl: config.baseUrl,
+      sourceName: config.sourceName,
+    }));
+  }
+
+  private async discoverCandidateSites(query: string): Promise<DiscoveryProbe[]> {
+    const candidates = generateDiscoveryCandidates(query);
+    const probes = await Promise.all(candidates.map(async (url): Promise<DiscoveryProbe | null> => {
+      const config = buildDiscoveredConfig(url, query);
+      if (!config) return null;
+
+      try {
+        const response = await fetchWithRetry(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "text/html,application/xhtml+xml",
+          },
+          timeoutMs: 2_500,
+          retries: 0,
+        });
+        const html = await response.text();
+
+        if (!htmlLooksLikeTitle(html, query)) return null;
+        if (!htmlHasChapterLinks(html, config)) return null;
+
+        return { config, html };
+      } catch {
+        return null;
+      }
+    }));
+
+    const seenHosts = new Set<string>();
+    return probes
+      .filter((probe): probe is DiscoveryProbe => Boolean(probe))
+      .filter((probe) => {
+        const host = new URL(probe.config.baseUrl).hostname;
+        if (seenHosts.has(host)) return false;
+        seenHosts.add(host);
+        return true;
+      })
+      .slice(0, 3);
   }
 
   async fetchMetadata(url: string): Promise<MangaMetadata> {

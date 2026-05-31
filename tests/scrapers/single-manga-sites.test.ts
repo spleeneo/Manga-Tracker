@@ -94,4 +94,32 @@ describe("SingleMangaSiteScraper", () => {
       },
     ]);
   });
+
+  it("probes a small set of likely dedicated domains when no config exists", async () => {
+    fetchWithRetryMock.mockImplementation(async (url: string) => {
+      if (url === "https://w45.sakamoto-days-manga.com/") {
+        return textResponse(`
+          <title>Sakamoto Days Manga Online</title>
+          <meta name="description" content="Read Sakamoto Days manga online." />
+          <meta property="og:image" content="https://w45.sakamoto-days-manga.com/wp-content/uploads/sakamoto.jpg" />
+          <a href="/manga/sakamoto-days-chapter-1/">Sakamoto Days Chapter 1</a>
+        `);
+      }
+
+      throw new Error("not found");
+    });
+
+    const scraper = new SingleMangaSiteScraper();
+    const results = await scraper.search("sakamoto days");
+
+    expect(results).toEqual([{
+      title: "Sakamoto Days",
+      description: "Read Sakamoto Days manga online.",
+      coverUrl: "https://w45.sakamoto-days-manga.com/wp-content/uploads/sakamoto.jpg",
+      status: undefined,
+      author: undefined,
+      sourceUrl: "https://w45.sakamoto-days-manga.com/",
+      sourceName: "Sakamoto Days Manga",
+    }]);
+  });
 });
