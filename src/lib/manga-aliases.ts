@@ -28,6 +28,14 @@ const MANGA_ALIAS_GROUPS = [
       "bluelock",
     ],
   },
+  {
+    title: "Fire Punch",
+    slug: "fire-punch",
+    aliases: [
+      "fire punch",
+      "firepunch",
+    ],
+  },
 ];
 
 function normalizeAliasValue(value: string) {

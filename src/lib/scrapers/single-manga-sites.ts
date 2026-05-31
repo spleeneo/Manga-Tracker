@@ -87,11 +87,24 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
     minimumReaderPages: 1,
   },
+  {
+    sourceName: "Fire Punch",
+    baseUrl: "https://firepunch.xyz/tag/chapter-0/index.html",
+    canonicalTitle: "Fire Punch",
+    aliases: ["fire punch", "firepunch"],
+    status: "COMPLETED",
+    author: "Tatsuki Fujimoto",
+    fallbackDescription: "Read Fire Punch manga online.",
+    chapterUrlPattern: /fire-punch-chapter-(\d+)(?:-(\d+))?/i,
+    chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
+    minimumReaderPages: 3,
+  },
 ];
 
 export const SINGLE_MANGA_SITE_SOURCE_NAMES = SINGLE_MANGA_SITE_CONFIGS.map((config) => config.sourceName.toLowerCase());
 
-const DISCOVERY_SHARDS = ["w45", "w42", "w1"];
+const QUICK_DISCOVERY_SHARDS = ["w45", "w42", "w1"];
+const BACKGROUND_DISCOVERY_SHARDS = Array.from({ length: 60 }, (_, index) => `w${index + 1}`);
 const DISCOVERY_PATTERNS: Array<{ suffix: string; tld: string }> = [
   { suffix: "-manga", tld: "com" },
   { suffix: "", tld: "online" },
@@ -156,6 +169,12 @@ function getMeta(html: string, key: string): string | undefined {
 function getAttribute(tag: string, attribute: string): string | undefined {
   const match = tag.match(new RegExp(`\\s${attribute}=["']([^"']+)["']`, "i"));
   return match?.[1] ? decodeHtml(match[1]) : undefined;
+}
+
+function getImageAttribute(tag: string): string | undefined {
+  return getAttribute(tag, "data-lazy-src")
+    ?? getAttribute(tag, "data-src")
+    ?? getAttribute(tag, "src");
 }
 
 function parseChapterNumber(value: string, config: SingleMangaSiteConfig): number | null {
@@ -224,18 +243,19 @@ function isKnownContentImage(url: string, config: SingleMangaSiteConfig): boolea
   return lower.includes("/wp-content/uploads/") || lower.includes("blogger.googleusercontent.com/img/");
 }
 
-function generateDiscoveryCandidates(query: string) {
+function generateDiscoveryCandidates(query: string, wide = false) {
   const slug = slugifyTitle(query);
   if (!slug || slug.length < 3) return [];
 
   const urls = new Set<string>();
-  for (const shard of DISCOVERY_SHARDS) {
+  const shards = wide ? BACKGROUND_DISCOVERY_SHARDS : QUICK_DISCOVERY_SHARDS;
+  for (const shard of shards) {
     for (const pattern of DISCOVERY_PATTERNS) {
       urls.add(`https://${shard}.${slug}${pattern.suffix}.${pattern.tld}/`);
     }
   }
 
-  return Array.from(urls).slice(0, 12);
+  return Array.from(urls).slice(0, wide ? 240 : 12);
 }
 
 function htmlLooksLikeTitle(html: string, query: string) {
@@ -329,7 +349,7 @@ export class SingleMangaSiteScraper implements Scraper {
 
     if (configuredResults.length > 0) return configuredResults;
 
-    const discovered = await this.discoverCandidateSites(query);
+    const discovered = await this.discoverCandidateSites(query, { wide: false });
     return discovered.map(({ config, html }) => ({
       title: config.canonicalTitle,
       description: getMeta(html, "description") ?? getMeta(html, "og:description") ?? config.fallbackDescription,
@@ -341,8 +361,8 @@ export class SingleMangaSiteScraper implements Scraper {
     }));
   }
 
-  private async discoverCandidateSites(query: string): Promise<DiscoveryProbe[]> {
-    const candidates = generateDiscoveryCandidates(query);
+  private async discoverCandidateSites(query: string, { wide }: { wide: boolean }): Promise<DiscoveryProbe[]> {
+    const candidates = generateDiscoveryCandidates(query, wide);
     const probes = await Promise.all(candidates.map(async (url): Promise<DiscoveryProbe | null> => {
       const config = buildDiscoveredConfig(url, query);
       if (!config) return null;
@@ -353,7 +373,7 @@ export class SingleMangaSiteScraper implements Scraper {
             "User-Agent": "Mozilla/5.0",
             "Accept": "text/html,application/xhtml+xml",
           },
-          timeoutMs: 2_500,
+          timeoutMs: wide ? 1_500 : 2_500,
           retries: 0,
         });
         const html = await response.text();
@@ -431,7 +451,7 @@ export class SingleMangaSiteScraper implements Scraper {
     const pages = Array.from(html.matchAll(/<img\b[^>]*>/gi))
       .map((match) => {
         const tag = match[0];
-        const imageUrl = getAttribute(tag, "data-src") ?? getAttribute(tag, "src");
+        const imageUrl = getImageAttribute(tag);
         if (!imageUrl) return null;
 
         const absoluteUrl = new URL(imageUrl, config.baseUrl).toString();
@@ -451,7 +471,11 @@ export class SingleMangaSiteScraper implements Scraper {
       .filter((page): page is ReaderPage => Boolean(page))
       .map((page, index) => ({ ...page, index }));
 
-    if (pages.length < (config.minimumReaderPages ?? 1)) {
+    const uniquePages = pages.filter((page, index, allPages) => (
+      allPages.findIndex((candidate) => candidate.imageUrl === page.imageUrl) === index
+    ));
+
+    if (uniquePages.length < (config.minimumReaderPages ?? 1)) {
       return {
         status: "EXTERNAL_ONLY",
         pages: [],
@@ -462,8 +486,28 @@ export class SingleMangaSiteScraper implements Scraper {
 
     return {
       status: "READABLE",
-      pages,
+      pages: uniquePages.map((page, index) => ({ ...page, index })),
       externalUrl: chapter.url,
     };
   }
+
+  async discoverBackgroundSources(query: string): Promise<SearchResult[]> {
+    const configured = await this.search(query);
+    if (configured.length > 0) return configured;
+
+    const discovered = await this.discoverCandidateSites(query, { wide: true });
+    return discovered.map(({ config, html }) => ({
+      title: config.canonicalTitle,
+      description: getMeta(html, "description") ?? getMeta(html, "og:description") ?? config.fallbackDescription,
+      coverUrl: getMeta(html, "twitter:image") ?? getMeta(html, "og:image") ?? config.fallbackCoverUrl,
+      status: config.status,
+      author: config.author,
+      sourceUrl: config.baseUrl,
+      sourceName: config.sourceName,
+    }));
+  }
+}
+
+export async function discoverSingleMangaSiteSources(query: string): Promise<SearchResult[]> {
+  return new SingleMangaSiteScraper().discoverBackgroundSources(query);
 }

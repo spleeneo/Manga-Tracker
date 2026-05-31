@@ -95,6 +95,49 @@ describe("SingleMangaSiteScraper", () => {
     ]);
   });
 
+  it("extracts Fire Punch chapters and lazy reader images", async () => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce(textResponse(`
+        <a href="../../comic/fire-punch-chapter-83/index.html">Fire Punch, Chapter 83</a>
+        <a href="../../comic/fire-punch-chapter-0/index.html">Fire Punch, Chapter 0</a>
+      `))
+      .mockResolvedValueOnce(textResponse(`
+        <img src="../../wp-content/uploads/2022/11/01-81.jpg" />
+        <img src="../../wp-content/uploads/2022/11/02-80.jpg" data-lazy-src="https://firepunch.xyz/wp-content/uploads/2022/11/02-80.jpg" />
+        <img src="https://firepunch.xyz/wp-content/uploads/2022/11/02-80.jpg" />
+        <img src="../../wp-content/uploads/2022/11/03-79.jpg" />
+      `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const chapters = await scraper.fetchChapters("https://firepunch.xyz/tag/chapter-0/index.html");
+
+    expect(chapters).toEqual([
+      expect.objectContaining({
+        providerChapterId: "83",
+        chapterNumber: 83,
+        url: "https://firepunch.xyz/comic/fire-punch-chapter-83/index.html",
+      }),
+      expect.objectContaining({
+        providerChapterId: "0",
+        chapterNumber: 0,
+        url: "https://firepunch.xyz/comic/fire-punch-chapter-0/index.html",
+      }),
+    ]);
+
+    const reader = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      url: "https://firepunch.xyz/comic/fire-punch-chapter-83/index.html",
+      chapterNumber: 83,
+    });
+
+    expect(reader.status).toBe("READABLE");
+    expect(reader.pages.map((page) => page.imageUrl)).toEqual([
+      "https://firepunch.xyz/wp-content/uploads/2022/11/01-81.jpg",
+      "https://firepunch.xyz/wp-content/uploads/2022/11/02-80.jpg",
+      "https://firepunch.xyz/wp-content/uploads/2022/11/03-79.jpg",
+    ]);
+  });
+
   it("probes a small set of likely dedicated domains when no config exists", async () => {
     fetchWithRetryMock.mockImplementation(async (url: string) => {
       if (url === "https://w45.sakamoto-days-manga.com/") {

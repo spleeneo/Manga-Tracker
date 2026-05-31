@@ -9,6 +9,7 @@ const SOURCE_PATTERNS: Array<[string, string[]]> = [
   ["Witch Hat Atelier Manga", ["witchhatateliermanga.com"]],
   ["Land of the Lustrous", ["land-of-the-lustrous.online"]],
   ["Blue Lock Manga", ["blue-lock-manga.com"]],
+  ["Fire Punch", ["firepunch.xyz"]],
   ["Webtoon", ["webtoons"]],
   ["Manganato", ["manganato", "chapmanganato"]],
 ];

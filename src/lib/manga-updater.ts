@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
 import { scrapeChapters } from "./scrapers/registry";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
+import { discoverSingleMangaSiteSources, SINGLE_MANGA_SITE_SOURCE_NAMES } from "@/lib/scrapers/single-manga-sites";
+
+function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
+    return sources.some((source) => SINGLE_MANGA_SITE_SOURCE_NAMES.includes(source.sourceName.toLowerCase()));
+}
 
 export async function checkForUpdates(specificMangaId?: string) {
     console.log(`Checking updates for: ${specificMangaId || "ALL"}`);
@@ -44,6 +49,29 @@ export async function checkForUpdates(specificMangaId?: string) {
         if (sources.length === 0) {
             results.push({ manga: manga.title, status: "No sources identified" });
             continue;
+        }
+
+        if (!override && manga.sources.length > 0 && !hasSingleMangaSiteSource(manga.sources)) {
+            const [discoveredSource] = await discoverSingleMangaSiteSources(manga.title);
+            if (discoveredSource && !sources.some((source) => source.sourceUrl === discoveredSource.sourceUrl)) {
+                const source = await prisma.source.upsert({
+                    where: {
+                        mangaId_sourceUrl: {
+                            mangaId: manga.id,
+                            sourceUrl: discoveredSource.sourceUrl,
+                        },
+                    },
+                    update: {
+                        sourceName: discoveredSource.sourceName,
+                    },
+                    create: {
+                        mangaId: manga.id,
+                        sourceName: discoveredSource.sourceName,
+                        sourceUrl: discoveredSource.sourceUrl,
+                    },
+                });
+                sources = [source, ...sources];
+            }
         }
 
         const sourceResults = await Promise.all(sources.map(async (source) => {

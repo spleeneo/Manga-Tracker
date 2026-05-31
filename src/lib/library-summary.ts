@@ -128,6 +128,7 @@ const SOURCE_RANK_SQL = Prisma.sql`
     WHEN 'witch hat atelier manga' THEN 8
     WHEN 'land of the lustrous' THEN 8
     WHEN 'blue lock manga' THEN 8
+    WHEN 'fire punch' THEN 8
     WHEN 'nelomanga' THEN 7
     WHEN 'urek mazino' THEN 6
     WHEN 'bleach live' THEN 6
