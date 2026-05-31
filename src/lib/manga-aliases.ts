@@ -9,6 +9,16 @@ const MANGA_ALIAS_GROUPS = [
       "tongari boshi no atelier",
     ],
   },
+  {
+    title: "Houseki no Kuni",
+    slug: "houseki-no-kuni",
+    aliases: [
+      "houseki no kuni",
+      "land of the lustrous",
+      "land-of-the-lustrous",
+      "houseki no kuni land of the lustrous",
+    ],
+  },
 ];
 
 function normalizeAliasValue(value: string) {

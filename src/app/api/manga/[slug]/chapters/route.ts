@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getMangaChapterPage, getChapterMode, getChapterSortDirection } from "@/lib/chapters";
 import { getCurrentUserId } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
+import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +25,18 @@ export async function GET(
 
     const manga = await prisma.manga.findUnique({
       where: { slug },
-      select: { id: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        sources: {
+          select: {
+            id: true,
+            sourceName: true,
+            sourceUrl: true,
+          },
+        },
+      },
     });
     if (!manga) {
       return NextResponse.json({ error: "Manga not found" }, { status: 404 });
@@ -43,24 +55,31 @@ export async function GET(
       return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
     }
 
-    if (sourceId) {
-      const source = await prisma.source.findFirst({
-        where: {
-          id: sourceId,
-          mangaId: manga.id,
-        },
-        select: { id: true },
-      });
-      if (!source) {
+    const mangaSources = manga.sources ?? [];
+    const visibleSources = filterSourcesForManga(manga, mangaSources);
+    const visibleSourceIds = new Set(visibleSources.map((source) => source.id));
+    const override = getMangaSourceOverride(manga);
+
+    if (sourceId && (visibleSourceIds.size > 0 || override)) {
+      if (!visibleSourceIds.has(sourceId)) {
         return NextResponse.json({ error: "Source not found" }, { status: 404 });
       }
+    }
+
+    if (override && visibleSourceIds.size === 0) {
+      return NextResponse.json({
+        chapters: [],
+        nextCursor: null,
+        mode,
+        sortDirection,
+      });
     }
 
     const page = await getMangaChapterPage({
       mangaId: manga.id,
       cursor,
       limit,
-      sourceId,
+      sourceId: sourceId ?? (visibleSourceIds.size === 1 ? [...visibleSourceIds][0] : undefined),
       lastReadChapterNumber: tracked.lastReadChapterNumber,
       sortDirection,
     });

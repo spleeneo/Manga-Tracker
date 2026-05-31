@@ -14,6 +14,7 @@ import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
 import { getLibraryMangaSummary } from "@/lib/library-summary";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
+import { filterSourcesForManga } from "@/lib/source-overrides";
 
 interface PageProps {
     params: Promise<{
@@ -46,6 +47,7 @@ async function getManga(slug: string, userId: string) {
 
     return {
         ...manga,
+        sources: filterSourcesForManga(manga, manga.sources),
         lastReadChapterNumber: tracked.lastReadChapterNumber,
     };
 }

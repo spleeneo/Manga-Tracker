@@ -123,6 +123,10 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             return 9;
         }
 
+        if ((slug === "houseki-no-kuni" || slug === "land-of-the-lustrous") && sourceName?.toLowerCase() === "land of the lustrous") {
+            return 9;
+        }
+
         if (slug === "bleach" && sourceName?.toLowerCase() === "bleach live") {
             return 8;
         }

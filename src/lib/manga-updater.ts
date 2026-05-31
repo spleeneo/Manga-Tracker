@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { scrapeChapters } from "./scrapers/registry";
+import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 
 export async function checkForUpdates(specificMangaId?: string) {
     console.log(`Checking updates for: ${specificMangaId || "ALL"}`);
@@ -17,12 +18,35 @@ export async function checkForUpdates(specificMangaId?: string) {
     const results = [];
 
     for (const manga of mangas) {
-        if (manga.sources.length === 0) {
+        const override = getMangaSourceOverride(manga);
+        let sources = filterSourcesForManga(manga, manga.sources);
+
+        if (override && sources.length === 0) {
+            const source = await prisma.source.upsert({
+                where: {
+                    mangaId_sourceUrl: {
+                        mangaId: manga.id,
+                        sourceUrl: override.sourceUrl,
+                    },
+                },
+                update: {
+                    sourceName: override.sourceName,
+                },
+                create: {
+                    mangaId: manga.id,
+                    sourceName: override.sourceName,
+                    sourceUrl: override.sourceUrl,
+                },
+            });
+            sources = [source];
+        }
+
+        if (sources.length === 0) {
             results.push({ manga: manga.title, status: "No sources identified" });
             continue;
         }
 
-        const sourceResults = await Promise.all(manga.sources.map(async (source) => {
+        const sourceResults = await Promise.all(sources.map(async (source) => {
             try {
                 console.log(`Scraping source: ${source.sourceName} (${source.sourceUrl})`);
                 const scrapedChapters = await scrapeChapters(source.sourceUrl);

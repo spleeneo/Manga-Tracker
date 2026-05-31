@@ -7,6 +7,7 @@ import { inferSourceName } from "@/lib/source-name";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
+import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 
 export async function POST(request: Request) {
     try {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
         // Normalize sources list
         // If sourceUrl is provided (from manual entry) and not in sources array, add it
-        const sourcesToProcess = [...sources];
+        let sourcesToProcess = [...sources];
         if (sourceUrl && !sourcesToProcess.some(s => s.url === sourceUrl)) {
             sourcesToProcess.push({
                 url: sourceUrl,
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
             title: getCanonicalMangaTitle(finalMangaData.title),
             slug: getCanonicalMangaSlug(finalMangaData.title, finalMangaData.slug),
         };
+        sourcesToProcess = applySourceOverrideToInputSources(finalMangaData, sourcesToProcess);
         const sourceUrls = sourcesToProcess
             .map((source) => source.url || source.sourceUrl)
             .filter((url): url is string => Boolean(url));

@@ -9,10 +9,13 @@ import { UrekMazinoScraper } from "./urek-mazino";
 import { ManganatoScraper } from "./manganato";
 import { BleachLiveScraper } from "./bleach-live";
 import { WitchHatAtelierScraper } from "./witch-hat-atelier";
+import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
+import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 
 const scrapers: Scraper[] = [
     new WitchHatAtelierScraper(),
+    new LandOfTheLustrousScraper(),
     new MangaDexScraper(),
     new NeloMangaScraper(),
     new MangaPlusScraper(),
@@ -109,8 +112,9 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             if (!existing.status && result.status) existing.status = result.status;
             if (!existing.author && result.author) existing.author = result.author;
         } else {
+            const canonicalTitle = getCanonicalMangaTitle(result.title);
             aggregated.set(key, {
-                title: getCanonicalMangaTitle(result.title),
+                title: canonicalTitle,
                 description: result.description,
                 coverUrl: result.coverUrl,
                 status: result.status,
@@ -124,5 +128,11 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
         }
     }
 
-    return Array.from(aggregated.values());
+    return Array.from(aggregated.values()).map((result) => ({
+        ...result,
+        sources: applySourceOverrideToInputSources(
+            { title: result.title },
+            result.sources.map((source) => ({ name: source.name, url: source.url })),
+        ),
+    }));
 }
