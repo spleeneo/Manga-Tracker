@@ -19,6 +19,15 @@ const MANGA_ALIAS_GROUPS = [
       "houseki no kuni land of the lustrous",
     ],
   },
+  {
+    title: "Blue Lock",
+    slug: "blue-lock",
+    aliases: [
+      "blue lock",
+      "blue lock manga",
+      "bluelock",
+    ],
+  },
 ];
 
 function normalizeAliasValue(value: string) {

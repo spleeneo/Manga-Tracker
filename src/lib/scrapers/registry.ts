@@ -10,10 +10,12 @@ import { ManganatoScraper } from "./manganato";
 import { BleachLiveScraper } from "./bleach-live";
 import { WitchHatAtelierScraper } from "./witch-hat-atelier";
 import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
+import { SingleMangaSiteScraper } from "./single-manga-sites";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 
 const scrapers: Scraper[] = [
+    new SingleMangaSiteScraper(),
     new WitchHatAtelierScraper(),
     new LandOfTheLustrousScraper(),
     new MangaDexScraper(),

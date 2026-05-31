@@ -8,6 +8,7 @@ const SOURCE_PATTERNS: Array<[string, string[]]> = [
   ["Bleach Live", ["bleach.live"]],
   ["Witch Hat Atelier Manga", ["witchhatateliermanga.com"]],
   ["Land of the Lustrous", ["land-of-the-lustrous.online"]],
+  ["Blue Lock Manga", ["blue-lock-manga.com"]],
   ["Webtoon", ["webtoons"]],
   ["Manganato", ["manganato", "chapmanganato"]],
 ];

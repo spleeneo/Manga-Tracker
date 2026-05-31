@@ -132,6 +132,10 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         }
 
         switch (sourceName?.toLowerCase()) {
+            case "witch hat atelier manga":
+            case "land of the lustrous":
+            case "blue lock manga":
+                return 8;
             case "nelomanga":
                 return 7;
             case "urek mazino":

@@ -125,6 +125,9 @@ const SOURCE_RANK_SQL = Prisma.sql`
     WHEN LOWER(m."slug") IN ('houseki-no-kuni', 'land-of-the-lustrous') AND LOWER(COALESCE(s."sourceName", '')) = 'land of the lustrous' THEN 9
     WHEN LOWER(m."slug") = 'bleach' AND LOWER(COALESCE(s."sourceName", '')) = 'bleach live' THEN 8
     ELSE CASE LOWER(COALESCE(s."sourceName", ''))
+    WHEN 'witch hat atelier manga' THEN 8
+    WHEN 'land of the lustrous' THEN 8
+    WHEN 'blue lock manga' THEN 8
     WHEN 'nelomanga' THEN 7
     WHEN 'urek mazino' THEN 6
     WHEN 'bleach live' THEN 6
