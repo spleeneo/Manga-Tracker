@@ -61,6 +61,11 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
     chapterUrlPattern: /land-of-the-lustrous-chapter-(\d+)(?:-(\d+))?/i,
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
     minimumReaderPages: 1,
+    readerImageAllowPatterns: [
+      /laiond\.com\/images\//i,
+      /\/wp-content\/uploads\//i,
+      /blogger\.googleusercontent\.com\/img\//i,
+    ],
   },
   {
     sourceName: "Bleach Live",

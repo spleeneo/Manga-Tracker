@@ -138,6 +138,30 @@ describe("SingleMangaSiteScraper", () => {
     ]);
   });
 
+  it("extracts Land of the Lustrous CDN reader images", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <img src="https://laiond.com/images/page-001.jpg" alt="Land of the Lustrous, Chapter 108 image 01" />
+      <img src="https://laiond.com/images/page-002.jpg" alt="Land of the Lustrous, Chapter 108 image 02" />
+    `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const result = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      url: "https://w1.land-of-the-lustrous.online/manga/land-of-the-lustrous-chapter-108/",
+      chapterNumber: 108,
+    }, {
+      id: "s1",
+      sourceName: "Land of the Lustrous",
+      sourceUrl: "https://w1.land-of-the-lustrous.online/",
+    });
+
+    expect(result.status).toBe("READABLE");
+    expect(result.pages.map((page) => page.imageUrl)).toEqual([
+      "https://laiond.com/images/page-001.jpg",
+      "https://laiond.com/images/page-002.jpg",
+    ]);
+  });
+
   it("probes a small set of likely dedicated domains when no config exists", async () => {
     fetchWithRetryMock.mockImplementation(async (url: string) => {
       if (url === "https://w45.sakamoto-days-manga.com/") {
