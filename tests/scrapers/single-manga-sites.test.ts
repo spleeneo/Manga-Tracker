@@ -138,7 +138,7 @@ describe("SingleMangaSiteScraper", () => {
     ]);
   });
 
-  it("extracts Land of the Lustrous CDN reader images", async () => {
+  it("extracts reader-looking CDN images without source-specific allowlists", async () => {
     fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
       <img src="https://laiond.com/images/page-001.jpg" alt="Land of the Lustrous, Chapter 108 image 01" />
       <img src="https://laiond.com/images/page-002.jpg" alt="Land of the Lustrous, Chapter 108 image 02" />
@@ -160,6 +160,27 @@ describe("SingleMangaSiteScraper", () => {
       "https://laiond.com/images/page-001.jpg",
       "https://laiond.com/images/page-002.jpg",
     ]);
+  });
+
+  it("does not treat a couple of cover images as a readable chapter", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <img src="https://w42.bleach.live/wp-content/uploads/2022/11/cover.jpg" width="303" height="480" />
+      <img src="https://w42.bleach.live/wp-content/uploads/2022/11/bonus-cover.jpg" width="325" height="512" />
+    `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const result = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      url: "https://w42.bleach.live/manga/bleach-chapter-687/",
+      chapterNumber: 687,
+    }, {
+      id: "s1",
+      sourceName: "Bleach Live",
+      sourceUrl: "https://w42.bleach.live/",
+    });
+
+    expect(result.status).toBe("EXTERNAL_ONLY");
+    expect(result.pages).toEqual([]);
   });
 
   it("probes a small set of likely dedicated domains when no config exists", async () => {
@@ -223,7 +244,9 @@ describe("SingleMangaSiteScraper", () => {
         <a href="/comic/fire-force-chapter-2/index.html">Fire Force Chapter 2</a>
       `))
       .mockResolvedValueOnce(textResponse(`
-        <img src="/wp-content/uploads/fire-force/001.jpg" />
+        <img src="/images/001.jpg" data-original-width="1267" data-original-height="1900" />
+        <img src="/images/002.jpg" data-original-width="1267" data-original-height="1900" />
+        <img src="/images/003.jpg" data-original-width="1267" data-original-height="1900" />
       `));
 
     const scraper = new SingleMangaSiteScraper();
@@ -249,9 +272,10 @@ describe("SingleMangaSiteScraper", () => {
     });
 
     expect(reader.status).toBe("READABLE");
-    expect(reader.pages).toEqual([{
-      index: 0,
-      imageUrl: "https://fireforce.xyz/wp-content/uploads/fire-force/001.jpg",
-    }]);
+    expect(reader.pages.map((page) => page.imageUrl)).toEqual([
+      "https://fireforce.xyz/images/001.jpg",
+      "https://fireforce.xyz/images/002.jpg",
+      "https://fireforce.xyz/images/003.jpg",
+    ]);
   });
 });

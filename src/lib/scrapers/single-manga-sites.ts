@@ -61,11 +61,6 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
     chapterUrlPattern: /land-of-the-lustrous-chapter-(\d+)(?:-(\d+))?/i,
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
     minimumReaderPages: 1,
-    readerImageAllowPatterns: [
-      /laiond\.com\/images\//i,
-      /\/wp-content\/uploads\//i,
-      /blogger\.googleusercontent\.com\/img\//i,
-    ],
   },
   {
     sourceName: "Bleach Live",
@@ -228,7 +223,7 @@ function buildDiscoveredConfig(baseUrl: string, titleHint: string): SingleMangaS
     fallbackDescription: `Read ${canonicalTitle} manga online.`,
     chapterUrlPattern: buildChapterPatternFromSlugs([domainSlug, titleSlug]),
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
-    minimumReaderPages: 1,
+    minimumReaderPages: 3,
   };
 }
 
@@ -245,7 +240,40 @@ function uniqueByChapterNumber(chapters: ScrapedChapter[]): ScrapedChapter[] {
   return unique;
 }
 
-function isKnownContentImage(url: string, config: SingleMangaSiteConfig): boolean {
+function getNumericAttribute(tag: string, attribute: string): number | null {
+  const value = Number(getAttribute(tag, attribute));
+  return Number.isFinite(value) ? value : null;
+}
+
+function hasReaderSizedDimensions(tag: string) {
+  const width = getNumericAttribute(tag, "width") ?? getNumericAttribute(tag, "data-original-width");
+  const height = getNumericAttribute(tag, "height") ?? getNumericAttribute(tag, "data-original-height");
+  if (width == null || height == null) return false;
+
+  return Math.max(width, height) >= 900 && Math.min(width, height) >= 450;
+}
+
+function looksLikeNumberedPage(url: string) {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    return /(?:^|\/)(?:page[-_]?|p[-_]?)?\d{1,4}\.(?:jpe?g|png|webp)$/.test(pathname)
+      || /(?:^|\/)\d{1,4}[-_]\d{1,4}\.(?:jpe?g|png|webp)$/.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
+function tagLooksLikeReaderPage(tag: string, url: string) {
+  const lowerTag = tag.toLowerCase();
+  const lowerUrl = url.toLowerCase();
+  const hasReaderAlt = /\bchapter\b/.test(lowerTag) && /\b(?:image|page)\b/.test(lowerTag);
+  const hasImageBucket = /\/(?:images|manga|chapter|chapters|comic)\//.test(lowerUrl);
+
+  return (hasImageBucket && (hasReaderAlt || looksLikeNumberedPage(url)))
+    || (looksLikeNumberedPage(url) && hasReaderSizedDimensions(tag));
+}
+
+function isKnownContentImage(tag: string, url: string, config: SingleMangaSiteConfig): boolean {
   const lower = url.toLowerCase();
   if (!/^https?:\/\//.test(lower)) return false;
   if (!/\.(?:jpe?g|png|webp)(?:\?|$)/.test(lower)) return false;
@@ -255,7 +283,9 @@ function isKnownContentImage(url: string, config: SingleMangaSiteConfig): boolea
   if (config.readerImageAllowPatterns?.length) {
     return config.readerImageAllowPatterns.some((pattern) => pattern.test(url));
   }
-  return lower.includes("/wp-content/uploads/") || lower.includes("blogger.googleusercontent.com/img/");
+  return lower.includes("/wp-content/uploads/")
+    || lower.includes("blogger.googleusercontent.com/img/")
+    || tagLooksLikeReaderPage(tag, url);
 }
 
 function generateDiscoveryCandidates(query: string, wide = false) {
@@ -478,16 +508,16 @@ export class SingleMangaSiteScraper implements Scraper {
         if (!imageUrl) return null;
 
         const absoluteUrl = new URL(imageUrl, config.baseUrl).toString();
-        if (!isKnownContentImage(absoluteUrl, config)) return null;
+        if (!isKnownContentImage(tag, absoluteUrl, config)) return null;
 
-        const width = Number(getAttribute(tag, "width"));
-        const height = Number(getAttribute(tag, "height"));
+        const width = getNumericAttribute(tag, "width") ?? undefined;
+        const height = getNumericAttribute(tag, "height") ?? undefined;
         const page: ReaderPage = {
           index: 0,
           imageUrl: absoluteUrl,
         };
-        if (Number.isFinite(width)) page.width = width;
-        if (Number.isFinite(height)) page.height = height;
+        if (width) page.width = width;
+        if (height) page.height = height;
 
         return page;
       })
