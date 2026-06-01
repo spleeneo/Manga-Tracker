@@ -69,7 +69,7 @@ export interface Scraper {
     name: string;
     capabilities?: ScraperCapabilities;
     canHandle(url: string): boolean;
-    fetchChapters(url: string): Promise<ScrapedChapter[]>;
+    fetchChapters(url: string, source?: ReaderSourceInput): Promise<ScrapedChapter[]>;
     fetchMetadata(url: string): Promise<MangaMetadata>;
     search(query: string): Promise<SearchResult[]>;
     fetchReaderPages?(chapter: ReaderChapterInput, source: ReaderSourceInput): Promise<ReaderResult>;

@@ -147,7 +147,11 @@ describe("checkForUpdates", () => {
         },
       },
     }));
-    expect(scrapeChapters).toHaveBeenNthCalledWith(1, "https://w45.sakamoto-days-manga.com/");
-    expect(scrapeChapters).toHaveBeenNthCalledWith(2, "https://mangadex.org/title/x");
+    expect(scrapeChapters).toHaveBeenNthCalledWith(1, "https://w45.sakamoto-days-manga.com/", expect.objectContaining({
+      sourceName: "Sakamoto Days Manga",
+    }));
+    expect(scrapeChapters).toHaveBeenNthCalledWith(2, "https://mangadex.org/title/x", expect.objectContaining({
+      sourceName: "MangaDex",
+    }));
   });
 });

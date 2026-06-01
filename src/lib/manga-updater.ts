@@ -77,7 +77,7 @@ export async function checkForUpdates(specificMangaId?: string) {
         const sourceResults = await Promise.all(sources.map(async (source) => {
             try {
                 console.log(`Scraping source: ${source.sourceName} (${source.sourceUrl})`);
-                const scrapedChapters = await scrapeChapters(source.sourceUrl);
+                const scrapedChapters = await scrapeChapters(source.sourceUrl, source);
                 const existingChapters = await prisma.chapter.findMany({
                     where: { sourceId: source.id },
                     select: {

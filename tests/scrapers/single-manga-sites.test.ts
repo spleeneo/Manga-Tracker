@@ -192,4 +192,42 @@ describe("SingleMangaSiteScraper", () => {
       sourceName: "Fire Force Manga",
     }]);
   });
+
+  it("uses stored source names to parse compact direct domains after discovery", async () => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce(textResponse(`
+        <a href="/comic/fire-force-chapter-2/index.html">Fire Force Chapter 2</a>
+      `))
+      .mockResolvedValueOnce(textResponse(`
+        <img src="/wp-content/uploads/fire-force/001.jpg" />
+      `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const chapters = await scraper.fetchChapters("https://fireforce.xyz/tag/chapter-0/index.html", {
+      id: "s1",
+      sourceName: "Fire Force Manga",
+      sourceUrl: "https://fireforce.xyz/tag/chapter-0/index.html",
+    });
+
+    expect(chapters).toEqual([expect.objectContaining({
+      chapterNumber: 2,
+      url: "https://fireforce.xyz/comic/fire-force-chapter-2/index.html",
+    })]);
+
+    const reader = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      url: "https://fireforce.xyz/comic/fire-force-chapter-2/index.html",
+      chapterNumber: 2,
+    }, {
+      id: "s1",
+      sourceName: "Fire Force Manga",
+      sourceUrl: "https://fireforce.xyz/tag/chapter-0/index.html",
+    });
+
+    expect(reader.status).toBe("READABLE");
+    expect(reader.pages).toEqual([{
+      index: 0,
+      imageUrl: "https://fireforce.xyz/wp-content/uploads/fire-force/001.jpg",
+    }]);
+  });
 });

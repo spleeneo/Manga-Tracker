@@ -1,5 +1,5 @@
 import { fetchWithRetry } from "./http";
-import { MangaMetadata, ReaderChapterInput, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { MangaMetadata, ReaderChapterInput, ReaderPage, ReaderResult, ReaderSourceInput, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 export type SingleMangaSiteConfig = {
   sourceName: string;
@@ -155,6 +155,11 @@ function slugifyTitle(value: string) {
   return normalizeValue(value).replace(/\s+/g, "-");
 }
 
+function getTitleHintFromSource(source?: ReaderSourceInput | null) {
+  if (!source?.sourceName) return "";
+  return source.sourceName.replace(/\s+Manga$/i, "");
+}
+
 function getMeaningfulTokens(value: string) {
   return normalizeValue(value)
     .split(" ")
@@ -300,11 +305,11 @@ export class SingleMangaSiteScraper implements Scraper {
     return Boolean(this.findConfigByUrl(url));
   }
 
-  private findConfigByUrl(url: string): SingleMangaSiteConfig | undefined {
+  private findConfigByUrl(url: string, titleHint = ""): SingleMangaSiteConfig | undefined {
     try {
       const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
       return SINGLE_MANGA_SITE_CONFIGS.find((config) => new URL(config.baseUrl).hostname.replace(/^www\./, "").toLowerCase() === hostname)
-        ?? buildDiscoveredConfig(new URL("/", url).toString(), hostname.split(".").slice(1, -1).join(" "))
+        ?? buildDiscoveredConfig(new URL("/", url).toString(), titleHint || hostname.split(".").slice(1, -1).join(" "))
         ?? undefined;
     } catch {
       return SINGLE_MANGA_SITE_CONFIGS.find((config) => url.toLowerCase().includes(config.baseUrl.toLowerCase()));
@@ -426,8 +431,8 @@ export class SingleMangaSiteScraper implements Scraper {
     };
   }
 
-  async fetchChapters(url: string): Promise<ScrapedChapter[]> {
-    const config = this.findConfigByUrl(url);
+  async fetchChapters(url: string, source?: ReaderSourceInput): Promise<ScrapedChapter[]> {
+    const config = this.findConfigByUrl(url, getTitleHintFromSource(source));
     if (!config) throw new Error(`No single-manga site config found for URL: ${url}`);
 
     const html = await this.fetchHtml(url);
@@ -449,8 +454,8 @@ export class SingleMangaSiteScraper implements Scraper {
     return uniqueByChapterNumber(chapters).sort((a, b) => b.chapterNumber - a.chapterNumber);
   }
 
-  async fetchReaderPages(chapter: ReaderChapterInput): Promise<ReaderResult> {
-    const config = this.findConfigByUrl(chapter.url);
+  async fetchReaderPages(chapter: ReaderChapterInput, source?: ReaderSourceInput): Promise<ReaderResult> {
+    const config = this.findConfigByUrl(chapter.url, getTitleHintFromSource(source));
     if (!config) {
       return {
         status: "EXTERNAL_ONLY",

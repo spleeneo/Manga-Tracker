@@ -57,12 +57,12 @@ export function getScraperStatus() {
     }));
 }
 
-export async function scrapeChapters(url: string): Promise<ScrapedChapter[]> {
+export async function scrapeChapters(url: string, source?: ReaderSourceInput): Promise<ScrapedChapter[]> {
     const scraper = scrapers.find(s => s.canHandle(url));
     if (!scraper) {
         throw new Error(`No scraper found for URL: ${url}`);
     }
-    return scraper.fetchChapters(url);
+    return scraper.fetchChapters(url, source);
 }
 
 export async function fetchMetadata(url: string): Promise<MangaMetadata> {
