@@ -34,6 +34,10 @@ interface MangaPlusTitleDetailView {
     chapterListGroup?: MangaPlusChapterGroup[];
 }
 
+interface MangaPlusViewerView {
+    currentChapter?: MangaPlusChapter;
+}
+
 interface MangaPlusJsonResponse {
     success?: {
         allTitlesViewV2?: {
@@ -41,7 +45,9 @@ interface MangaPlusJsonResponse {
             allTitlesGroup?: MangaPlusTitleGroup[];
         };
         titleDetailView?: MangaPlusTitleDetailView;
+        mangaViewer?: MangaPlusViewerView;
     };
+    error?: unknown;
 }
 
 interface MangaPlusNamedTitle extends MangaPlusTitle {
@@ -92,6 +98,14 @@ export class MangaPlusScraper implements Scraper {
         }
     }
 
+    private getTitleIdFromUrl(url: string): string | null {
+        return url.match(/titles\/(\d+)/)?.[1] ?? null;
+    }
+
+    private getViewerChapterIdFromUrl(url: string): string | null {
+        return url.match(/viewer\/(\d+)/)?.[1] ?? null;
+    }
+
     async search(query: string): Promise<SearchResult[]> {
         const url = `${API_BASE}/title_list/allV2`;
         try {
@@ -127,9 +141,13 @@ export class MangaPlusScraper implements Scraper {
     }
 
     async fetchChapters(mangaUrl: string): Promise<ScrapedChapter[]> {
-        const match = mangaUrl.match(/titles\/(\d+)/);
-        if (!match) return [];
-        const titleId = match[1];
+        const viewerChapterId = this.getViewerChapterIdFromUrl(mangaUrl);
+        if (viewerChapterId) {
+            return this.fetchSingleViewerChapter(viewerChapterId);
+        }
+
+        const titleId = this.getTitleIdFromUrl(mangaUrl);
+        if (!titleId) return [];
 
         const url = `${API_BASE}/title_detailV3?title_id=${titleId}`;
 
@@ -167,10 +185,49 @@ export class MangaPlusScraper implements Scraper {
         }
     }
 
+    private async fetchSingleViewerChapter(chapterId: string): Promise<ScrapedChapter[]> {
+        const url = `${API_BASE}/manga_viewer_v3?chapter_id=${chapterId}&split=yes&img_quality=high`;
+
+        try {
+            const data = await this.fetchJson(url);
+            const chapter = data.success?.mangaViewer?.currentChapter;
+            const chapterNumber = parseChapterNumber(chapter?.name);
+            if (typeof chapter?.chapterId !== "number" || chapterNumber === null) return [];
+
+            const header = chapter.name || "";
+            const sub = chapter.subTitle || "";
+            const title = header && sub ? `${header}: ${sub}` : header || sub || `Chapter ${chapter.chapterId}`;
+            const releaseDate = chapter.startTimeStamp
+                ? new Date(chapter.startTimeStamp * 1000)
+                : undefined;
+
+            return [{
+                providerChapterId: String(chapter.chapterId),
+                chapterNumber,
+                title,
+                url: `${this.baseUrl}/viewer/${chapter.chapterId}`,
+                releaseDate,
+            }];
+        } catch (e) {
+            console.error("MangaPlus viewer chapter failed:", e);
+            return [];
+        }
+    }
+
     async fetchMetadata(mangaUrl: string): Promise<MangaMetadata> {
-        const match = mangaUrl.match(/titles\/(\d+)/);
-        if (!match) throw new Error("Invalid MangaPlus URL");
-        const titleId = match[1];
+        const titleId = this.getTitleIdFromUrl(mangaUrl);
+        if (!titleId) {
+            const viewerChapterId = this.getViewerChapterIdFromUrl(mangaUrl);
+            if (viewerChapterId) {
+                return {
+                    title: "MangaPlus",
+                    description: `MangaPlus viewer chapter ${viewerChapterId}`,
+                    status: "ONGOING",
+                    author: "SHUEISHA",
+                };
+            }
+            throw new Error("Invalid MangaPlus URL");
+        }
 
         const url = `${API_BASE}/title_detailV3?title_id=${titleId}`;
         const data = await this.fetchJson(url);

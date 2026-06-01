@@ -65,4 +65,43 @@ describe("MangaPlusScraper", () => {
     expect(chapters.some((chapter) => chapter.chapterNumber === 1006664)).toBe(false);
     expect(chapters.some((chapter) => chapter.chapterNumber === 2)).toBe(false);
   });
+
+  it("tracks a MangaPlus viewer URL as a single public chapter when metadata is available", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
+      success: {
+        mangaViewer: {
+          currentChapter: {
+            chapterId: 1029045,
+            name: "#017",
+            subTitle: "A Visitor",
+            startTimeStamp: 1767225600,
+          },
+        },
+      },
+    }));
+
+    const scraper = new MangaPlusScraper();
+    const chapters = await scraper.fetchChapters("https://mangaplus.shueisha.co.jp/viewer/1029045");
+
+    expect(chapters).toEqual([{
+      providerChapterId: "1029045",
+      chapterNumber: 17,
+      title: "#017: A Visitor",
+      url: "https://mangaplus.shueisha.co.jp/viewer/1029045",
+      releaseDate: new Date(1767225600 * 1000),
+    }]);
+  });
+
+  it("does not invent a chapter number when a MangaPlus viewer URL is unavailable", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
+      error: {
+        englishPopup: { subject: "Unavailable" },
+      },
+    }));
+
+    const scraper = new MangaPlusScraper();
+    const chapters = await scraper.fetchChapters("https://mangaplus.shueisha.co.jp/viewer/1029045");
+
+    expect(chapters).toEqual([]);
+  });
 });
