@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getLibraryMangaSummary } from "@/lib/library-summary";
 import { getCurrentUserId } from "@/lib/session";
+import { filterSourcesForManga } from "@/lib/source-overrides";
 import { NextRequest, NextResponse } from "next/server";
 
 type ProgressAction = "set" | "caught-up" | "next" | "previous";
@@ -8,7 +9,18 @@ type ProgressAction = "set" | "caught-up" | "next" | "previous";
 async function getTrackedManga(slug: string, userId: string) {
   const manga = await prisma.manga.findUnique({
     where: { slug },
-    select: { id: true },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      sources: {
+        select: {
+          id: true,
+          sourceName: true,
+          sourceUrl: true,
+        },
+      },
+    },
   });
   if (!manga) return { error: "Manga not found" as const, status: 404 as const };
 
@@ -33,20 +45,24 @@ async function getTrackedManga(slug: string, userId: string) {
 async function resolveProgressChapterNumber({
   action,
   mangaId,
+  sourceIds,
   currentProgress,
   chapterNumber,
 }: {
   action: ProgressAction;
   mangaId: string;
+  sourceIds?: string[];
   currentProgress: number | null;
   chapterNumber?: unknown;
 }) {
+  const sourceFilter = sourceIds ? { sourceId: { in: sourceIds } } : {};
+
   if (action === "set") {
     if (typeof chapterNumber !== "number" || !Number.isFinite(chapterNumber)) {
       return { error: "chapterNumber is required for set action", status: 400 as const };
     }
     const chapter = await prisma.chapter.findFirst({
-      where: { mangaId, chapterNumber },
+      where: { mangaId, chapterNumber, ...sourceFilter },
       select: { chapterNumber: true },
     });
     if (!chapter) return { error: "Chapter not found", status: 404 as const };
@@ -55,7 +71,7 @@ async function resolveProgressChapterNumber({
 
   if (action === "caught-up") {
     const latest = await prisma.chapter.aggregate({
-      where: { mangaId },
+      where: { mangaId, ...sourceFilter },
       _max: { chapterNumber: true },
     });
     return { chapterNumber: latest._max.chapterNumber ?? null };
@@ -65,6 +81,7 @@ async function resolveProgressChapterNumber({
     const next = await prisma.chapter.findFirst({
       where: {
         mangaId,
+        ...sourceFilter,
         ...(currentProgress == null ? {} : { chapterNumber: { gt: currentProgress } }),
       },
       orderBy: { chapterNumber: "asc" },
@@ -80,6 +97,7 @@ async function resolveProgressChapterNumber({
     const previous = await prisma.chapter.findFirst({
       where: {
         mangaId,
+        ...sourceFilter,
         chapterNumber: { lt: chapterNumber },
       },
       orderBy: { chapterNumber: "desc" },
@@ -113,9 +131,13 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    const mangaSources = result.manga.sources ?? [];
     const progress = await resolveProgressChapterNumber({
       action,
       mangaId: result.manga.id,
+      sourceIds: mangaSources.length > 0
+        ? filterSourcesForManga(result.manga, mangaSources).map((source) => source.id)
+        : undefined,
       currentProgress: result.tracked.lastReadChapterNumber,
       chapterNumber: body?.chapterNumber,
     });

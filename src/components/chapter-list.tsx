@@ -37,6 +37,7 @@ interface ChapterListProps {
 
 type ChapterMode = "best" | "all";
 type SortDirection = "desc" | "asc";
+type ChapterTarget = "first" | "latest" | "next-unread";
 
 const CHAPTER_FETCH_LIMIT = 100;
 const LOAD_MORE_BATCH_PAGES = 3;
@@ -50,6 +51,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
     const [lastReadChapterNumber, setLastReadChapterNumber] = useState<number | null>(initialLastReadChapterNumber);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
+    const [loadingTarget, setLoadingTarget] = useState<ChapterTarget | null>(null);
     const hasLoadedInitialPage = useRef(initialChapters.length > 0);
     const { showToast } = useToast();
     const visibleSources = useMemo(() => {
@@ -225,7 +227,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const latestChapter = chaptersByNumberAsc[chaptersByNumberAsc.length - 1];
     const firstUnreadChapter = chaptersByNumberAsc.find((chapter) => !chapter.isRead);
 
-    const openChapter = (chapter?: Chapter) => {
+    const openChapter = (chapter?: Chapter | null) => {
         if (!chapter?.url) return;
         const opensExternally = isExternalReaderSource(chapter.sourceName) || (
             Boolean(chapter.readerStatus)
@@ -238,6 +240,34 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         }
 
         window.location.assign(`/manga/${slug}/chapter/${chapter.id}`);
+    };
+
+    const openChapterTarget = async (target: ChapterTarget) => {
+        setLoadingTarget(target);
+        try {
+            const params = new URLSearchParams({
+                target,
+                mode,
+                sort: sortDirection,
+            });
+            if (selectedSourceId !== "all") {
+                params.set("sourceId", selectedSourceId);
+            }
+
+            const res = await fetch(`/api/manga/${slug}/chapters?${params.toString()}`);
+            if (!res.ok) throw new Error(`Failed to load chapter target: ${res.status}`);
+            const data = await res.json();
+            openChapter(data.chapter ?? null);
+        } catch (error) {
+            console.error(error);
+            showToast({
+                type: "error",
+                title: "Chapter did not open",
+                description: "Please try again.",
+            });
+        } finally {
+            setLoadingTarget(null);
+        }
     };
 
     const selectBest = () => {
@@ -336,29 +366,29 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:gap-2">
                 <button
                     type="button"
-                    onClick={() => openChapter(firstChapter)}
-                    disabled={!firstChapter}
+                    onClick={() => void openChapterTarget("first")}
+                    disabled={!firstChapter || loadingTarget !== null}
                     className="ui-button ui-button-secondary min-h-9 justify-center px-2 text-[11px] uppercase"
                 >
-                    <BookOpen className="h-4 w-4" />
+                    {loadingTarget === "first" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
                     <span className="hidden min-[420px]:inline">Read </span>First
                 </button>
                 <button
                     type="button"
-                    onClick={() => openChapter(firstUnreadChapter)}
-                    disabled={!firstUnreadChapter}
+                    onClick={() => void openChapterTarget("next-unread")}
+                    disabled={!firstUnreadChapter || loadingTarget !== null}
                     className="ui-button ui-button-primary min-h-9 justify-center px-2 text-[11px] uppercase"
                 >
-                    <BookOpen className="h-4 w-4" />
+                    {loadingTarget === "next-unread" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
                     Unread
                 </button>
                 <button
                     type="button"
-                    onClick={() => openChapter(latestChapter)}
-                    disabled={!latestChapter}
+                    onClick={() => void openChapterTarget("latest")}
+                    disabled={!latestChapter || loadingTarget !== null}
                     className="ui-button ui-button-secondary min-h-9 justify-center px-2 text-[11px] uppercase"
                 >
-                    <BookOpen className="h-4 w-4" />
+                    {loadingTarget === "latest" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
                     Latest
                 </button>
             </div>

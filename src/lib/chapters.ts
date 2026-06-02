@@ -4,6 +4,7 @@ export const CHAPTER_PAGE_SIZE = 60;
 
 export type ChapterListMode = "best" | "all";
 export type ChapterSortDirection = "desc" | "asc";
+export type ChapterTarget = "first" | "latest" | "next-unread";
 
 export interface ChapterView {
   id: string;
@@ -19,6 +20,20 @@ export interface ChapterView {
 
 type ChapterCursor = {
   id: string;
+};
+
+type ChapterRecord = {
+  id: string;
+  chapterNumber: number;
+  title: string | null;
+  url: string;
+  releaseDate: Date | null;
+  createdAt?: Date | null;
+  sourceId: string | null;
+  readerStatus: string | null;
+  source: {
+    sourceName: string;
+  } | null;
 };
 
 export function getChapterMode(value: string | null): ChapterListMode {
@@ -96,6 +111,145 @@ export async function getMangaChapterPage({
       ? createChapterCursor(visibleChapters[visibleChapters.length - 1]?.id)
       : null,
   };
+}
+
+export async function getMangaChapterTarget({
+  mangaId,
+  mangaSlug,
+  sourceId,
+  sourceIds,
+  lastReadChapterNumber,
+  target,
+}: {
+  mangaId: string;
+  mangaSlug?: string | null;
+  sourceId?: string;
+  sourceIds?: string[];
+  lastReadChapterNumber?: number | null;
+  target: ChapterTarget;
+}) {
+  const sourceFilter = sourceId ? { sourceId } : sourceIds ? { sourceId: { in: sourceIds } } : {};
+  const chapterNumberFilter = target === "next-unread" && lastReadChapterNumber != null
+    ? { chapterNumber: { gt: lastReadChapterNumber } }
+    : {};
+  const orderDirection = target === "latest" ? "desc" : "asc";
+
+  const boundaryChapter = await prisma.chapter.findFirst({
+    where: {
+      mangaId,
+      ...sourceFilter,
+      ...chapterNumberFilter,
+    },
+    orderBy: [
+      { chapterNumber: orderDirection },
+      { releaseDate: orderDirection },
+      { createdAt: orderDirection },
+      { id: orderDirection },
+    ],
+    select: {
+      chapterNumber: true,
+    },
+  });
+
+  if (!boundaryChapter) return null;
+
+  const candidates = await prisma.chapter.findMany({
+    where: {
+      mangaId,
+      ...sourceFilter,
+      chapterNumber: boundaryChapter.chapterNumber,
+    },
+    select: {
+      id: true,
+      chapterNumber: true,
+      title: true,
+      url: true,
+      releaseDate: true,
+      createdAt: true,
+      sourceId: true,
+      providerChapterId: true,
+      readerStatus: true,
+      source: {
+        select: {
+          sourceName: true,
+        },
+      },
+    },
+  });
+  const chapter = pickBestChapterCandidate(candidates, mangaSlug);
+
+  return chapter
+    ? {
+        id: chapter.id,
+        chapterNumber: chapter.chapterNumber,
+        title: chapter.title,
+        url: chapter.url,
+        releaseDate: chapter.releaseDate,
+        sourceId: chapter.sourceId,
+        sourceName: chapter.source?.sourceName,
+        readerStatus: chapter.readerStatus,
+        isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
+    } satisfies ChapterView
+    : null;
+}
+
+function pickBestChapterCandidate(chapters: ChapterRecord[], mangaSlug?: string | null) {
+  return [...chapters].sort((a, b) => {
+    const rankDelta = getChapterSourceRank(b.source?.sourceName, mangaSlug) - getChapterSourceRank(a.source?.sourceName, mangaSlug);
+    if (rankDelta !== 0) return rankDelta;
+
+    const releaseDelta = getTime(b.releaseDate) - getTime(a.releaseDate);
+    if (releaseDelta !== 0) return releaseDelta;
+
+    const createdDelta = getTime(b.createdAt) - getTime(a.createdAt);
+    if (createdDelta !== 0) return createdDelta;
+
+    return a.id.localeCompare(b.id);
+  })[0] ?? null;
+}
+
+function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | null) {
+  const name = sourceName?.toLowerCase();
+  const slug = mangaSlug?.toLowerCase();
+
+  if ((slug === "witch-hat-atelier" || slug === "witch-hat-atelier-manga") && name === "witch hat atelier manga") {
+    return 9;
+  }
+
+  if ((slug === "houseki-no-kuni" || slug === "land-of-the-lustrous") && name === "land of the lustrous") {
+    return 9;
+  }
+
+  if (slug === "bleach" && name === "bleach live") {
+    return 8;
+  }
+
+  switch (name) {
+    case "witch hat atelier manga":
+    case "land of the lustrous":
+    case "blue lock manga":
+    case "fire punch":
+      return 8;
+    case "nelomanga":
+      return 7;
+    case "urek mazino":
+    case "bleach live":
+      return 6;
+    case "mangaplus":
+      return 5;
+    case "mangadex":
+      return 4;
+    case "webtoon":
+      return 3;
+    case "manganato":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function getTime(value?: Date | string | null) {
+  return value ? new Date(value).getTime() : 0;
 }
 
 function createChapterCursor(id?: string) {

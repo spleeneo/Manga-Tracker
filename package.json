@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify": "npm run lint && npm run test && npm run build",
     "smoke:update": "tsx scripts/smoke-update-cycle.ts",
     "update-manga": "tsx scripts/update-manga.ts",
     "db:generate": "prisma generate",

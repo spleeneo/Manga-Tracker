@@ -55,6 +55,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 - `npm run start`: starts the production server.
 - `npm run lint`: runs the linter to check for code issues.
 - `npm run test`: runs automated tests with Vitest.
+- `npm run verify`: runs lint, tests, and production build.
 - `npm run db:generate`: regenerates Prisma Client.
 - `npm run db:migrate`: applies Prisma migrations.
 - `npm run db:reset`: wipes all manga, sources, and chapters.
@@ -121,6 +122,9 @@ This will execute a script to delete all entries from the configured Postgres da
 - [Architecture](docs/architecture.md): shared manga data, per-user library state, request/update flows.
 - [Providers](docs/providers.md): scraper registry, provider capabilities, ranking and readability limitations.
 - [Operations](docs/ops.md): local setup, Vercel/Neon deploy, OAuth, cron, routine checks.
+- [Development Methodology](docs/development-methodology.md): test-driven workflow, verification expectations, and review checklist.
+- [Learnings Log](docs/learnings.md): reusable lessons from debugging, verification, and development decisions.
+- [Work Log](docs/work-log.md): why work was done, the plan, changes, verification, outcomes, and delivery state.
 - [Performance Review](docs/performance-review.md): production-like baseline measurements and ranked performance backlog.
 - [Security](docs/security.md): auth, ownership rules, secret handling, hardening notes.
 - [Product Notes](docs/product-notes.md): UX principles, readability detection, backlog.

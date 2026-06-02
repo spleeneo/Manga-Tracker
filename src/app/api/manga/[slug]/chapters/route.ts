@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getMangaChapterPage, getChapterMode, getChapterSortDirection } from "@/lib/chapters";
+import { getMangaChapterPage, getChapterMode, getChapterSortDirection, getMangaChapterTarget } from "@/lib/chapters";
 import { getCurrentUserId } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
@@ -18,6 +18,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const mode = getChapterMode(searchParams.get("mode"));
     const sortDirection = getChapterSortDirection(searchParams.get("sort"));
+    const target = searchParams.get("target");
     const sourceId = searchParams.get("sourceId") || undefined;
     const cursor = searchParams.get("cursor") || undefined;
     const limitParam = searchParams.get("limit");
@@ -70,10 +71,24 @@ export async function GET(
     if (override && visibleSourceIds.size === 0) {
       return NextResponse.json({
         chapters: [],
+        chapter: null,
         nextCursor: null,
         mode,
         sortDirection,
       });
+    }
+
+    if (target === "first" || target === "latest" || target === "next-unread") {
+      const chapter = await getMangaChapterTarget({
+        mangaId: manga.id,
+        mangaSlug: manga.slug,
+        sourceId,
+        sourceIds: sourceId ? undefined : sourceIds,
+        lastReadChapterNumber: tracked.lastReadChapterNumber,
+        target,
+      });
+
+      return NextResponse.json({ chapter, mode, sortDirection });
     }
 
     const page = await getMangaChapterPage({

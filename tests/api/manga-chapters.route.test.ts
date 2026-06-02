@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  chapterFindFirstMock,
   chapterFindManyMock,
   getCurrentUserIdMock,
   mangaFindUniqueMock,
   sourceFindFirstMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
+  chapterFindFirstMock: vi.fn(),
   chapterFindManyMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
@@ -20,7 +22,7 @@ vi.mock("@/lib/session", () => ({
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    chapter: { findMany: chapterFindManyMock },
+    chapter: { findFirst: chapterFindFirstMock, findMany: chapterFindManyMock },
     manga: { findUnique: mangaFindUniqueMock },
     source: { findFirst: sourceFindFirstMock },
     userManga: { findUnique: userMangaFindUniqueMock },
@@ -141,6 +143,147 @@ describe("GET /api/manga/[slug]/chapters", () => {
       where: expect.objectContaining({
         mangaId: "m1",
         sourceId: { in: ["s2"] },
+      }),
+    }));
+  });
+
+  it("returns the true first chapter target from the database", async () => {
+    chapterFindFirstMock.mockResolvedValue({
+      chapterNumber: 0,
+    });
+    chapterFindManyMock.mockResolvedValue([{
+      id: "c0",
+      chapterNumber: 0,
+      title: "Zero",
+      url: "u0",
+      releaseDate: null,
+      createdAt: new Date("2024-01-01T00:00:00.000Z"),
+      sourceId: "s1",
+      readerStatus: null,
+      source: { sourceName: "MangaDex" },
+    }]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?target=first") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "c0",
+      chapterNumber: 0,
+      sourceName: "MangaDex",
+    }));
+    expect(chapterFindFirstMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ mangaId: "m1" }),
+      orderBy: [
+        { chapterNumber: "asc" },
+        { releaseDate: "asc" },
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
+    }));
+    expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        mangaId: "m1",
+        chapterNumber: 0,
+      }),
+    }));
+  });
+
+  it("returns the preferred source candidate for the latest target", async () => {
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 42 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "manganato-42",
+        chapterNumber: 42,
+        title: "Forty Two",
+        url: "manganato-url",
+        releaseDate: new Date("2024-01-02T00:00:00.000Z"),
+        createdAt: new Date("2024-01-02T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "Manganato" },
+      },
+      {
+        id: "mangaplus-42",
+        chapterNumber: 42,
+        title: "Forty Two",
+        url: "mangaplus-url",
+        releaseDate: new Date("2024-01-01T00:00:00.000Z"),
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "MangaPlus" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?target=latest") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mangaplus-42",
+      sourceName: "MangaPlus",
+    }));
+    expect(chapterFindFirstMock).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [
+        { chapterNumber: "desc" },
+        { releaseDate: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+    }));
+  });
+
+  it("returns the preferred source candidate for the next unread target", async () => {
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 10 });
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 11 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "manganato-11",
+        chapterNumber: 11,
+        title: "Eleven",
+        url: "manganato-url",
+        releaseDate: new Date("2024-01-02T00:00:00.000Z"),
+        createdAt: new Date("2024-01-02T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "Manganato" },
+      },
+      {
+        id: "mangadex-11",
+        chapterNumber: 11,
+        title: "Eleven",
+        url: "mangadex-url",
+        releaseDate: new Date("2024-01-01T00:00:00.000Z"),
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "MangaDex" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?target=next-unread") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mangadex-11",
+      sourceName: "MangaDex",
+      isRead: false,
+    }));
+    expect(chapterFindFirstMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        mangaId: "m1",
+        chapterNumber: { gt: 10 },
       }),
     }));
   });
