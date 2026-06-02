@@ -116,4 +116,32 @@ describe("GET /api/manga/[slug]/chapters", () => {
       ],
     }));
   });
+
+  it("limits default chapter pages to dedicated manga sources when present", async () => {
+    mangaFindUniqueMock.mockResolvedValue({
+      id: "m1",
+      slug: "blue-lock",
+      title: "Blue Lock",
+      sources: [
+        { id: "s1", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/blue-lock" },
+        { id: "s2", sourceName: "Blue Lock Manga", sourceUrl: "https://w45.blue-lock-manga.com/" },
+      ],
+    });
+    chapterFindManyMock.mockResolvedValue([
+      { id: "c1", chapterNumber: 291, title: "Latest", url: "u1", releaseDate: null, sourceId: "s2" },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/blue-lock/chapters?limit=2") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "blue-lock" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        mangaId: "m1",
+        sourceId: { in: ["s2"] },
+      }),
+    }));
+  });
 });

@@ -5,6 +5,7 @@ import { ChapterItem } from "./chapter-item";
 import { ArrowDownUp, BookOpen, ExternalLink, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
+import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 
 interface Source {
     id: string;
@@ -51,6 +52,11 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [isLoadingPage, setIsLoadingPage] = useState(false);
     const hasLoadedInitialPage = useRef(initialChapters.length > 0);
     const { showToast } = useToast();
+    const visibleSources = useMemo(() => {
+        const dedicatedSources = initialSources.filter((source) => isDedicatedMangaSourceName(source.sourceName));
+        return dedicatedSources.length > 0 ? dedicatedSources : initialSources;
+    }, [initialSources]);
+    const visibleSourceIds = useMemo(() => new Set(visibleSources.map((source) => source.id)), [visibleSources]);
 
     const loadChapterPage = useCallback(async ({
         reset,
@@ -116,7 +122,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         void loadChapterPage({ reset: true, nextMode: "best", nextSourceId: "all" });
     }, [loadChapterPage]);
 
-    const sourceById = useMemo(() => new Map(initialSources.map((source) => [source.id, source])), [initialSources]);
+    const sourceById = useMemo(() => new Map(visibleSources.map((source) => [source.id, source])), [visibleSources]);
 
     const getSourceRank = (sourceName?: string) => {
         if ((slug === "witch-hat-atelier" || slug === "witch-hat-atelier-manga") && sourceName?.toLowerCase() === "witch hat atelier manga") {
@@ -172,10 +178,12 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
         alternativeCount,
     });
 
-    const progressDecoratedChapters = chapters.map((chapter) => ({
-        ...chapter,
-        isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
-    }));
+    const progressDecoratedChapters = chapters
+        .filter((chapter) => !chapter.sourceId || visibleSourceIds.has(chapter.sourceId))
+        .map((chapter) => ({
+            ...chapter,
+            isRead: lastReadChapterNumber != null && chapter.chapterNumber <= lastReadChapterNumber,
+        }));
 
     const filteredChapters = mode === "best" && selectedSourceId === "all"
         ? Array.from(
@@ -191,7 +199,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
             .filter(c => selectedSourceId === "all" || c.sourceId === selectedSourceId)
             .map((chapter) => withSourceMetadata(chapter));
 
-    const selectedSource = initialSources.find(s => s.id === selectedSourceId);
+    const selectedSource = visibleSources.find(s => s.id === selectedSourceId);
     const normalizedSearch = searchQuery.trim().toLowerCase();
 
     const searchedChapters = normalizedSearch
@@ -287,7 +295,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                     >
                         All Available
                     </button>
-                    {initialSources.map((source) => (
+                    {visibleSources.map((source) => (
                         <button
                             key={source.id}
                             onClick={() => selectSource(source.id)}

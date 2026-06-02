@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { DEDICATED_MANGA_SOURCE_NAMES } from "@/lib/source-preference";
 
 export interface SummaryChapter {
   id: string;
@@ -149,6 +150,26 @@ const SOURCE_OVERRIDE_FILTER_SQL = Prisma.sql`
   )
 `;
 
+const DEDICATED_SOURCE_NAMES_SQL = Prisma.join(DEDICATED_MANGA_SOURCE_NAMES);
+
+const DEDICATED_SOURCE_FILTER_SQL = Prisma.sql`
+  AND (
+    NOT EXISTS (
+      SELECT 1
+      FROM "Source" ds
+      WHERE ds."mangaId" = m."id"
+        AND (
+          LOWER(COALESCE(ds."sourceName", '')) LIKE '% manga'
+          OR LOWER(COALESCE(ds."sourceName", '')) IN (${DEDICATED_SOURCE_NAMES_SQL})
+        )
+    )
+    OR (
+      LOWER(COALESCE(s."sourceName", '')) LIKE '% manga'
+      OR LOWER(COALESCE(s."sourceName", '')) IN (${DEDICATED_SOURCE_NAMES_SQL})
+    )
+  )
+`;
+
 async function getSummaryRows(userId: string, mangaId?: string) {
   return prisma.$queryRaw<SummaryRow[]>`
     SELECT
@@ -192,6 +213,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
         ${SOURCE_OVERRIDE_FILTER_SQL}
+        ${DEDICATED_SOURCE_FILTER_SQL}
     ) counts ON true
     LEFT JOIN LATERAL (
       SELECT DISTINCT ON (c."chapterNumber")
@@ -205,6 +227,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
         ${SOURCE_OVERRIDE_FILTER_SQL}
+        ${DEDICATED_SOURCE_FILTER_SQL}
       ORDER BY
         c."chapterNumber" DESC,
         ${SOURCE_RANK_SQL} DESC,
@@ -223,6 +246,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
           AND c."releaseDate" IS NOT NULL
           AND c."releaseDate" <= now()
           ${SOURCE_OVERRIDE_FILTER_SQL}
+          ${DEDICATED_SOURCE_FILTER_SQL}
         ORDER BY
           c."chapterNumber" DESC,
           ${SOURCE_RANK_SQL} DESC,
@@ -267,6 +291,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       WHERE c."mangaId" = m."id"
         AND (um."lastReadChapterNumber" IS NULL OR c."chapterNumber" > um."lastReadChapterNumber")
         ${SOURCE_OVERRIDE_FILTER_SQL}
+        ${DEDICATED_SOURCE_FILTER_SQL}
       ORDER BY
         c."chapterNumber" ASC,
         ${SOURCE_RANK_SQL} DESC,

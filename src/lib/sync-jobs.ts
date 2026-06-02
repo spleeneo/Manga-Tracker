@@ -22,27 +22,25 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
     },
   });
 
-  const existingJobs = await prisma.syncJob.findMany({
+  const activeJobs = await prisma.syncJob.findMany({
     where: {
       type: SYNC_JOB_TYPE,
       userId,
       mangaId,
+      status: { in: ["QUEUED", "RUNNING"] },
     },
     select: {
       id: true,
       status: true,
     },
-    orderBy: [
-      { status: "asc" },
-      { updatedAt: "desc" },
-    ],
+    orderBy: { updatedAt: "desc" },
   });
 
-  const runningJob = existingJobs.find((job) => job.status === "RUNNING");
-  const existingJob = runningJob ?? existingJobs[0];
+  const runningJob = activeJobs.find((job) => job.status === "RUNNING");
+  const existingJob = runningJob ?? activeJobs[0];
 
   if (existingJob) {
-    const duplicateJobIds = existingJobs
+    const duplicateJobIds = activeJobs
       .filter((job) => job.id !== existingJob.id)
       .map((job) => job.id);
 
@@ -110,7 +108,11 @@ export async function processSyncJob(jobId: string) {
   });
 
   try {
-    await checkForUpdates(job.mangaId);
+    const results = await checkForUpdates(job.mangaId);
+    const failedResult = results.find((result) => "allSourcesFailed" in result && result.allSourcesFailed);
+    if (failedResult) {
+      throw new Error(failedResult.status);
+    }
 
     if (job.userId) {
       await prisma.userManga.update({

@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
 import { scrapeChapters } from "./scrapers/registry";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
-import { discoverSingleMangaSiteSources, SINGLE_MANGA_SITE_SOURCE_NAMES } from "@/lib/scrapers/single-manga-sites";
+import { isDedicatedMangaSourceName } from "@/lib/source-preference";
+import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
 
 function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
-    return sources.some((source) => SINGLE_MANGA_SITE_SOURCE_NAMES.includes(source.sourceName.toLowerCase()));
+    return sources.some((source) => isDedicatedMangaSourceName(source.sourceName));
 }
 
 export async function checkForUpdates(specificMangaId?: string) {
@@ -70,7 +71,7 @@ export async function checkForUpdates(specificMangaId?: string) {
                         sourceUrl: discoveredSource.sourceUrl,
                     },
                 });
-                sources = [source, ...sources];
+                sources = filterSourcesForManga(manga, [source, ...sources]);
             }
         }
 
@@ -135,23 +136,26 @@ export async function checkForUpdates(specificMangaId?: string) {
                         disabledUntil: null,
                     },
                 });
-                return createdCount;
+                return { createdCount };
 
             } catch (e) {
                 console.error(`Failed to scrape source ${source.sourceName} for ${manga.title}`, e);
+                const errorMessage = e instanceof Error ? e.message : "Unknown scrape error";
                 await prisma.source.update({
                     where: { id: source.id },
                     data: {
                         lastCheckedAt: new Date(),
-                        lastError: e instanceof Error ? e.message : "Unknown scrape error",
+                        lastError: errorMessage,
                         failureCount: { increment: 1 },
                     },
                 });
-                return 0;
+                return { createdCount: 0, error: errorMessage };
             }
         }));
 
-        const totalNewChapters = sourceResults.reduce((total, count) => total + count, 0);
+        const totalNewChapters = sourceResults.reduce((total, result) => total + result.createdCount, 0);
+        const failedSources = sourceResults.filter((result) => result.error);
+        const allSourcesFailed = failedSources.length === sourceResults.length;
 
         if (totalNewChapters > 0) {
             await prisma.manga.update({
@@ -162,7 +166,11 @@ export async function checkForUpdates(specificMangaId?: string) {
 
         results.push({
             manga: manga.title,
-            status: totalNewChapters > 0 ? `Added ${totalNewChapters} new chapters` : "No new chapters updates"
+            status: allSourcesFailed
+                ? `All sources failed: ${failedSources.map((source) => source.error).join("; ")}`
+                : totalNewChapters > 0 ? `Added ${totalNewChapters} new chapters` : "No new chapters updates",
+            failedSources: failedSources.length,
+            allSourcesFailed,
         });
     }
 

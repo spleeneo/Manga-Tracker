@@ -114,6 +114,28 @@ describe("checkForUpdates", () => {
     expect(results[0].manga).toBe("Multi");
   });
 
+  it("reports a failed update when every source fails", async () => {
+    findManyManga.mockResolvedValue([
+      {
+        id: "m1",
+        title: "Blocked",
+        sources: [{ id: "s1", sourceName: "Blocked Source", sourceUrl: "blocked-url" }],
+      },
+    ]);
+
+    scrapeChapters.mockRejectedValueOnce(new Error("blocked"));
+
+    const results = await checkForUpdates("m1");
+
+    expect(results[0]).toEqual(expect.objectContaining({
+      manga: "Blocked",
+      status: expect.stringContaining("All sources failed"),
+      failedSources: 1,
+      allSourcesFailed: true,
+    }));
+    expect(createManyChapter).not.toHaveBeenCalled();
+  });
+
   it("adds a discovered dedicated manga source before scraping", async () => {
     findManyManga.mockResolvedValue([
       {
@@ -150,8 +172,6 @@ describe("checkForUpdates", () => {
     expect(scrapeChapters).toHaveBeenNthCalledWith(1, "https://w45.sakamoto-days-manga.com/", expect.objectContaining({
       sourceName: "Sakamoto Days Manga",
     }));
-    expect(scrapeChapters).toHaveBeenNthCalledWith(2, "https://mangadex.org/title/x", expect.objectContaining({
-      sourceName: "MangaDex",
-    }));
+    expect(scrapeChapters).toHaveBeenCalledTimes(1);
   });
 });

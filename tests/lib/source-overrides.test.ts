@@ -36,4 +36,37 @@ describe("manga source overrides", () => {
       },
     ]);
   });
+
+  it("prefers dedicated manga sources over general providers", () => {
+    expect(filterSourcesForManga({ slug: "blue-lock" }, [
+      {
+        id: "s1",
+        sourceName: "NeloManga",
+        sourceUrl: "https://www.nelomanga.net/manga/blue-lock",
+      },
+      {
+        id: "s2",
+        sourceName: "Blue Lock Manga",
+        sourceUrl: "https://w45.blue-lock-manga.com/",
+      },
+      {
+        id: "s3",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/x",
+      },
+    ])).toEqual([
+      {
+        id: "s2",
+        sourceName: "Blue Lock Manga",
+        sourceUrl: "https://w45.blue-lock-manga.com/",
+      },
+    ]);
+
+    expect(applySourceOverrideToInputSources({ title: "Sakamoto Days" }, [
+      { name: "MangaDex", url: "https://mangadex.org/title/x" },
+      { name: "Sakamoto Days Manga", url: "https://w45.sakamoto-days-manga.com/" },
+    ])).toEqual([
+      { name: "Sakamoto Days Manga", url: "https://w45.sakamoto-days-manga.com/" },
+    ]);
+  });
 });

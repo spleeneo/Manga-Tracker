@@ -6,7 +6,7 @@ describe("scraper search aggregation", () => {
     vi.restoreAllMocks();
   });
 
-  it("merges known title aliases into one manga result", async () => {
+  it("merges known title aliases and keeps the dedicated source when present", async () => {
     const providers = getRegisteredScrapers();
     providers.forEach((provider) => {
       vi.spyOn(provider, "search").mockResolvedValue([]);
@@ -30,7 +30,6 @@ describe("scraper search aggregation", () => {
       title: "Witch Hat Atelier",
       sources: [
         { name: "Witch Hat Atelier Manga", url: "https://witchhatateliermanga.com/" },
-        { name: "MangaDex", url: "https://mangadex.org/title/example" },
       ],
     }));
   });

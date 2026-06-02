@@ -58,6 +58,7 @@ export async function GET(
     const mangaSources = manga.sources ?? [];
     const visibleSources = filterSourcesForManga(manga, mangaSources);
     const visibleSourceIds = new Set(visibleSources.map((source) => source.id));
+    const sourceIds = mangaSources.length > 0 ? [...visibleSourceIds] : undefined;
     const override = getMangaSourceOverride(manga);
 
     if (sourceId && (visibleSourceIds.size > 0 || override)) {
@@ -79,7 +80,8 @@ export async function GET(
       mangaId: manga.id,
       cursor,
       limit,
-      sourceId: sourceId ?? (visibleSourceIds.size === 1 ? [...visibleSourceIds][0] : undefined),
+      sourceId,
+      sourceIds: sourceId ? undefined : sourceIds,
       lastReadChapterNumber: tracked.lastReadChapterNumber,
       sortDirection,
     });

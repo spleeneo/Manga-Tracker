@@ -1,3 +1,5 @@
+import { isDedicatedMangaSourceName, normalizeSourceName } from "@/lib/source-preference";
+
 type MangaIdentity = {
   slug?: string | null;
   title?: string | null;
@@ -23,14 +25,7 @@ export const HOUSEKI_SOURCE_OVERRIDE: MangaSourceOverride = {
 };
 
 function normalizeValue(value?: string | null) {
-  return (value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeSourceName(value);
 }
 
 function slugify(value?: string | null) {
@@ -68,7 +63,10 @@ export function isAllowedOverrideSource(source: SourceIdentity, override: MangaS
 
 export function filterSourcesForManga<T extends SourceIdentity>(manga: MangaIdentity, sources: T[]) {
   const override = getMangaSourceOverride(manga);
-  return override ? sources.filter((source) => isAllowedOverrideSource(source, override)) : sources;
+  if (override) return sources.filter((source) => isAllowedOverrideSource(source, override));
+
+  const dedicatedSources = sources.filter((source) => isDedicatedMangaSourceName(source.sourceName));
+  return dedicatedSources.length > 0 ? dedicatedSources : sources;
 }
 
 export function applySourceOverrideToInputSources<T extends { name?: string; sourceName?: string; url?: string; sourceUrl?: string }>(
@@ -76,10 +74,13 @@ export function applySourceOverrideToInputSources<T extends { name?: string; sou
   sources: T[],
 ) {
   const override = getMangaSourceOverride(manga);
-  if (!override) return sources;
+  if (override) {
+    return [{
+      name: override.sourceName,
+      url: override.sourceUrl,
+    }] as T[];
+  }
 
-  return [{
-    name: override.sourceName,
-    url: override.sourceUrl,
-  }] as T[];
+  const dedicatedSources = sources.filter((source) => isDedicatedMangaSourceName(source.name ?? source.sourceName));
+  return dedicatedSources.length > 0 ? dedicatedSources : sources;
 }

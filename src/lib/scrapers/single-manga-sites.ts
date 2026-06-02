@@ -114,6 +114,17 @@ const DISCOVERY_PATTERNS: Array<{ suffix: string; tld: string }> = [
   { suffix: "-manga", tld: "live" },
 ];
 
+const RESERVED_PROVIDER_HOSTNAMES = new Set([
+  "api.mangadex.org",
+  "mangadex.org",
+  "mangaplus.shueisha.co.jp",
+  "viz.com",
+  "webtoons.com",
+  "manganato.com",
+  "chapmanganato.to",
+  "nelomanga.net",
+]);
+
 function decodeHtml(value: string): string {
   return value
     .replace(/&amp;/g, "&")
@@ -343,9 +354,10 @@ export class SingleMangaSiteScraper implements Scraper {
   private findConfigByUrl(url: string, titleHint = ""): SingleMangaSiteConfig | undefined {
     try {
       const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-      return SINGLE_MANGA_SITE_CONFIGS.find((config) => new URL(config.baseUrl).hostname.replace(/^www\./, "").toLowerCase() === hostname)
-        ?? buildDiscoveredConfig(new URL("/", url).toString(), titleHint || hostname.split(".").slice(1, -1).join(" "))
-        ?? undefined;
+      const configured = SINGLE_MANGA_SITE_CONFIGS.find((config) => new URL(config.baseUrl).hostname.replace(/^www\./, "").toLowerCase() === hostname);
+      if (configured) return configured;
+      if (RESERVED_PROVIDER_HOSTNAMES.has(hostname)) return undefined;
+      return buildDiscoveredConfig(new URL("/", url).toString(), titleHint || hostname.split(".").slice(1, -1).join(" ")) ?? undefined;
     } catch {
       return SINGLE_MANGA_SITE_CONFIGS.find((config) => url.toLowerCase().includes(config.baseUrl.toLowerCase()));
     }

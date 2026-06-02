@@ -66,6 +66,14 @@ describe("SingleMangaSiteScraper", () => {
     ]);
   });
 
+  it("does not claim reserved provider URLs", () => {
+    const scraper = new SingleMangaSiteScraper();
+
+    expect(scraper.canHandle("https://mangadex.org/title/b6622d86-74c6-47eb-8c92-89bcce50a63b")).toBe(false);
+    expect(scraper.canHandle("https://mangaplus.shueisha.co.jp/titles/100020")).toBe(false);
+    expect(scraper.canHandle("https://www.viz.com/bleach")).toBe(false);
+  });
+
   it("extracts public reader images while filtering chrome assets", async () => {
     fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
       <img src="https://w45.blue-lock-manga.com/wp-content/uploads/blue-lock/001.jpg" width="900" height="1300" />

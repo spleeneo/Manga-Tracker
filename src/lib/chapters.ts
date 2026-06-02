@@ -34,6 +34,7 @@ export async function getMangaChapterPage({
   cursor,
   limit = CHAPTER_PAGE_SIZE,
   sourceId,
+  sourceIds,
   lastReadChapterNumber,
   sortDirection = "desc",
 }: {
@@ -41,6 +42,7 @@ export async function getMangaChapterPage({
   cursor?: string;
   limit?: number;
   sourceId?: string;
+  sourceIds?: string[];
   lastReadChapterNumber?: number | null;
   sortDirection?: ChapterSortDirection;
 }) {
@@ -50,7 +52,7 @@ export async function getMangaChapterPage({
   const chapters = await prisma.chapter.findMany({
     where: {
       mangaId,
-      ...(sourceId ? { sourceId } : {}),
+      ...(sourceId ? { sourceId } : sourceIds ? { sourceId: { in: sourceIds } } : {}),
     },
     ...(parsedCursor ? { cursor: { id: parsedCursor.id }, skip: 1 } : {}),
     orderBy: [
