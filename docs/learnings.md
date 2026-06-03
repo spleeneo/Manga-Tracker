@@ -59,3 +59,14 @@ Learning:
 Action:
 - Updated chapter target selection to choose the boundary chapter number first, then select the preferred source candidate for that chapter number.
 - Added tests for `latest` and `next-unread` duplicate-source selection.
+
+## 2026-06-03 - Provider Error Payloads Must Stay Visible
+
+Context:
+- Investigating why MangaPlus title `100405` for Asura's Verdict did not appear or sync showed that the MangaPlus API returned an `Account Banned` error payload instead of title metadata or chapters.
+
+Learning:
+- Scrapers that convert upstream provider errors into empty results make blocked, banned, region-limited, or malformed provider states look like "no chapters found."
+
+Action:
+- Future provider fixes should distinguish upstream error payloads from true empty chapter lists and persist/report the provider failure on the source.

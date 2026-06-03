@@ -113,3 +113,33 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-02 - Chapter Targets Must Reuse Source Preference Rules".
+
+## 2026-06-03 - Investigate MangaPlus Asura's Verdict Source
+
+Why:
+- Asura's Verdict was expected to be tracked from MangaPlus at `https://mangaplus.shueisha.co.jp/titles/100405`, but it was not showing in the app.
+
+Plan:
+- Confirm whether MangaPlus is registered and supports tracking.
+- Run the MangaPlus scraper against title `100405`.
+- Query the upstream MangaPlus title detail and title list APIs directly.
+- Identify whether the issue is app filtering, chapter window logic, or upstream provider data.
+
+Changed:
+- Added this investigation record.
+- Added a reusable learning about keeping upstream provider error payloads visible.
+
+Verification:
+- Ran repository searches confirming `MangaPlusScraper` is registered in `src/lib/scrapers/registry.ts`.
+- Ran the local scraper against `https://mangaplus.shueisha.co.jp/titles/100405`; `fetchMetadata` failed with `Manga not found` and `fetchChapters` returned `[]`.
+- Queried `https://jumpg-webapi.tokyo-cdn.com/api/title_detailV3?title_id=100405&format=json`; the upstream response was an `Account Banned` error payload instead of title/chapter data.
+- Queried the MangaPlus all-titles API for `asura`; it returned no matching title from this environment.
+- Ran `npm run verify`: passed with 7 existing `<img>` lint warnings, 136 passing tests, and a successful production build.
+
+Outcome:
+- The title is not showing because MangaPlus is blocking the API responses from this environment, not because the provider is unregistered.
+- The app currently masks this provider failure as empty chapter results because `MangaPlusScraper.fetchChapters` catches failures and returns `[]`.
+- Follow-up fix should surface MangaPlus upstream error payloads as source failures rather than silent empty results.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-03 - Provider Error Payloads Must Stay Visible".
