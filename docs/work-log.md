@@ -143,3 +143,33 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-03 - Provider Error Payloads Must Stay Visible".
+
+## 2026-06-03 - Surface MangaPlus Upstream Errors During Updates
+
+Why:
+- The Asura's Verdict investigation showed that MangaPlus API errors were being converted into empty chapter lists, hiding provider failures from update status.
+
+Plan:
+- Add focused scraper coverage for MangaPlus upstream error payloads.
+- Detect MangaPlus `error` responses in the JSON API wrapper.
+- Preserve the MangaPlus error subject in the thrown scraper error.
+- Let chapter update calls rethrow scraper request errors so `checkForUpdates` can mark the source failed.
+- Run focused tests, update smoke, and full verification.
+
+Changed:
+- `src/lib/scrapers/mangaplus.ts`
+- `tests/scrapers/mangaplus.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/scrapers/mangaplus.test.ts`: 3 tests passed.
+- Ran `npm run smoke:update`: passed. The smoke result continued updating other One Piece sources while reporting MangaPlus as one failed source with `MangaPlus upstream error: Account Banned`.
+- Ran `npm run verify`: passed with 7 existing `<img>` lint warnings, 136 passing tests, and a successful production build.
+
+Outcome:
+- MangaPlus upstream error payloads now surface as `ScraperRequestError` messages such as `MangaPlus upstream error: Account Banned`.
+- Update jobs can now persist MangaPlus provider failures instead of silently treating blocked responses as no new chapters.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-03 - Provider Error Payloads Must Stay Visible".

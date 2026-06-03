@@ -92,16 +92,16 @@ describe("MangaPlusScraper", () => {
     }]);
   });
 
-  it("does not invent a chapter number when a MangaPlus viewer URL is unavailable", async () => {
+  it("surfaces MangaPlus upstream errors instead of returning an empty chapter list", async () => {
     fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
       error: {
-        englishPopup: { subject: "Unavailable" },
+        englishPopup: { subject: "Account Banned" },
       },
     }));
 
     const scraper = new MangaPlusScraper();
-    const chapters = await scraper.fetchChapters("https://mangaplus.shueisha.co.jp/viewer/1029045");
 
-    expect(chapters).toEqual([]);
+    await expect(scraper.fetchChapters("https://mangaplus.shueisha.co.jp/viewer/1029045"))
+      .rejects.toThrow("MangaPlus upstream error: Account Banned");
   });
 });

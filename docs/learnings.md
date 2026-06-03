@@ -69,4 +69,4 @@ Learning:
 - Scrapers that convert upstream provider errors into empty results make blocked, banned, region-limited, or malformed provider states look like "no chapters found."
 
 Action:
-- Future provider fixes should distinguish upstream error payloads from true empty chapter lists and persist/report the provider failure on the source.
+- MangaPlus now distinguishes upstream error payloads from true empty chapter lists, so update checks can persist/report the provider failure on the source.

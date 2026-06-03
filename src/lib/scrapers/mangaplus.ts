@@ -50,6 +50,11 @@ interface MangaPlusJsonResponse {
     error?: unknown;
 }
 
+interface MangaPlusPopupError {
+    subject?: string;
+    body?: string;
+}
+
 interface MangaPlusNamedTitle extends MangaPlusTitle {
     titleId: number;
     name: string;
@@ -68,6 +73,19 @@ function getPublicWindowChapters(groups: MangaPlusChapterGroup[]): MangaPlusChap
         ...(group.firstChapterList ?? []),
         ...(group.lastChapterList ?? []),
     ]);
+}
+
+function getMangaPlusErrorSubject(error: unknown): string {
+    if (!error || typeof error !== "object") return "Unknown error";
+
+    const record = error as {
+        englishPopup?: MangaPlusPopupError;
+        popups?: MangaPlusPopupError[];
+    };
+
+    return record.englishPopup?.subject
+        ?? record.popups?.find((popup) => popup.subject)?.subject
+        ?? "Unknown error";
 }
 
 export class MangaPlusScraper implements Scraper {
@@ -89,9 +107,16 @@ export class MangaPlusScraper implements Scraper {
                 }
             });
 
-            return await res.json() as MangaPlusJsonResponse;
+            const data = await res.json() as MangaPlusJsonResponse;
+            if (data.error) {
+                const subject = getMangaPlusErrorSubject(data.error);
+                throw new ScraperRequestError(`MangaPlus upstream error: ${subject}`, "blocked");
+            }
+
+            return data;
         } catch (e) {
             if (e instanceof ScraperRequestError) {
+                if (e.message.startsWith("MangaPlus upstream error:")) throw e;
                 throw new ScraperRequestError(`MangaPlus request failed (${e.kind})`, e.kind, e.status, { cause: e });
             }
             throw new ScraperRequestError("MangaPlus response parse failed", "parsing", undefined, { cause: e as Error });
@@ -181,6 +206,7 @@ export class MangaPlusScraper implements Scraper {
                 });
         } catch (e) {
             console.error("MangaPlus chapters failed:", e);
+            if (e instanceof ScraperRequestError) throw e;
             return [];
         }
     }
@@ -210,6 +236,7 @@ export class MangaPlusScraper implements Scraper {
             }];
         } catch (e) {
             console.error("MangaPlus viewer chapter failed:", e);
+            if (e instanceof ScraperRequestError) throw e;
             return [];
         }
     }
