@@ -149,6 +149,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
                 return 7;
             case "urek mazino":
             case "bleach live":
+            case "atsumaru":
                 return 6;
             case "mangaplus":
                 return 5;

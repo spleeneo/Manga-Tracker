@@ -240,6 +240,47 @@ describe("GET /api/manga/[slug]/chapters", () => {
     }));
   });
 
+  it("prefers MangaPlus over MangaDex for duplicate latest chapter targets", async () => {
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 35 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "mangadex-35",
+        chapterNumber: 35,
+        title: "The Aircraft Carrier Floor, Part 2",
+        url: "https://mangadex.org/chapter/8f39a659-9041-4311-8252-1162c1085802",
+        releaseDate: new Date("2026-06-05T00:00:00.000Z"),
+        createdAt: new Date("2026-06-05T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "MangaDex" },
+      },
+      {
+        id: "mangaplus-35",
+        chapterNumber: 35,
+        title: "Chapter 35",
+        url: "https://mangaplus.shueisha.co.jp/viewer/1029242",
+        releaseDate: new Date("2026-06-04T00:00:00.000Z"),
+        createdAt: new Date("2026-06-04T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "MangaPlus" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/maison/chapters?target=latest") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "maison" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mangaplus-35",
+      sourceName: "MangaPlus",
+      url: "https://mangaplus.shueisha.co.jp/viewer/1029242",
+    }));
+  });
+
   it("returns the preferred source candidate for the next unread target", async () => {
     userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 10 });
     chapterFindFirstMock.mockResolvedValue({ chapterNumber: 11 });

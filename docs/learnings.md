@@ -70,3 +70,36 @@ Learning:
 
 Action:
 - MangaPlus now distinguishes upstream error payloads from true empty chapter lists, so update checks can persist/report the provider failure on the source.
+
+## 2026-06-05 - Latest Chapter Links May Be Placeholders
+
+Context:
+- Blue Lock Manga listed chapter 349 on the index, but the chapter page only exposed a single placeholder-style image while chapter 348 had normal reader pages.
+
+Learning:
+- Dedicated manga sites can publish a chapter URL before real pages are available, so an index link alone is not enough evidence for a new readable chapter.
+
+Action:
+- Blue Lock chapter scraping now probes the newest listed chapter and skips it when the configured reader-page minimum is not met.
+
+## 2026-06-05 - External Official Chapters Should Not Be Substituted
+
+Context:
+- Maison chapter 35 existed on MangaPlus, but Mangateo only had the MangaDex placeholder row and could route the user to MangaDex instead of the official MangaPlus chapter.
+
+Learning:
+- External-reader sources such as MangaPlus are already the correct reading destination, so reader fallback should not replace them with another provider's same-number chapter.
+
+Action:
+- Reader fallback now skips alternative probing for external-reader sources, and Maison has a MangaPlus source/chapter record for chapter 35.
+
+## 2026-06-05 - Atsumaru Reader URLs Can Carry Newer Chapters Than Bulk Lists
+
+Context:
+- The One Punch-Man Atsumaru reader URL exposed `Mag Version 232`, while the bulk `allChapters` endpoint topped out at chapter 231 during implementation.
+
+Learning:
+- When a provider source URL is a direct reader URL, the linked chapter itself may be the freshest signal even if the provider's chapter list lags behind it.
+
+Action:
+- Atsumaru chapter scraping merges the linked reader chapter into the bulk chapter list before sorting and storing results.

@@ -133,6 +133,7 @@ const SOURCE_RANK_SQL = Prisma.sql`
     WHEN 'nelomanga' THEN 7
     WHEN 'urek mazino' THEN 6
     WHEN 'bleach live' THEN 6
+    WHEN 'atsumaru' THEN 6
     WHEN 'mangaplus' THEN 5
     WHEN 'mangadex' THEN 4
     WHEN 'webtoon' THEN 3

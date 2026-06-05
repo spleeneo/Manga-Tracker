@@ -13,6 +13,7 @@ export type SingleMangaSiteConfig = {
   chapterUrlPattern: RegExp;
   chapterTitlePattern?: RegExp;
   minimumReaderPages?: number;
+  verifyLatestChapterPages?: boolean;
   readerImageAllowPatterns?: RegExp[];
   readerImageDenyPatterns?: RegExp[];
 };
@@ -85,7 +86,8 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
     fallbackDescription: "Read Blue Lock manga online.",
     chapterUrlPattern: /blue-lock(?:-manga)?-chapter-(\d+)(?:-(\d+))?/i,
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
-    minimumReaderPages: 1,
+    minimumReaderPages: 2,
+    verifyLatestChapterPages: true,
   },
   {
     sourceName: "Fire Punch",
@@ -120,6 +122,7 @@ const RESERVED_PROVIDER_HOSTNAMES = new Set([
   "mangaplus.shueisha.co.jp",
   "viz.com",
   "webtoons.com",
+  "atsu.moe",
   "manganato.com",
   "chapmanganato.to",
   "nelomanga.net",
@@ -498,7 +501,21 @@ export class SingleMangaSiteScraper implements Scraper {
       }];
     });
 
-    return uniqueByChapterNumber(chapters).sort((a, b) => b.chapterNumber - a.chapterNumber);
+    const sortedChapters = uniqueByChapterNumber(chapters).sort((a, b) => b.chapterNumber - a.chapterNumber);
+    if (!config.verifyLatestChapterPages || sortedChapters.length === 0) return sortedChapters;
+
+    const [latestChapter, ...remainingChapters] = sortedChapters;
+    try {
+      const reader = await this.fetchReaderPages({
+        id: latestChapter.providerChapterId ?? String(latestChapter.chapterNumber),
+        url: latestChapter.url,
+        chapterNumber: latestChapter.chapterNumber,
+      }, source);
+
+      return reader.status === "READABLE" ? sortedChapters : remainingChapters;
+    } catch {
+      return sortedChapters;
+    }
   }
 
   async fetchReaderPages(chapter: ReaderChapterInput, source?: ReaderSourceInput): Promise<ReaderResult> {

@@ -42,10 +42,15 @@ describe("SingleMangaSiteScraper", () => {
   });
 
   it("extracts chapters from configured WordPress-style manga links", async () => {
-    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
-      <a href="https://w45.blue-lock-manga.com/manga/blue-lock-chapter-291/">Blue Lock Chapter 291</a>
-      <a href="/manga/blue-lock-chapter-100-5/">Blue Lock Chapter 100.5</a>
-    `));
+    fetchWithRetryMock
+      .mockResolvedValueOnce(textResponse(`
+        <a href="https://w45.blue-lock-manga.com/manga/blue-lock-chapter-291/">Blue Lock Chapter 291</a>
+        <a href="/manga/blue-lock-chapter-100-5/">Blue Lock Chapter 100.5</a>
+      `))
+      .mockResolvedValueOnce(textResponse(`
+        <img src="https://w45.blue-lock-manga.com/wp-content/uploads/blue-lock/001.jpg" width="900" height="1300" />
+        <img src="https://w45.blue-lock-manga.com/wp-content/uploads/blue-lock/002.jpg" width="900" height="1300" />
+      `));
 
     const scraper = new SingleMangaSiteScraper();
     const chapters = await scraper.fetchChapters("https://w45.blue-lock-manga.com/");
@@ -62,6 +67,29 @@ describe("SingleMangaSiteScraper", () => {
         chapterNumber: 100.5,
         title: "Blue Lock Chapter 100.5",
         url: "https://w45.blue-lock-manga.com/manga/blue-lock-chapter-100-5/",
+      },
+    ]);
+  });
+
+  it("skips a latest Blue Lock chapter when the chapter page is only a placeholder image", async () => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce(textResponse(`
+        <a href="https://w45.blue-lock-manga.com/manga/blue-lock-chapter-349/">Blue Lock Chapter 349</a>
+        <a href="https://w45.blue-lock-manga.com/manga/blue-lock-chapter-348/">Blue Lock Chapter 348</a>
+      `))
+      .mockResolvedValueOnce(textResponse(`
+        <img data-src="https://blue-lock-manga.com/wp-content/uploads/2023/04/Hajime-No-Ippo.jpg" alt="blue lock" width="1080" height="1080" />
+      `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const chapters = await scraper.fetchChapters("https://w45.blue-lock-manga.com/");
+
+    expect(chapters).toEqual([
+      {
+        providerChapterId: "348",
+        chapterNumber: 348,
+        title: "Blue Lock Chapter 348",
+        url: "https://w45.blue-lock-manga.com/manga/blue-lock-chapter-348/",
       },
     ]);
   });

@@ -90,6 +90,11 @@ This document tracks candidate providers before implementation.
   - Risk: moderate-high selector churn and anti-bot changes.
   - Integration status: implemented in first expansion batch.
 
+- **Atsumaru** (community/free)
+  - Access: free public app/API pages.
+  - Risk: app API shape can change, and search currently returns MangaBaka ids rather than the `atsu.moe` manga ids required for tracking.
+  - Integration status: implemented for manual `atsu.moe` source URLs with in-app reader support.
+
 - **ComicK** (community/free)
   - Access: free listings and reader pages.
   - Risk: API/URL pattern changes and stricter rate limiting.

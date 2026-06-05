@@ -4,7 +4,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 
 ## Features
 
-- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, MangaPlus, Comikey, Webtoon, Manganato, and more.
+- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, MangaPlus, Comikey, Atsumaru, Webtoon, Manganato, and more.
 - **Unified Library**: Track all your reading progress in one place.
 - **Auto-Updates**: Automatically fetch new chapters from tracked sources.
 - **Clean UI**: A solid, distraction-free interface (no glassmorphism!) designed for readability.

@@ -144,14 +144,14 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
   it("uses a readable same-number chapter from another source when the clicked source is blocked", async () => {
     chapterFindFirstMock.mockResolvedValue({
       id: "c1",
-      providerChapterId: "nelo-c1",
+      providerChapterId: "urek-c1",
       chapterNumber: 12,
       title: "Twelve",
-      url: "https://www.nelomanga.net/manga/example/chapter-12",
+      url: "https://urekmazino.com/chapter/12/",
       source: {
         id: "s1",
-        sourceName: "NeloManga",
-        sourceUrl: "https://www.nelomanga.net/manga/example",
+        sourceName: "Urek Mazino",
+        sourceUrl: "https://urekmazino.com/",
       },
     });
     chapterFindManyMock.mockResolvedValue([
@@ -172,8 +172,8 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
       .mockResolvedValueOnce({
         status: "BLOCKED",
         pages: [],
-        externalUrl: "https://www.nelomanga.net/manga/example/chapter-12",
-        reason: "NeloManga blocked Mangateo from loading this chapter directly.",
+        externalUrl: "https://urekmazino.com/chapter/12/",
+        reason: "Urek Mazino blocked Mangateo from loading this chapter directly.",
       })
       .mockResolvedValueOnce({
         status: "READABLE",
@@ -202,5 +202,54 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
       where: { id: "c2" },
       data: expect.objectContaining({ readerStatus: "READABLE", readerError: null }),
     }));
+  });
+
+  it("does not replace external-reader chapters with another provider alternative", async () => {
+    chapterFindFirstMock.mockResolvedValue({
+      id: "mp-35",
+      providerChapterId: "1029242",
+      chapterNumber: 35,
+      title: "#035: The Aircraft Carrier Floor, Part 2",
+      url: "https://mangaplus.shueisha.co.jp/viewer/1029242",
+      source: {
+        id: "s1",
+        sourceName: "MangaPlus",
+        sourceUrl: "https://mangaplus.shueisha.co.jp/titles/100453",
+      },
+    });
+    chapterFindManyMock.mockResolvedValue([{
+      id: "md-35",
+      providerChapterId: "8f39a659-9041-4311-8252-1162c1085802",
+      chapterNumber: 35,
+      title: "The Aircraft Carrier Floor, Part 2",
+      url: "https://mangadex.org/chapter/8f39a659-9041-4311-8252-1162c1085802",
+      source: {
+        id: "s2",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/b2cf00db-3b05-4f3e-8a85-6af7a83e8aba",
+      },
+    }]);
+    fetchReaderPagesMock.mockResolvedValueOnce({
+      status: "EXTERNAL_ONLY",
+      pages: [],
+      externalUrl: "https://mangaplus.shueisha.co.jp/viewer/1029242",
+      reason: "MangaPlus does not support the Mangateo reader yet.",
+    });
+
+    const res = await GET(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "maison", chapterId: "mp-35" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe("EXTERNAL_ONLY");
+    expect(body.externalUrl).toBe("https://mangaplus.shueisha.co.jp/viewer/1029242");
+    expect(body.usedAlternative).toBe(false);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mp-35",
+      sourceName: "MangaPlus",
+    }));
+    expect(chapterFindManyMock).not.toHaveBeenCalled();
+    expect(fetchReaderPagesMock).toHaveBeenCalledTimes(1);
   });
 });

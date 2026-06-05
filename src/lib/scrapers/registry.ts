@@ -11,6 +11,7 @@ import { BleachLiveScraper } from "./bleach-live";
 import { WitchHatAtelierScraper } from "./witch-hat-atelier";
 import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
 import { SingleMangaSiteScraper } from "./single-manga-sites";
+import { AtsumaruScraper } from "./atsumaru";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 
@@ -27,6 +28,7 @@ const scrapers: Scraper[] = [
     new BleachLiveScraper(),
     new WebtoonScraper(),
     new ManganatoScraper(),
+    new AtsumaruScraper(),
 ];
 
 function normalizeSearchTitle(title: string) {

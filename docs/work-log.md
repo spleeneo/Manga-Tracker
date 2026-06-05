@@ -173,3 +173,112 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-03 - Provider Error Payloads Must Stay Visible".
+
+## 2026-06-05 - Skip Blue Lock Placeholder Chapters
+
+Why:
+- Blue Lock Manga advertised a new chapter whose page contained only a single placeholder-style image instead of readable manga pages, causing Mangateo to treat it as a real new chapter.
+
+Plan:
+- Reproduce the placeholder behavior in a focused single-manga-site scraper test.
+- Require Blue Lock reader pages to meet a small page-count threshold.
+- Probe the newest Blue Lock chapter during chapter scraping and skip it when the probe is not readable.
+- Verify with the focused scraper test, a live Blue Lock scrape, update smoke, and full verification.
+
+Changed:
+- `src/lib/scrapers/single-manga-sites.ts`
+- `tests/scrapers/single-manga-sites.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+- Removed the existing Blue Lock chapter 349 placeholder row from the configured database.
+
+Verification:
+- Ran `npm run test -- tests/scrapers/single-manga-sites.test.ts`: 11 tests passed.
+- Ran a live Blue Lock scrape with `npx tsx`; chapter 349 was skipped and chapter 348 was returned as the newest chapter.
+- Queried the database for Blue Lock chapter 349, deleted the one `Blue Lock Manga` row, and confirmed no chapter 349 rows remained.
+- Ran `npm run smoke:update`: passed. The smoke result completed the One Piece update cycle while reporting the known MangaPlus `Account Banned` source failure.
+- Ran `npm run verify`: passed with 7 existing `<img>` lint warnings, 137 passing tests, and a successful production build.
+
+Outcome:
+- Blue Lock placeholder-only latest chapters are skipped during scraping, preventing them from being inserted as new chapters by update checks.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-05 - Latest Chapter Links May Be Placeholders".
+
+## 2026-06-05 - Prefer Maison MangaPlus Chapter 35
+
+Why:
+- Maison chapter 35 is available on MangaPlus, but the local catalog only had the MangaDex chapter 35 row, which points readers back to MangaPlus instead of opening the official source directly.
+
+Plan:
+- Confirm local Maison sources and chapter 35 rows.
+- Find the MangaPlus title and chapter URLs.
+- Keep reader fallback from replacing external-reader chapters with another source.
+- Add focused tests for MangaPlus-vs-MangaDex target selection and external-reader fallback behavior.
+- Backfill the MangaPlus source and chapter 35 row in the configured database.
+- Run focused tests and full verification.
+
+Changed:
+- `src/app/api/manga/[slug]/chapter/[chapterId]/reader/route.ts`
+- `tests/api/chapter-reader.route.test.ts`
+- `tests/api/manga-chapters.route.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+- Added the Maison MangaPlus source `https://mangaplus.shueisha.co.jp/titles/100453` and chapter 35 viewer `https://mangaplus.shueisha.co.jp/viewer/1029242` to the configured database.
+
+Verification:
+- Queried the local database and confirmed Maison only had MangaDex chapter 35 before the backfill.
+- Confirmed public references for MangaPlus title `100453` and chapter 35 viewer `1029242`; direct API checks from this environment still return the known MangaPlus `Account Banned` payload.
+- Ran `npm run test -- tests/api/manga-chapters.route.test.ts tests/api/chapter-reader.route.test.ts`: 14 tests passed.
+- Ran `npm run verify`: passed with 7 existing `<img>` lint warnings, 139 passing tests, and a successful production build.
+
+Outcome:
+- Maison chapter 35 now has a direct MangaPlus source/chapter row, and external-reader chapters are not substituted with another provider during reader fallback.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-05 - External Official Chapters Should Not Be Substituted".
+
+## 2026-06-05 - Add Atsumaru Source For One Punch-Man
+
+Why:
+- The supplied Atsumaru reader URL `https://atsu.moe/read/nh6Ii/Fqt0r#rs=f:0.002189884148064425` appears to track the current One Punch-Man manga release and exposes readable page images.
+
+Plan:
+- Inspect Atsumaru app/API endpoints for metadata, chapter lists, and reader pages.
+- Add an Atsumaru scraper with manual URL support and in-app reader pages.
+- Register the provider, source-name inference, source ranking, and supported-source UI copy.
+- Add the Atsumaru source to the configured One Punch-Man manga and populate chapters through the normal update path.
+- Verify with focused tests, a live scrape, update smoke, and full verification.
+
+Changed:
+- `src/lib/scrapers/atsumaru.ts`
+- `src/lib/scrapers/registry.ts`
+- `src/lib/source-name.ts`
+- `src/lib/chapters.ts`
+- `src/lib/library-summary.ts`
+- `src/components/chapter-list.tsx`
+- `src/components/add-source-dialog.tsx`
+- `tests/scrapers/atsumaru.test.ts`
+- `tests/scrapers/provider-contract.test.ts`
+- `tests/lib/source-name.test.ts`
+- `README.md`
+- `docs/providers.md`
+- `docs/source-candidates.md`
+- `docs/learnings.md`
+- `docs/work-log.md`
+- Added the Atsumaru source URL to the configured One Punch-Man manga.
+
+Verification:
+- Ran `npm run test -- tests/scrapers/atsumaru.test.ts tests/scrapers/provider-contract.test.ts tests/lib/source-name.test.ts`: 10 tests passed.
+- Ran a live Atsumaru scrape with `npx tsx`; metadata resolved to `ONE-PUNCH MAN`, chapter 232 was returned from the linked reader URL, and the reader returned 18 pages.
+- Ran the normal One Punch-Man update path with `checkForUpdates("bb344a46-b571-4761-8804-bcc1afe0c332")`: added 297 Atsumaru chapters with zero failed sources.
+- Queried the configured database and confirmed the Atsumaru source has 297 chapter rows, with chapter 232 stored as `https://atsu.moe/read/nh6Ii/Fqt0r`.
+- Ran a registry reader check for stored chapter 232: returned `READABLE` with 18 pages.
+- Ran `npm run smoke:update`: passed. The smoke result completed the One Piece update cycle while reporting the known MangaPlus `Account Banned` source failure.
+- Ran `npm run verify`: passed with 7 existing `<img>` lint warnings, 144 passing tests, and a successful production build.
+
+Outcome:
+- One Punch-Man now has the Atsumaru source and chapter rows populated in the configured database, including chapter 232 from the supplied reader URL. Atsumaru is registered for manual source URLs and can serve reader pages inside Mangateo.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-05 - Atsumaru Reader URLs Can Carry Newer Chapters Than Bulk Lists".

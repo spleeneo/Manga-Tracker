@@ -234,6 +234,7 @@ function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | n
       return 7;
     case "urek mazino":
     case "bleach live":
+    case "atsumaru":
       return 6;
     case "mangaplus":
       return 5;

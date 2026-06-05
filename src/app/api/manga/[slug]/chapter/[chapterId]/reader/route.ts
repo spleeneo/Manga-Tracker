@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { fetchReaderPages } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
 import type { ReaderResult } from "@/lib/scrapers/types";
@@ -123,7 +124,7 @@ export async function GET(
     let activeChapter = chapter;
     let usedAlternative = false;
 
-    if (result.status !== "READABLE") {
+    if (result.status !== "READABLE" && !isExternalReaderSource(chapter.source?.sourceName)) {
       const alternatives = await prisma.chapter.findMany({
         where: {
           mangaId: manga.id,
