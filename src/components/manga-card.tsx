@@ -260,7 +260,7 @@ export function MangaCard({
         </div>
 
         <div
-            className="interactive-surface manga-card-surface group relative hidden h-full cursor-pointer flex-col overflow-visible rounded-lg sm:flex"
+            className="interactive-surface manga-card-surface group relative hidden cursor-pointer flex-col overflow-visible rounded-lg sm:flex"
             onClick={openManga}
         >
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-t-lg bg-muted">
@@ -301,7 +301,7 @@ export function MangaCard({
                 onDelete={() => onDelete(manga.slug, manga.title)}
             />
 
-            <div className="flex h-[196px] flex-1 flex-col p-3.5">
+            <div className="flex min-h-[150px] flex-1 flex-col p-3.5">
                 <div className="mb-2 flex min-h-12 items-start gap-2">
                     <Link
                         href={`/manga/${manga.slug}`}
@@ -338,16 +338,15 @@ export function MangaCard({
                     ) : null}
                 </div>
 
-                <div className="mt-auto space-y-2 pt-3">
-                    {nextReleaseEstimate ? (
-                        <div className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-bold uppercase text-foreground">
-                            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <span className="min-w-0 truncate">{nextReleaseEstimate}</span>
-                        </div>
-                    ) : (
-                        <div className="h-7" aria-hidden="true" />
-                    )}
+                <div className="mt-auto pt-3">
                     {manga.latestChapter && !manga.isCaughtUp ? (
+                        <>
+                        {nextReleaseEstimate ? (
+                            <div className="mb-2 flex min-h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-bold uppercase text-foreground">
+                                <CalendarClock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 truncate">{nextReleaseEstimate}</span>
+                            </div>
+                        ) : null}
                         <button
                             type="button"
                             onClick={(event) => {
@@ -355,18 +354,24 @@ export function MangaCard({
                                 onProgress(manga.slug, "catch-up");
                             }}
                             disabled={Boolean(loadingAction)}
-                            className="ui-button ui-button-secondary h-8 min-h-0 w-full px-2 py-1.5 text-[11px] uppercase"
+                            className="ui-button ui-button-secondary min-h-8 w-full px-2 py-1.5 text-[11px] uppercase"
                             title="Mark every available chapter as read"
                         >
                             {loadingAction === "catch-up" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                             Mark caught up
                         </button>
+                        </>
                     ) : !manga.latestChapter ? (
-                        <div className="flex h-8 items-center justify-center rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
+                        <div className="min-h-8 rounded-md border border-dashed border-border px-2 py-1.5 text-center text-[11px] font-bold uppercase text-muted-foreground">
                         No chapters yet
                         </div>
+                    ) : nextReleaseEstimate ? (
+                        <div className="flex min-h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-bold uppercase text-foreground">
+                            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 truncate">{nextReleaseEstimate}</span>
+                        </div>
                     ) : (
-                        <div className="h-8" aria-hidden="true" />
+                        <div className="min-h-8" aria-hidden="true" />
                     )}
                 </div>
             </div>

@@ -314,12 +314,13 @@ Learnings:
 ## 2026-06-06 - Equalize Library Manga Cards
 
 Why:
-- Library cards in different sections could appear uneven because optional footer content changed the desktop card body height.
+- Library cards in later sections did not match the shorter Updates section style, and next-release estimates could sit above an empty reserved footer area instead of at the bottom of the card.
 
 Plan:
 - Keep the existing card content and section grouping.
-- Make library grids use equal-height rows.
-- Reserve consistent desktop footer space for estimates, actions, and empty placeholders.
+- Preserve the shorter desktop card footprint from the Updates section.
+- Remove extra equal-height row and invisible footer spacer behavior.
+- Place the next-release estimate at the bottom when no action button follows it.
 
 Changed:
 - `src/components/library-dashboard.tsx`
@@ -332,7 +333,7 @@ Verification:
 - Browser UI verification was not performed because the local library page is auth-gated without a signed-in browser session.
 
 Outcome:
-- Library section grids now use equal-height rows, and desktop manga cards reserve consistent footer space whether they show an estimate, an action, an empty-chapters placeholder, or no action.
+- Library cards reuse the shorter shared `MangaCard` layout, and caught-up/ongoing cards show the estimated next date at the card bottom instead of above a blank action slot.
 
 Learnings:
 - No reusable lesson added; this was a contained layout consistency fix.
