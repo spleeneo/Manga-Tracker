@@ -1,23 +1,16 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BookOpen, Check, Compass, ExternalLink, Image as ImageIcon, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { BookOpen, Check, Compass, ExternalLink, Image as ImageIcon, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import {
+  type ExploreDisplayManga,
+  type MangaDexExploreResult,
+  normalizeBrowseExploreResult,
+  normalizeSearchExploreResult,
+} from "@/lib/explore/ui-results";
 
 type ExploreSort = "trending" | "updated" | "new";
-
-interface ExploreManga {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string;
-  coverUrl?: string;
-  status?: string;
-  year?: number;
-  tags: Array<{ id: string; name: string }>;
-  source: { name: "MangaDex"; url: string };
-  isTracked: boolean;
-}
 
 interface ExploreTag {
   id: string;
@@ -82,13 +75,16 @@ export function ExplorePage() {
   const [demographic, setDemographic] = useState("");
   const [status, setStatus] = useState("");
   const [tags, setTags] = useState<ExploreTag[]>([]);
-  const [results, setResults] = useState<ExploreManga[]>([]);
+  const [results, setResults] = useState<ExploreDisplayManga[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [trackingId, setTrackingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { showToast, updateToast } = useToast();
+  const activeSearchQuery = submittedQuery.trim();
+  const hasSubmittedSearch = activeSearchQuery.length > 0;
+  const isSearchMode = activeSearchQuery.length >= 3;
 
   const popularTags = useMemo(() => {
     const preferred = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Slice of Life", "Sports", "Mystery", "Sci-Fi"];
@@ -105,9 +101,24 @@ export function ExplorePage() {
     }
     setError(null);
     try {
+      if (hasSubmittedSearch) {
+        setNextOffset(null);
+        if (!isSearchMode) {
+          setResults([]);
+          setError("Search at least 3 characters to search all sources.");
+          return;
+        }
+
+        const res = await fetch(`/api/manga/search?q=${encodeURIComponent(activeSearchQuery)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to search sources");
+        setResults((data.results ?? []).map(normalizeSearchExploreResult));
+        return;
+      }
+
       const params = buildQuery({
         sort,
-        q: submittedQuery,
+        q: "",
         tagId,
         demographic,
         status,
@@ -116,7 +127,8 @@ export function ExplorePage() {
       const res = await fetch(`/api/explore?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load explore results");
-      setResults((current) => append ? [...current, ...(data.results ?? [])] : (data.results ?? []));
+      const normalized = (data.results ?? []).map((manga: MangaDexExploreResult) => normalizeBrowseExploreResult(manga));
+      setResults((current) => append ? [...current, ...normalized] : normalized);
       setNextOffset(data.nextOffset ?? null);
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : "Failed to load explore results";
@@ -150,10 +162,15 @@ export function ExplorePage() {
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
-    setSubmittedQuery(query);
+    setSubmittedQuery(query.trim());
   };
 
-  const trackManga = async (manga: ExploreManga) => {
+  const clearSearch = () => {
+    setQuery("");
+    setSubmittedQuery("");
+  };
+
+  const trackManga = async (manga: ExploreDisplayManga) => {
     if (manga.isTracked || trackingId) return;
     setTrackingId(manga.id);
     const toastId = showToast({
@@ -172,7 +189,7 @@ export function ExplorePage() {
           coverUrl: manga.coverUrl,
           status: manga.status || "ONGOING",
           description: manga.description,
-          sources: [{ name: manga.source.name, url: manga.source.url }],
+          sources: manga.sources,
         }),
       });
       const data = await res.json();
@@ -208,7 +225,7 @@ export function ExplorePage() {
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover manga</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted-foreground">
-              Find popular, fresh, and recently updated MangaDex titles without running any chapter scraping until you decide to track one.
+              Browse popular MangaDex titles, or search across every registered source before deciding what to track.
             </p>
           </div>
 
@@ -229,12 +246,28 @@ export function ExplorePage() {
 
       <section className="surface sticky top-16 z-20 rounded-lg p-3 sm:static sm:p-4">
         <div className="flex flex-col gap-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          {hasSubmittedSearch ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-bold">Searching all registered sources</p>
+                <p className="text-xs font-medium leading-5 text-muted-foreground">
+                  Sort, category, demographic, and status filters apply to MangaDex browsing only.
+                </p>
+              </div>
+              <button type="button" className="ui-button ui-button-secondary shrink-0" onClick={clearSearch}>
+                <X className="h-4 w-4" />
+                Clear search
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" aria-disabled={hasSubmittedSearch}>
             {sortOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setSort(option.value)}
+                disabled={hasSubmittedSearch}
                 className={`ui-tab shrink-0 ${sort === option.value ? "ui-tab-active" : ""}`}
               >
                 {option.label}
@@ -245,7 +278,7 @@ export function ExplorePage() {
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="relative">
               <span className="sr-only">Category</span>
-              <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setTagId(event.target.value)}>
+              <select className="ui-field h-10 pl-9 disabled:opacity-50" value={tagId} onChange={(event) => setTagId(event.target.value)} disabled={hasSubmittedSearch}>
                 <option value="">All categories</option>
                 {popularTags.map((tag) => (
                   <option key={tag.id} value={tag.id}>{tag.name}</option>
@@ -256,7 +289,7 @@ export function ExplorePage() {
 
             <label>
               <span className="sr-only">Demographic</span>
-              <select className="ui-field h-10" value={demographic} onChange={(event) => setDemographic(event.target.value)}>
+              <select className="ui-field h-10 disabled:opacity-50" value={demographic} onChange={(event) => setDemographic(event.target.value)} disabled={hasSubmittedSearch}>
                 <option value="">All demographics</option>
                 {demographicOptions.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -266,7 +299,7 @@ export function ExplorePage() {
 
             <label>
               <span className="sr-only">Status</span>
-              <select className="ui-field h-10" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <select className="ui-field h-10 disabled:opacity-50" value={status} onChange={(event) => setStatus(event.target.value)} disabled={hasSubmittedSearch}>
                 <option value="">All statuses</option>
                 {statusOptions.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -295,15 +328,33 @@ export function ExplorePage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {results.map((manga) => (
+            {results.map((manga) => {
+              const primarySource = manga.sources[0];
+
+              return (
               <article key={manga.id} className="interactive-surface manga-card-surface flex overflow-hidden rounded-lg sm:flex-col">
-                <a
-                  href={manga.source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative block h-44 w-28 shrink-0 overflow-hidden bg-muted sm:h-72 sm:w-full"
-                  aria-label={`Open ${manga.title} on MangaDex`}
-                >
+                {primarySource ? (
+                  <a
+                    href={primarySource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block h-44 w-28 shrink-0 overflow-hidden bg-muted sm:h-72 sm:w-full"
+                    aria-label={`Open ${manga.title} on ${primarySource.name}`}
+                  >
+                    {manga.coverUrl ? (
+                      <img
+                        src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                        alt=""
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ImageIcon className="h-10 w-10 opacity-25" />
+                      </div>
+                    )}
+                  </a>
+                ) : (
+                  <div className="relative block h-44 w-28 shrink-0 overflow-hidden bg-muted sm:h-72 sm:w-full">
                   {manga.coverUrl ? (
                     <img
                       src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
@@ -315,19 +366,24 @@ export function ExplorePage() {
                       <ImageIcon className="h-10 w-10 opacity-25" />
                     </div>
                   )}
-                </a>
+                  </div>
+                )}
 
                 <div className="flex min-w-0 flex-1 flex-col p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="line-clamp-2 text-base font-bold leading-tight">
-                      <a
-                        href={manga.source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {manga.title}
-                      </a>
+                      {primarySource ? (
+                        <a
+                          href={primarySource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {manga.title}
+                        </a>
+                      ) : (
+                        manga.title
+                      )}
                     </h2>
                     <span className="shrink-0 rounded-full border bg-card px-2 py-1 text-[10px] font-bold uppercase">
                       {statusLabel(manga.status)}
@@ -335,31 +391,40 @@ export function ExplorePage() {
                   </div>
 
                   <p className="mt-2 line-clamp-3 text-xs font-medium leading-5 text-muted-foreground">
-                    {manga.description || "No summary available from MangaDex."}
+                    {manga.description || "No summary available from this source."}
                   </p>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Manga tags and sources">
                     {manga.tags.slice(0, 3).map((tag) => (
                       <span key={tag.id} className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
                         {tag.name}
                       </span>
                     ))}
+                    {manga.sources.map((source) => (
+                      <span key={source.url} className="max-w-full truncate rounded-full border bg-card px-2 py-1 text-[10px] font-bold uppercase text-foreground">
+                        {source.name}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-                    <a
-                      href={manga.source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      MangaDex
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    {primarySource ? (
+                      <a
+                        href={primarySource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-w-0 items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <span className="truncate">{manga.sources.length > 1 ? `${manga.sources.length} sources` : primarySource.name}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    ) : (
+                      <span className="text-xs font-bold uppercase text-muted-foreground">No sources</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => trackManga(manga)}
-                      disabled={manga.isTracked || Boolean(trackingId)}
+                      disabled={manga.isTracked || Boolean(trackingId) || manga.sources.length === 0}
                       className={manga.isTracked ? "ui-button ui-button-secondary h-9" : "ui-button ui-button-primary h-9"}
                     >
                       {trackingId === manga.id ? (
@@ -374,7 +439,8 @@ export function ExplorePage() {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
 
           {nextOffset !== null && (

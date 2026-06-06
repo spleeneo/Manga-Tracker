@@ -282,3 +282,31 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-05 - Atsumaru Reader URLs Can Carry Newer Chapters Than Bulk Lists".
+
+## 2026-06-06 - Multi-Source Explore Search
+
+Why:
+- Discovery needed to expose the app's registered provider search without turning default browsing into noisy provider-specific duplicates.
+
+Plan:
+- Keep MangaDex as the default browse feed for sorting, tags, demographics, status, and pagination.
+- Switch Explore search submissions to the existing multi-source `/api/manga/search` aggregator.
+- Normalize browse and search results into one card shape with source badges.
+- Track multi-source search results with all returned sources.
+
+Changed:
+- `src/components/explore-page.tsx`
+- `src/lib/explore/ui-results.ts`
+- `tests/lib/explore-ui-results.test.ts`
+
+Verification:
+- Ran `npm run test -- tests/api/explore.route.test.ts tests/api/manga-search.route.test.ts tests/lib/explore-ui-results.test.ts`: 10 tests passed.
+- Ran `npm run verify`: passed with 8 `<img>` lint warnings, 146 passing tests, and a successful production build.
+- Started the local dev server and confirmed `GET /api/manga/search?q=witch%20hat%20atelier` returned 200 with 25 results.
+- Browser-opened `/explore`, but full UI verification was blocked by the local auth-gated 404 without a signed-in browser session.
+
+Outcome:
+- Explore browsing remains MangaDex-backed, while submitted searches now use all registered searchable providers and render source badges. Multi-source search tracking sends the full returned source set to `/api/manga`.
+
+Learnings:
+- No reusable lesson added; this was an expected product slice using existing provider aggregation.
