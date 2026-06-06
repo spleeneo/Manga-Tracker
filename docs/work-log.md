@@ -310,3 +310,29 @@ Outcome:
 
 Learnings:
 - No reusable lesson added; this was an expected product slice using existing provider aggregation.
+
+## 2026-06-06 - Equalize Library Manga Cards
+
+Why:
+- Library cards in different sections could appear uneven because optional footer content changed the desktop card body height.
+
+Plan:
+- Keep the existing card content and section grouping.
+- Make library grids use equal-height rows.
+- Reserve consistent desktop footer space for estimates, actions, and empty placeholders.
+
+Changed:
+- `src/components/library-dashboard.tsx`
+- `src/components/manga-card.tsx`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run lint`: passed with the existing 8 `<img>` warnings.
+- Ran `npm run verify`: passed with 8 `<img>` lint warnings, 146 passing tests, and a successful production build.
+- Browser UI verification was not performed because the local library page is auth-gated without a signed-in browser session.
+
+Outcome:
+- Library section grids now use equal-height rows, and desktop manga cards reserve consistent footer space whether they show an estimate, an action, an empty-chapters placeholder, or no action.
+
+Learnings:
+- No reusable lesson added; this was a contained layout consistency fix.
