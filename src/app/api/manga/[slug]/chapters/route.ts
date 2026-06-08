@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { getMangaChapterPage, getChapterMode, getChapterSortDirection, getMangaChapterTarget } from "@/lib/chapters";
 import { getCurrentUserId } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
-import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
+import { filterSourcesForManga } from "@/lib/source-overrides";
 
 export async function GET(
   request: NextRequest,
@@ -60,22 +60,11 @@ export async function GET(
     const visibleSources = filterSourcesForManga(manga, mangaSources);
     const visibleSourceIds = new Set(visibleSources.map((source) => source.id));
     const sourceIds = mangaSources.length > 0 ? [...visibleSourceIds] : undefined;
-    const override = getMangaSourceOverride(manga);
 
-    if (sourceId && (visibleSourceIds.size > 0 || override)) {
+    if (sourceId && visibleSourceIds.size > 0) {
       if (!visibleSourceIds.has(sourceId)) {
         return NextResponse.json({ error: "Source not found" }, { status: 404 });
       }
-    }
-
-    if (override && visibleSourceIds.size === 0) {
-      return NextResponse.json({
-        chapters: [],
-        chapter: null,
-        nextCursor: null,
-        mode,
-        sortDirection,
-      });
     }
 
     if (target === "first" || target === "latest" || target === "next-unread") {

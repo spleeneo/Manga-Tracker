@@ -127,27 +127,19 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const sourceById = useMemo(() => new Map(visibleSources.map((source) => [source.id, source])), [visibleSources]);
 
     const getSourceRank = (sourceName?: string) => {
-        if ((slug === "witch-hat-atelier" || slug === "witch-hat-atelier-manga") && sourceName?.toLowerCase() === "witch hat atelier manga") {
-            return 9;
-        }
-
-        if ((slug === "houseki-no-kuni" || slug === "land-of-the-lustrous") && sourceName?.toLowerCase() === "land of the lustrous") {
-            return 9;
-        }
-
         if (slug === "bleach" && sourceName?.toLowerCase() === "bleach live") {
             return 8;
         }
 
         switch (sourceName?.toLowerCase()) {
+            case "mangapill":
+                return 8;
+            case "nelomanga":
+                return 7;
             case "witch hat atelier manga":
             case "land of the lustrous":
             case "blue lock manga":
             case "fire punch":
-                return 8;
-            case "mangapill":
-                return 7;
-            case "nelomanga":
                 return 6;
             case "urek mazino":
             case "bleach live":

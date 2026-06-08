@@ -143,7 +143,7 @@ describe("checkForUpdates", () => {
     expect(createManyChapter).not.toHaveBeenCalled();
   });
 
-  it("adds a discovered dedicated manga source before scraping", async () => {
+  it("adds a discovered single-title fallback source before scraping all sources", async () => {
     findManyManga.mockResolvedValue([
       {
         id: "m1",
@@ -179,7 +179,10 @@ describe("checkForUpdates", () => {
     expect(scrapeChapters).toHaveBeenNthCalledWith(1, "https://w45.sakamoto-days-manga.com/", expect.objectContaining({
       sourceName: "Sakamoto Days Manga",
     }));
-    expect(scrapeChapters).toHaveBeenCalledTimes(1);
+    expect(scrapeChapters).toHaveBeenNthCalledWith(2, "https://mangadex.org/title/x", expect.objectContaining({
+      sourceName: "MangaDex",
+    }));
+    expect(scrapeChapters).toHaveBeenCalledTimes(2);
   });
 
   it("adds a strict MangaPill match for already tracked manga before scraping", async () => {

@@ -476,3 +476,40 @@ Verification:
 
 Outcome:
 - The manga detail page no longer exposes a manual Add Source dialog. Linked sources remain visible, and source growth is documented as search-driven plus conservative update-time enrichment.
+
+## 2026-06-08 - Demote Single-Title Sources To Fallback Priority
+
+Why:
+- Single-title manga sites were documented as fallback sources, but Houseki no Kuni still showed only the Land of the Lustrous source because older source filtering forced that single-title provider.
+
+Plan:
+- Stop filtering Houseki and other manga down to dedicated single-title sources.
+- Keep single-title sources visible and scraped as fallback options.
+- Rank MangaPill above single-title sources for duplicate chapter targets and library summaries.
+- Add focused tests for source visibility, updater scraping, and MangaPill-over-single-title target selection.
+
+Changed:
+- `src/lib/source-overrides.ts`
+- `src/lib/chapters.ts`
+- `src/lib/library-summary.ts`
+- `src/components/chapter-list.tsx`
+- `src/app/api/manga/[slug]/chapters/route.ts`
+- `tests/lib/source-overrides.test.ts`
+- `tests/lib/manga-updater.test.ts`
+- `tests/api/manga-chapters.route.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/lib/source-overrides.test.ts tests/api/manga-chapters.route.test.ts tests/lib/manga-updater.test.ts`: 19 tests passed.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with no failed sources.
+- Ran `npm run test -- tests/scrapers/registry.test.ts tests/lib/source-overrides.test.ts`: 5 tests passed after updating the aggregation expectation.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 161 passing tests, and a successful production build.
+- Queried local Houseki no Kuni sources before the targeted update: MangaDex, NeloManga, and Land of the Lustrous were already stored, but the old source filter hid the broad providers.
+- Ran targeted `checkForUpdates` for local Houseki no Kuni: MangaPill was auto-added, MangaDex/NeloManga/Land of the Lustrous were scraped, and 108 new chapters were inserted with no failed sources.
+
+Outcome:
+- Houseki no Kuni now shows broad providers instead of being forced down to the Land of the Lustrous single-title source. Single-title sources remain visible and scraped as fallbacks, while MangaPill outranks them for best chapter targets and summaries.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-08 - Source Priority Must Match Across UI, SQL, and Updater Paths".

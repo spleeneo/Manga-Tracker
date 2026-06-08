@@ -212,27 +212,19 @@ function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | n
   const name = sourceName?.toLowerCase();
   const slug = mangaSlug?.toLowerCase();
 
-  if ((slug === "witch-hat-atelier" || slug === "witch-hat-atelier-manga") && name === "witch hat atelier manga") {
-    return 9;
-  }
-
-  if ((slug === "houseki-no-kuni" || slug === "land-of-the-lustrous") && name === "land of the lustrous") {
-    return 9;
-  }
-
   if (slug === "bleach" && name === "bleach live") {
     return 8;
   }
 
   switch (name) {
+    case "mangapill":
+      return 8;
+    case "nelomanga":
+      return 7;
     case "witch hat atelier manga":
     case "land of the lustrous":
     case "blue lock manga":
     case "fire punch":
-      return 8;
-    case "mangapill":
-      return 7;
-    case "nelomanga":
       return 6;
     case "urek mazino":
     case "bleach live":

@@ -114,3 +114,14 @@ Learning:
 
 Action:
 - Use the source quality scorecard and `npm run source:compare` before ranking or implementing a new provider.
+
+## 2026-06-08 - Source Priority Must Match Across UI, SQL, and Updater Paths
+
+Context:
+- Single-title sources were documented as fallback sources, but Houseki no Kuni still showed only the Land of the Lustrous source because source filtering, summary SQL, and chapter ranking still encoded the older priority rule.
+
+Learning:
+- Source lane decisions must be applied consistently anywhere sources are filtered, ranked, summarized, or scraped. Otherwise a lower-priority fallback can still dominate one user-facing path.
+
+Action:
+- When changing provider priority, check `source-overrides`, chapter target ranking, library summary SQL, updater source selection, and client-side chapter scoring together.

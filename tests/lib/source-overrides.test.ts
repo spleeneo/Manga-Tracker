@@ -2,21 +2,19 @@ import { describe, expect, it } from "vitest";
 import { applySourceOverrideToInputSources, filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 
 describe("manga source overrides", () => {
-  it("uses Land of the Lustrous as the only Houseki no Kuni source", () => {
-    expect(getMangaSourceOverride({ slug: "houseki-no-kuni" })?.sourceName).toBe("Land of the Lustrous");
+  it("does not force Houseki no Kuni to the single-title source", () => {
+    expect(getMangaSourceOverride({ slug: "houseki-no-kuni" })).toBeNull();
 
     expect(applySourceOverrideToInputSources({ title: "Houseki no Kuni" }, [
       { name: "MangaDex", url: "https://mangadex.org/title/x" },
       { name: "NeloManga", url: "https://www.nelomanga.net/manga/houseki-no-kuni" },
     ])).toEqual([
-      {
-        name: "Land of the Lustrous",
-        url: "https://w1.land-of-the-lustrous.online/",
-      },
+      { name: "MangaDex", url: "https://mangadex.org/title/x" },
+      { name: "NeloManga", url: "https://www.nelomanga.net/manga/houseki-no-kuni" },
     ]);
   });
 
-  it("filters existing Houseki sources down to the override source", () => {
+  it("keeps broad providers visible alongside Houseki single-title fallbacks", () => {
     expect(filterSourcesForManga({ slug: "land-of-the-lustrous" }, [
       {
         id: "s1",
@@ -30,6 +28,11 @@ describe("manga source overrides", () => {
       },
     ])).toEqual([
       {
+        id: "s1",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/x",
+      },
+      {
         id: "s2",
         sourceName: "Land of the Lustrous",
         sourceUrl: "https://w1.land-of-the-lustrous.online/",
@@ -37,7 +40,7 @@ describe("manga source overrides", () => {
     ]);
   });
 
-  it("prefers dedicated manga sources over general providers", () => {
+  it("keeps dedicated manga sources as fallback options instead of hiding broad providers", () => {
     expect(filterSourcesForManga({ slug: "blue-lock" }, [
       {
         id: "s1",
@@ -56,9 +59,19 @@ describe("manga source overrides", () => {
       },
     ])).toEqual([
       {
+        id: "s1",
+        sourceName: "NeloManga",
+        sourceUrl: "https://www.nelomanga.net/manga/blue-lock",
+      },
+      {
         id: "s2",
         sourceName: "Blue Lock Manga",
         sourceUrl: "https://w45.blue-lock-manga.com/",
+      },
+      {
+        id: "s3",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/x",
       },
     ]);
 
@@ -66,6 +79,7 @@ describe("manga source overrides", () => {
       { name: "MangaDex", url: "https://mangadex.org/title/x" },
       { name: "Sakamoto Days Manga", url: "https://w45.sakamoto-days-manga.com/" },
     ])).toEqual([
+      { name: "MangaDex", url: "https://mangadex.org/title/x" },
       { name: "Sakamoto Days Manga", url: "https://w45.sakamoto-days-manga.com/" },
     ]);
   });

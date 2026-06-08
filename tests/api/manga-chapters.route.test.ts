@@ -119,7 +119,7 @@ describe("GET /api/manga/[slug]/chapters", () => {
     }));
   });
 
-  it("limits default chapter pages to dedicated manga sources when present", async () => {
+  it("keeps broad providers in default chapter pages when single-title fallbacks are present", async () => {
     mangaFindUniqueMock.mockResolvedValue({
       id: "m1",
       slug: "blue-lock",
@@ -127,10 +127,11 @@ describe("GET /api/manga/[slug]/chapters", () => {
       sources: [
         { id: "s1", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/blue-lock" },
         { id: "s2", sourceName: "Blue Lock Manga", sourceUrl: "https://w45.blue-lock-manga.com/" },
+        { id: "s3", sourceName: "MangaPill", sourceUrl: "https://mangapill.com/manga/580/blue-lock" },
       ],
     });
     chapterFindManyMock.mockResolvedValue([
-      { id: "c1", chapterNumber: 291, title: "Latest", url: "u1", releaseDate: null, sourceId: "s2" },
+      { id: "c1", chapterNumber: 291, title: "Latest", url: "u1", releaseDate: null, sourceId: "s3" },
     ]);
 
     const req = { nextUrl: new URL("http://localhost/api/manga/blue-lock/chapters?limit=2") };
@@ -142,7 +143,7 @@ describe("GET /api/manga/[slug]/chapters", () => {
     expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         mangaId: "m1",
-        sourceId: { in: ["s2"] },
+        sourceId: { in: ["s1", "s2", "s3"] },
       }),
     }));
   });
@@ -278,6 +279,46 @@ describe("GET /api/manga/[slug]/chapters", () => {
       id: "mangaplus-35",
       sourceName: "MangaPlus",
       url: "https://mangaplus.shueisha.co.jp/viewer/1029242",
+    }));
+  });
+
+  it("prefers MangaPill over single-title fallback chapter targets", async () => {
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 108 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "single-108",
+        chapterNumber: 108,
+        title: "Chapter 108",
+        url: "https://w1.land-of-the-lustrous.online/manga/land-of-the-lustrous-chapter-108/",
+        releaseDate: new Date("2024-04-01T00:00:00.000Z"),
+        createdAt: new Date("2024-04-01T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "Land of the Lustrous" },
+      },
+      {
+        id: "mangapill-108",
+        chapterNumber: 108,
+        title: "Chapter 108",
+        url: "https://mangapill.com/chapters/123-10108000/houseki-no-kuni-chapter-108",
+        releaseDate: new Date("2024-03-30T00:00:00.000Z"),
+        createdAt: new Date("2024-03-30T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "MangaPill" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/houseki-no-kuni/chapters?target=latest") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "houseki-no-kuni" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mangapill-108",
+      sourceName: "MangaPill",
     }));
   });
 
