@@ -18,6 +18,8 @@ Mangateo supports multiple manga sources through scraper classes in `src/lib/scr
 
 The registry in `src/lib/scrapers/registry.ts` decides which scraper handles a URL, fans out search across all providers, and aggregates search results by normalized title.
 
+The update cycle can enrich already tracked manga with MangaPill when search returns a strict title or configured-alias match and the manga does not already have a MangaPill source.
+
 ## Provider Capabilities
 
 Each provider is expected to expose:

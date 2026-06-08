@@ -417,3 +417,35 @@ Outcome:
 
 Learnings:
 - No new reusable learning yet; this implements the lane-specific candidate decision.
+
+## 2026-06-08 - Auto-Enrich Existing Manga With MangaPill
+
+Why:
+- After adding MangaPill, already tracked manga would not show MangaPill unless the source had been manually added or the manga was re-added from search.
+
+Plan:
+- Add a conservative MangaPill discovery helper that accepts only exact title or configured alias matches.
+- Run that discovery during `checkForUpdates` for manga that already have sources and do not already have MangaPill.
+- Skip source overrides and avoid near-match/spinoff additions.
+- Verify with focused updater/discovery tests and update smoke.
+
+Changed:
+- `src/lib/manga-updater.ts`
+- `src/lib/scrapers/mangapill-discovery.ts`
+- `tests/lib/manga-updater.test.ts`
+- `tests/scrapers/mangapill-discovery.test.ts`
+- `docs/providers.md`
+- `docs/source-candidates.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/lib/manga-updater.test.ts tests/scrapers/mangapill-discovery.test.ts tests/scrapers/mangapill.test.ts`: 15 tests passed.
+- Ran `npm run test -- tests/lib/source-name.test.ts tests/scrapers/provider-contract.test.ts`: 5 tests passed.
+- Ran `npm run smoke:update`: passed. The sampled One Piece update auto-added MangaPill and inserted 1200 MangaPill chapters; the known MangaPlus `Account Banned` source failure remained.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 160 passing tests, and a successful production build.
+
+Outcome:
+- Existing tracked manga can now automatically gain a MangaPill source during update checks when MangaPill search returns a strict title or configured-alias match.
+
+Learnings:
+- No new reusable lesson added; this extends the MangaPill provider rollout.

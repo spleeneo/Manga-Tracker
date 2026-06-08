@@ -37,6 +37,7 @@ Run `npm run source:compare` to sample current providers plus MangaPill and prin
 - Lane: manga. Do not count it as a manhwa/manhua/webtoon source because MangaPill currently says it removed manhwa from the site.
 - Access model: public manga pages and public reader image URLs; the image CDN requires a chapter/source `Referer`.
 - Integration: search, metadata, chapter tracking, decimal chapter handling, and in-app reader support through the image proxy's MangaPill referer handling.
+- Existing-library behavior: update checks can attach MangaPill to already tracked manga when MangaPill search returns a strict title or configured-alias match.
 - Why prioritized: Mangateo's in-app reader is a top product feature, and live probes on 2026-06-08 found MangaPill ahead of current broad reader sources for representative manga chapter depth and readable page availability.
 - Risk: community mirror status, Cloudflare, selector churn, CDN hotlink rules, and lower product/legal preference than official sources.
 

@@ -3,9 +3,17 @@ import { scrapeChapters } from "./scrapers/registry";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
+import { discoverMangaPillSource } from "@/lib/scrapers/mangapill-discovery";
 
 function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
     return sources.some((source) => isDedicatedMangaSourceName(source.sourceName));
+}
+
+function hasMangaPillSource(sources: Array<{ sourceName: string; sourceUrl: string }>) {
+    return sources.some((source) => (
+        source.sourceName.toLowerCase() === "mangapill"
+        || source.sourceUrl.toLowerCase().includes("mangapill.com")
+    ));
 }
 
 export async function checkForUpdates(specificMangaId?: string) {
@@ -69,6 +77,29 @@ export async function checkForUpdates(specificMangaId?: string) {
                         mangaId: manga.id,
                         sourceName: discoveredSource.sourceName,
                         sourceUrl: discoveredSource.sourceUrl,
+                    },
+                });
+                sources = filterSourcesForManga(manga, [source, ...sources]);
+            }
+        }
+
+        if (!override && manga.sources.length > 0 && !hasMangaPillSource(manga.sources)) {
+            const discoveredMangaPillSource = await discoverMangaPillSource(manga);
+            if (discoveredMangaPillSource && !sources.some((source) => source.sourceUrl === discoveredMangaPillSource.sourceUrl)) {
+                const source = await prisma.source.upsert({
+                    where: {
+                        mangaId_sourceUrl: {
+                            mangaId: manga.id,
+                            sourceUrl: discoveredMangaPillSource.sourceUrl,
+                        },
+                    },
+                    update: {
+                        sourceName: discoveredMangaPillSource.sourceName,
+                    },
+                    create: {
+                        mangaId: manga.id,
+                        sourceName: discoveredMangaPillSource.sourceName,
+                        sourceUrl: discoveredMangaPillSource.sourceUrl,
                     },
                 });
                 sources = filterSourcesForManga(manga, [source, ...sources]);

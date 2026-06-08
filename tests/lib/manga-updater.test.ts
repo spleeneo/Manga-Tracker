@@ -9,6 +9,7 @@ const {
   upsertSource,
   scrapeChapters,
   discoverSingleMangaSiteSources,
+  discoverMangaPillSource,
 } = vi.hoisted(() => ({
   findManyManga: vi.fn(),
   findManyChapter: vi.fn(),
@@ -18,6 +19,7 @@ const {
   upsertSource: vi.fn(),
   scrapeChapters: vi.fn(),
   discoverSingleMangaSiteSources: vi.fn(),
+  discoverMangaPillSource: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -43,6 +45,10 @@ vi.mock("@/lib/scrapers/single-manga-sites", () => ({
   discoverSingleMangaSiteSources,
 }));
 
+vi.mock("@/lib/scrapers/mangapill-discovery", () => ({
+  discoverMangaPillSource,
+}));
+
 import { checkForUpdates } from "@/lib/manga-updater";
 
 describe("checkForUpdates", () => {
@@ -53,6 +59,7 @@ describe("checkForUpdates", () => {
     updateSource.mockResolvedValue({});
     upsertSource.mockResolvedValue({});
     discoverSingleMangaSiteSources.mockResolvedValue([]);
+    discoverMangaPillSource.mockResolvedValue(null);
   });
 
   it("reports manga with no sources", async () => {
@@ -173,5 +180,61 @@ describe("checkForUpdates", () => {
       sourceName: "Sakamoto Days Manga",
     }));
     expect(scrapeChapters).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds a strict MangaPill match for already tracked manga before scraping", async () => {
+    findManyManga.mockResolvedValue([
+      {
+        id: "m1",
+        title: "Dandadan",
+        slug: "dandadan",
+        sources: [{ id: "s1", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" }],
+      },
+    ]);
+    discoverMangaPillSource.mockResolvedValue({
+      title: "Dandadan",
+      sourceName: "MangaPill",
+      sourceUrl: "https://mangapill.com/manga/5460/dandadan",
+    });
+    upsertSource.mockResolvedValue({
+      id: "s2",
+      sourceName: "MangaPill",
+      sourceUrl: "https://mangapill.com/manga/5460/dandadan",
+    });
+    scrapeChapters
+      .mockResolvedValueOnce([{ chapterNumber: 236, url: "mp", title: "Chapter 236" }])
+      .mockResolvedValueOnce([]);
+    createManyChapter.mockResolvedValueOnce({ count: 1 });
+
+    await checkForUpdates("m1");
+
+    expect(upsertSource).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        mangaId_sourceUrl: {
+          mangaId: "m1",
+          sourceUrl: "https://mangapill.com/manga/5460/dandadan",
+        },
+      },
+    }));
+    expect(scrapeChapters).toHaveBeenNthCalledWith(1, "https://mangapill.com/manga/5460/dandadan", expect.objectContaining({
+      sourceName: "MangaPill",
+    }));
+  });
+
+  it("does not search MangaPill when the manga already has a MangaPill source", async () => {
+    findManyManga.mockResolvedValue([
+      {
+        id: "m1",
+        title: "Dandadan",
+        slug: "dandadan",
+        sources: [{ id: "s1", sourceName: "MangaPill", sourceUrl: "https://mangapill.com/manga/5460/dandadan" }],
+      },
+    ]);
+    scrapeChapters.mockResolvedValueOnce([]);
+
+    await checkForUpdates("m1");
+
+    expect(discoverMangaPillSource).not.toHaveBeenCalled();
+    expect(upsertSource).not.toHaveBeenCalled();
   });
 });
