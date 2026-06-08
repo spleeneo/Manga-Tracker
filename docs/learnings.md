@@ -103,3 +103,14 @@ Learning:
 
 Action:
 - Atsumaru chapter scraping merges the linked reader chapter into the bulk chapter list before sorting and storing results.
+
+## 2026-06-08 - Source Candidates Need Lane-Specific Scoring
+
+Context:
+- MangaPill looked strong for manga reader coverage but explicitly did not cover manhwa, while single-title sites were useful fallbacks without broad catalog value.
+
+Learning:
+- Provider quality should be scored separately for manga, manhwa/manhua/webtoon, and single-title fallback lanes. A source can be top priority in one lane and unsupported in another.
+
+Action:
+- Use the source quality scorecard and `npm run source:compare` before ranking or implementing a new provider.

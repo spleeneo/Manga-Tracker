@@ -3,6 +3,7 @@ import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "@/lib/sc
 
 export async function GET(request: NextRequest) {
     const url = request.nextUrl.searchParams.get('url');
+    const requestedReferer = request.nextUrl.searchParams.get('referer');
 
     if (!url) {
         return new Response('Missing URL parameter', { status: 400 });
@@ -13,7 +14,9 @@ export async function GET(request: NextRequest) {
     try {
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), 8_000);
+        const parsedUrl = new URL(url);
         const isNelo = url.includes('nelomanga.net') || url.includes('2xstorage.com') || url.includes('waitst.com');
+        const isMangaPillCdn = parsedUrl.hostname.endsWith('readdetectiveconan.com');
         const headers: Record<string, string> = {
             'User-Agent': NELOMANGA_USER_AGENT,
         };
@@ -21,8 +24,11 @@ export async function GET(request: NextRequest) {
         if (isNelo) {
             headers['Referer'] = `${NELOMANGA_BASE}/`;
             headers['Cookie'] = NELOMANGA_COOKIE;
+        } else if (isMangaPillCdn) {
+            const referer = requestedReferer ? new URL(requestedReferer) : new URL('https://mangapill.com/');
+            headers['Referer'] = referer.hostname.endsWith('mangapill.com') ? referer.toString() : 'https://mangapill.com/';
         } else {
-            headers['Referer'] = new URL(url).origin;
+            headers['Referer'] = parsedUrl.origin;
         }
 
         const response = await fetch(url, { headers, signal: controller.signal });

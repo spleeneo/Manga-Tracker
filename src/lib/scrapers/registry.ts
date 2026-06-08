@@ -7,6 +7,7 @@ import { VizScraper } from "./viz";
 import { WebtoonScraper } from "./webtoon";
 import { UrekMazinoScraper } from "./urek-mazino";
 import { ManganatoScraper } from "./manganato";
+import { MangaPillScraper } from "./mangapill";
 import { BleachLiveScraper } from "./bleach-live";
 import { WitchHatAtelierScraper } from "./witch-hat-atelier";
 import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
@@ -28,6 +29,7 @@ const scrapers: Scraper[] = [
     new BleachLiveScraper(),
     new WebtoonScraper(),
     new ManganatoScraper(),
+    new MangaPillScraper(),
     new AtsumaruScraper(),
 ];
 

@@ -126,6 +126,7 @@ const RESERVED_PROVIDER_HOSTNAMES = new Set([
   "manganato.com",
   "chapmanganato.to",
   "nelomanga.net",
+  "mangapill.com",
 ]);
 
 function decodeHtml(value: string): string {

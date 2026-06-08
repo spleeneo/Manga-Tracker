@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "verify": "npm run lint && npm run test && npm run build",
     "smoke:update": "tsx scripts/smoke-update-cycle.ts",
+    "source:compare": "tsx scripts/compare-source-quality.ts",
     "update-manga": "tsx scripts/update-manga.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

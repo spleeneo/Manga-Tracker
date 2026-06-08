@@ -14,6 +14,7 @@ Mangateo supports multiple manga sources through scraper classes in `src/lib/scr
 - `Atsumaru`
 - `Webtoon`
 - `Manganato`
+- `MangaPill`
 
 The registry in `src/lib/scrapers/registry.ts` decides which scraper handles a URL, fans out search across all providers, and aggregates search results by normalized title.
 
@@ -31,24 +32,27 @@ Provider support can degrade independently. Search may fail for one provider whi
 
 The UI and library summary currently group chapters by chapter number and choose one candidate using a source ranking plus release date:
 
-1. NeloManga
-2. Urek Mazino / Bleach Live / Atsumaru
-3. MangaPlus
-4. MangaDex
-5. Webtoon
-6. Manganato
-7. Unknown providers
+1. Title-specific manga sources when configured for that title
+2. MangaPill
+3. NeloManga
+4. Urek Mazino / Bleach Live / Atsumaru
+5. MangaPlus
+6. MangaDex
+7. Webtoon
+8. Manganato
+9. Unknown providers
 
 This is a placeholder for readability-aware selection. It does not currently verify whether the linked chapter has readable pages, is region-blocked, or is paywalled.
 
 The reader fallback route uses a separate in-app reader priority for alternatives:
 
-1. MangaDex
-2. Urek Mazino
-3. Bleach Live
-4. Manganato
-5. NeloManga
-6. Other providers
+1. MangaPill
+2. MangaDex
+3. Urek Mazino
+4. Bleach Live
+5. Manganato
+6. NeloManga
+7. Other providers
 
 Providers can therefore be useful even when they are external-only. Official app-centric sources such as MangaPlus, Comikey, Azuki, K MANGA, and Manga UP! should start as tracking/external-reader providers unless their public web reader exposes stable readable images/API without bypassing access controls.
 

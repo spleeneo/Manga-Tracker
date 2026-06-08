@@ -337,3 +337,83 @@ Outcome:
 
 Learnings:
 - No reusable lesson added; this was a contained layout consistency fix.
+
+## 2026-06-08 - Source Quality Comparison Harness
+
+Why:
+- MangaPill appears promising for manga in-app reader coverage, but provider ranking needed a repeatable comparison instead of one-off live probes.
+
+Plan:
+- Add lane-specific source quality scoring for manga, manhwa/manhua/webtoon, and single-title fallback sources.
+- Add a read-only live harness that samples current providers plus MangaPill and prints ranked evidence tables.
+- Record MangaPill's current candidate status and the source evaluation criteria in docs.
+
+Changed:
+- `src/lib/source-quality.ts`
+- `scripts/compare-source-quality.ts`
+- `tests/lib/source-quality.test.ts`
+- `package.json`
+- `docs/source-candidates.md`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/lib/source-quality.test.ts`: 3 tests passed.
+- Ran `npm run test -- tests/lib/source-quality.test.ts tests/scrapers/provider-contract.test.ts`: 6 tests passed.
+- Ran `npm run source:compare -- --provider=MangaPill --lane=manga`: passed; MangaPill scored 97 for manga reader and 77 for manga tracking with 100% exact matches and 100% readable samples.
+- Ran `npm run source:compare`: passed; MangaPill ranked first for manga reader and manga tracking, NeloManga ranked first for manhwa/manhua/webtoon tracking, and single-title sites remained useful fallbacks.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 149 passing tests, and a successful production build.
+
+Outcome:
+- Added a reusable source quality scorecard, a read-only live comparison harness, and docs that classify MangaPill as the top-priority manga reader candidate while keeping it out of the manhwa/manhua/webtoon lane.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-08 - Source Candidates Need Lane-Specific Scoring".
+
+## 2026-06-08 - Add MangaPill Provider
+
+Why:
+- The source quality comparison showed MangaPill as the strongest manga lane candidate for in-app reader coverage.
+
+Plan:
+- Add a MangaPill scraper with search, metadata, chapter parsing, and in-app reader pages.
+- Register MangaPill, infer manual source names, update source rankings, and add proxy referer handling for MangaPill CDN images.
+- Update docs and supported-provider text.
+- Verify with focused scraper/proxy tests, live MangaPill probes, source comparison, update smoke, and full verification.
+
+Changed:
+- `src/lib/scrapers/mangapill.ts`
+- `src/lib/scrapers/registry.ts`
+- `src/lib/scrapers/single-manga-sites.ts`
+- `src/app/api/proxy/image/route.ts`
+- `src/app/api/manga/[slug]/chapter/[chapterId]/reader/route.ts`
+- `src/lib/chapters.ts`
+- `src/lib/library-summary.ts`
+- `src/lib/source-name.ts`
+- `src/components/chapter-list.tsx`
+- `src/components/add-source-dialog.tsx`
+- `tests/scrapers/mangapill.test.ts`
+- `tests/api/proxy-image.route.test.ts`
+- `tests/scrapers/provider-contract.test.ts`
+- `tests/scrapers/single-manga-sites.test.ts`
+- `tests/lib/source-name.test.ts`
+- `README.md`
+- `docs/providers.md`
+- `docs/source-candidates.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/scrapers/mangapill.test.ts tests/scrapers/provider-contract.test.ts tests/lib/source-name.test.ts tests/api/proxy-image.route.test.ts`: 11 tests passed.
+- Ran `npm run test -- tests/api/manga-chapters.route.test.ts tests/api/chapter-reader.route.test.ts`: 14 tests passed.
+- Ran `npm run test -- tests/scrapers/mangapill.test.ts tests/scrapers/single-manga-sites.test.ts tests/api/proxy-image.route.test.ts`: 17 tests passed.
+- Ran a live registry probe for `https://mangapill.com/manga/5460/dandadan`: metadata resolved to Dandadan, 240 chapters were parsed, latest chapter 236 returned `READABLE` with 19 proxied pages.
+- Ran `npm run source:compare -- --provider=MangaPill --lane=manga`: passed; MangaPill scored 97 for manga reader and 77 for manga tracking with 100% exact matches and 100% readable samples.
+- Ran `npm run smoke:update`: passed. The sampled One Piece update completed with the known MangaPlus `Account Banned` source failure and no MangaPill-specific failures.
+- Ran a live proxy fetch for a MangaPill page image through `/api/proxy/image`: returned 200 `image/jpeg`.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 155 passing tests, and a successful production build.
+
+Outcome:
+- MangaPill is now a registered provider with search, metadata, chapter tracking, and in-app reader support. MangaPill CDN images load through the proxy with a MangaPill referer, and MangaPill is ranked above other broad manga sources for best-available and reader fallback selection.
+
+Learnings:
+- No new reusable learning yet; this implements the lane-specific candidate decision.

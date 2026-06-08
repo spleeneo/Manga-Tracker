@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 
 const READER_SOURCE_PRIORITY = [
   "Witch Hat Atelier Manga",
+  "MangaPill",
   "MangaDex",
   "Urek Mazino",
   "Bleach Live",

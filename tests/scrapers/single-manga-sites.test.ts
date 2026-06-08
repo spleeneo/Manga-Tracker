@@ -100,6 +100,7 @@ describe("SingleMangaSiteScraper", () => {
     expect(scraper.canHandle("https://mangadex.org/title/b6622d86-74c6-47eb-8c92-89bcce50a63b")).toBe(false);
     expect(scraper.canHandle("https://mangaplus.shueisha.co.jp/titles/100020")).toBe(false);
     expect(scraper.canHandle("https://www.viz.com/bleach")).toBe(false);
+    expect(scraper.canHandle("https://mangapill.com/manga/5460/dandadan")).toBe(false);
   });
 
   it("extracts public reader images while filtering chrome assets", async () => {

@@ -130,7 +130,7 @@ export function AddSourceDialog({ mangaId }: AddSourceDialogProps) {
                                 className="ui-field"
                             />
                             <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/40">
-                                Supported: MangaDex, NeloManga, MangaPlus, Comikey, VIZ, Urek Mazino, Atsumaru, Webtoon, Manganato
+                                Supported: MangaDex, NeloManga, MangaPlus, Comikey, VIZ, Urek Mazino, Atsumaru, Webtoon, Manganato, MangaPill
                             </p>
                         </div>
                     </div>

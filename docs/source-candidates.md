@@ -10,31 +10,54 @@ This document tracks candidate providers before implementation.
 - Official/licensed sources are preferred over community mirrors when they can support the same tracking job.
 - In-app reader support is only allowed when the provider exposes public readable images/API without bypassing access controls. Otherwise, add the source as tracking plus external-open only.
 
+## Source quality scorecard
+
+Evaluate broad and title-specific sources in separate lanes:
+
+- **Manga**: Japanese manga catalog and reader quality.
+- **Manhwa/manhua/webtoon**: Korean/Chinese/webtoon catalog and official/free public episode quality.
+- **Single-title manga sites**: title-specific mirrors that may be excellent fallbacks but should not compete with broad catalogs.
+
+Score each candidate using:
+
+- Catalog size by lane, including whether the source explicitly excludes a lane.
+- Freshness against representative ongoing titles: latest chapter number, release date, and update delay.
+- Completeness: missing integer chapter gaps, duplicate chapter numbers, decimals/specials, and skipped latest chapters.
+- Reader quality: page count, image reachability, referer/header requirements, blocked/paywalled/error states.
+- Search quality: exact title match rate, alternate-title handling, and false positives.
+- Operational risk: Cloudflare, rate limits, VPN/region/account requirements, domain churn, and selector/API stability.
+
+Run `npm run source:compare` to sample current providers plus MangaPill and print ranked tables for manga reader, manga tracking, manhwa/manhua/webtoon, and single-title fallback lanes.
+
 ## Current recommendation
 
-### Next source: Comikey
+### MangaPill implemented for manga reader coverage
 
-- Bucket: official/licensed, high-value catalog.
-- Access model: free app/web reading for much of the catalog through ads or free keys; newest chapters may require paid keys.
-- Expected integration: tracking, metadata, chapter links, external reading first.
-- Reader stance: only enable Mangateo reader if public pages expose stable readable image URLs without ad/key/session bypassing.
-- Why first: broad manga/manhua/manhwa/webtoon coverage, official releases, and likely better user value than adding another community mirror.
+- Bucket: community/free, broad manga catalog.
+- Lane: manga. Do not count it as a manhwa/manhua/webtoon source because MangaPill currently says it removed manhwa from the site.
+- Access model: public manga pages and public reader image URLs; the image CDN requires a chapter/source `Referer`.
+- Integration: search, metadata, chapter tracking, decimal chapter handling, and in-app reader support through the image proxy's MangaPill referer handling.
+- Why prioritized: Mangateo's in-app reader is a top product feature, and live probes on 2026-06-08 found MangaPill ahead of current broad reader sources for representative manga chapter depth and readable page availability.
+- Risk: community mirror status, Cloudflare, selector churn, CDN hotlink rules, and lower product/legal preference than official sources.
 
 ### Follow-up order
 
-1. Improve `MangaPlus`.
+1. Periodically rerun the source comparison harness.
+   - Confirm MangaPill continues to win the manga reader lane for enough ongoing/completed titles.
+   - Revalidate MangaDex, NeloManga, Manganato, MangaPlus, Webtoon, and single-title sources using exact-match scoring.
+2. Improve `MangaPlus`.
    - It is already registered and official, but currently lacks reader support and does not model first/newest/free availability explicitly.
    - Add a readability/free-window probe before using it as a top ranked chapter candidate.
-2. Add `Azuki`.
+3. Add `Azuki`.
    - Official licensed manga with a cleaner catalog shape than scraper-heavy sites.
    - Start with search/metadata/chapter tracking and external-open.
-3. Add `K MANGA`.
+4. Add `K MANGA`.
    - Official Kodansha source with strong catalog value.
    - Treat as external/tracking unless a public web flow is verified; availability has US/free-limit constraints.
-4. Add `Manga UP!`.
+5. Add `Manga UP!`.
    - Official Square Enix source.
    - Treat as external/tracking; app/item/subscription mechanics make in-app reading unlikely at first.
-5. Improve `Webtoon`.
+6. Improve `Webtoon`.
    - Already implemented for free public web episodes.
    - Strengthen lock/ad/Fast Pass/Daily Pass detection before ranking it as best available.
 
@@ -89,6 +112,16 @@ This document tracks candidate providers before implementation.
   - Access: free public web pages.
   - Risk: moderate-high selector churn and anti-bot changes.
   - Integration status: implemented in first expansion batch.
+
+- **MangaPill** (community/free)
+  - Lane: manga.
+  - Access: free public listings and reader pages; reader images require a MangaPill `Referer`.
+  - Catalog signal: about 10k manga IDs observed from `/mangas/new` on 2026-06-08.
+  - Freshness signal: `/chapters` exposes 120 recent chapters and showed same-day updates on 2026-06-08, including Dandadan chapter 236.
+  - Reader signal: live probes found readable images for One Piece, Dandadan, Blue Lock, and Witch Hat Atelier.
+  - Harness signal: `npm run source:compare` on 2026-06-08 ranked MangaPill first for the manga reader lane and manga tracking lane across the sample set.
+  - Risk: community mirror status, Cloudflare, no manhwa lane coverage, and potential CDN/selector churn.
+  - Integration status: implemented with search, metadata, chapter tracking, decimal chapter handling, and in-app reader support.
 
 - **Atsumaru** (community/free)
   - Access: free public app/API pages.

@@ -230,18 +230,20 @@ function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | n
     case "blue lock manga":
     case "fire punch":
       return 8;
-    case "nelomanga":
+    case "mangapill":
       return 7;
+    case "nelomanga":
+      return 6;
     case "urek mazino":
     case "bleach live":
     case "atsumaru":
-      return 6;
-    case "mangaplus":
       return 5;
-    case "mangadex":
+    case "mangaplus":
       return 4;
-    case "webtoon":
+    case "mangadex":
       return 3;
+    case "webtoon":
+      return 2;
     case "manganato":
       return 1;
     default:

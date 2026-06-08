@@ -130,13 +130,14 @@ const SOURCE_RANK_SQL = Prisma.sql`
     WHEN 'land of the lustrous' THEN 8
     WHEN 'blue lock manga' THEN 8
     WHEN 'fire punch' THEN 8
-    WHEN 'nelomanga' THEN 7
-    WHEN 'urek mazino' THEN 6
-    WHEN 'bleach live' THEN 6
-    WHEN 'atsumaru' THEN 6
-    WHEN 'mangaplus' THEN 5
-    WHEN 'mangadex' THEN 4
-    WHEN 'webtoon' THEN 3
+    WHEN 'mangapill' THEN 7
+    WHEN 'nelomanga' THEN 6
+    WHEN 'urek mazino' THEN 5
+    WHEN 'bleach live' THEN 5
+    WHEN 'atsumaru' THEN 5
+    WHEN 'mangaplus' THEN 4
+    WHEN 'mangadex' THEN 3
+    WHEN 'webtoon' THEN 2
     WHEN 'manganato' THEN 1
     ELSE 0
     END

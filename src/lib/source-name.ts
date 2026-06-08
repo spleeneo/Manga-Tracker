@@ -13,6 +13,7 @@ const SOURCE_PATTERNS: Array<[string, string[]]> = [
   ["Atsumaru", ["atsu.moe"]],
   ["Webtoon", ["webtoons"]],
   ["Manganato", ["manganato", "chapmanganato"]],
+  ["MangaPill", ["mangapill.com"]],
 ];
 
 export function inferSourceName(url: string) {

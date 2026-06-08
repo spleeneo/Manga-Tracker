@@ -4,7 +4,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 
 ## Features
 
-- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, MangaPlus, Comikey, Atsumaru, Webtoon, Manganato, and more.
+- **Multi-Source Tracking**: Aggregate chapters from MangaDex, NeloManga, MangaPlus, Comikey, Atsumaru, Webtoon, Manganato, MangaPill, and more.
 - **Unified Library**: Track all your reading progress in one place.
 - **Auto-Updates**: Automatically fetch new chapters from tracked sources.
 - **Clean UI**: A solid, distraction-free interface (no glassmorphism!) designed for readability.
@@ -56,6 +56,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 - `npm run lint`: runs the linter to check for code issues.
 - `npm run test`: runs automated tests with Vitest.
 - `npm run verify`: runs lint, tests, and production build.
+- `npm run source:compare`: runs the live source quality comparison harness.
 - `npm run db:generate`: regenerates Prisma Client.
 - `npm run db:migrate`: applies Prisma migrations.
 - `npm run db:reset`: wipes all manga, sources, and chapters.
