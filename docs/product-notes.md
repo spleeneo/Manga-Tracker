@@ -6,8 +6,8 @@ These are product and UX decisions worth keeping visible while Mangateo evolves.
 
 Mangateo is a personal manga library:
 
-- Track manga by source search or manual source URL.
-- Reuse shared manga/source/chapter data in the background.
+- Track manga through provider search results.
+- Reuse and enrich shared manga/source/chapter data in the background.
 - Keep each user's library and read progress private.
 - Display a merged "Best Available" chapter list by default, with provider-specific tabs available.
 

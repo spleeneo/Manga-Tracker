@@ -449,3 +449,30 @@ Outcome:
 
 Learnings:
 - No new reusable lesson added; this extends the MangaPill provider rollout.
+
+## 2026-06-08 - Remove Manual Add Source UI
+
+Why:
+- Source discovery should happen through search and conservative update-time enrichment instead of asking users to manually attach provider URLs from the manga detail page.
+
+Plan:
+- Remove the detail-page Add Source dialog and keep existing source display links.
+- Preserve the tested backend source endpoint as a compatibility/internal path.
+- Update product/audit docs to reflect automatic source enrichment as the expected flow.
+- Verify with the focused route/updater tests and full project verification.
+
+Changed:
+- `src/app/manga/[slug]/page.tsx`
+- `src/components/add-source-dialog.tsx`
+- `docs/functional-audit-checklist.md`
+- `docs/product-notes.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `rg -n "AddSourceDialog|Add Source Provider|LINK SOURCE|Add Source" src tests docs README.md -S`: only the removal work-log entry remains.
+- Ran `npm run test -- tests/api/source.route.test.ts tests/lib/manga-updater.test.ts`: 11 tests passed.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 160 passing tests, and a successful production build.
+- Attempted browser verification against `http://127.0.0.1:3000` and `http://localhost:3000`, but the in-app browser blocked both local URLs with `net::ERR_BLOCKED_BY_CLIENT`.
+
+Outcome:
+- The manga detail page no longer exposes a manual Add Source dialog. Linked sources remain visible, and source growth is documented as search-driven plus conservative update-time enrichment.

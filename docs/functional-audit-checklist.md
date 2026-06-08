@@ -39,6 +39,7 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 
 ## Updater behavior (`checkForUpdates`)
 - Skips manga with no sources and reports `"No sources identified"`.
+- Attempts conservative MangaPill auto-enrichment for tracked manga without a MangaPill source.
 - For each source, inserts only missing chapters by `(sourceId, chapterNumber)`.
 - Continues processing other sources when one source scraper fails.
 - Updates manga `updatedAt` when one or more new chapters are inserted.
@@ -46,8 +47,8 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 
 ## Manual verification checklist
 - Add manga via search flow and confirm source list and chapter ingestion.
-- Add manga via manual URL and confirm metadata fallback behavior.
-- Add additional source to existing manga and confirm duplicate guard.
+- Add manga from a provider search result and confirm metadata fallback behavior when a scraper has sparse metadata.
+- Trigger update checks for an existing manga and confirm strict MangaPill matches can add a source automatically.
 - Trigger per-manga and global update endpoints and confirm no duplicate chapters.
 - Toggle chapter read/unread and confirm state is persisted after reload.
 

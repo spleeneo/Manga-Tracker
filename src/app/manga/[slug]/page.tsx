@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, ExternalLink, Loader2 } from "lucide-react";
-import { AddSourceDialog } from "@/components/add-source-dialog";
 import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
@@ -159,8 +158,6 @@ export default async function MangaPage({ params }: PageProps) {
                                 </ul>
                             )}
 
-                            {/* Add Source Button */}
-                            <AddSourceDialog mangaId={manga.id} />
                         </div>
                     </div>
 
