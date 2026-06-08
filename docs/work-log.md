@@ -548,3 +548,26 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-08 - Alias Tables Need Combined Provider Titles".
+
+## 2026-06-08 - Review Source Rollout Documentation
+
+Why:
+- The MangaPill/source-priority rollout was complete, but the provider and audit docs needed a pass to make sure they matched the current implementation.
+
+Plan:
+- Review recent source-related commits and scan docs/code for stale manual-source and source-priority language.
+- Correct any documentation or comments that still describe removed or superseded behavior.
+- Run the full verification gate after the review cleanup.
+
+Changed:
+- `docs/providers.md`
+- `docs/functional-audit-checklist.md`
+- `src/app/api/manga/route.ts`
+- `docs/work-log.md`
+
+Verification:
+- Ran `rg -n "Title-specific manga sources when configured|duplicate \\(mangaId, sourceName\\)|checkForUpdates\\(mangaId\\)|manual entry|Add Source Provider|LINK SOURCE|AddSourceDialog" README.md docs src tests -S`: only a historical work-log verification line remains.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 163 passing tests, and a successful production build.
+
+Outcome:
+- Provider priority docs now match the implementation: MangaPill ranks above single-title fallbacks for best-available selection, while `Bleach Live` remains the current title-specific exception. The audit checklist now describes alias reuse, `(mangaId, sourceUrl)` duplicate protection, and queued sync jobs.

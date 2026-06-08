@@ -13,8 +13,9 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 - Returns `400` when both title and slug cannot be resolved.
 - Creates a new `Manga` record when slug does not exist.
 - Reuses existing `Manga` when slug already exists.
-- Creates missing `Source` records and avoids duplicate `(mangaId, sourceName)`.
-- Triggers background `checkForUpdates(mangaId)` call for processed sources.
+- Reuses known alias slugs instead of creating duplicate manga records.
+- Creates missing `Source` records and avoids duplicate `(mangaId, sourceUrl)`.
+- Enqueues a background manga sync job for newly added/empty source sets.
 - Handles metadata fetch failure gracefully and still attempts creation with provided fields.
 
 ### `POST /api/source`
@@ -40,6 +41,7 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 ## Updater behavior (`checkForUpdates`)
 - Skips manga with no sources and reports `"No sources identified"`.
 - Attempts conservative MangaPill auto-enrichment for tracked manga without a MangaPill source.
+- Keeps single-title sources as fallback sources without hiding broad providers.
 - For each source, inserts only missing chapters by `(sourceId, chapterNumber)`.
 - Continues processing other sources when one source scraper fails.
 - Updates manga `updatedAt` when one or more new chapters are inserted.

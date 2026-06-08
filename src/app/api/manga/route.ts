@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         const { title, slug, coverUrl, status, description, sourceUrl, sources = [] } = body;
 
         // Normalize sources list
-        // If sourceUrl is provided (from manual entry) and not in sources array, add it
+        // If a compatibility caller provides a single sourceUrl, fold it into the sources array.
         let sourcesToProcess = [...sources];
         if (sourceUrl && !sourcesToProcess.some(s => s.url === sourceUrl)) {
             sourcesToProcess.push({

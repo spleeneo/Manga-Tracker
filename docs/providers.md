@@ -34,15 +34,17 @@ Provider support can degrade independently. Search may fail for one provider whi
 
 The UI and library summary currently group chapters by chapter number and choose one candidate using a source ranking plus release date:
 
-1. Title-specific manga sources when configured for that title
-2. MangaPill
-3. NeloManga
+1. MangaPill
+2. NeloManga
+3. Title-specific manga sources as fallbacks
 4. Urek Mazino / Bleach Live / Atsumaru
 5. MangaPlus
 6. MangaDex
 7. Webtoon
 8. Manganato
 9. Unknown providers
+
+Bleach is the current exception: `Bleach Live` is title-specific and ranks with MangaPill for the Bleach slug.
 
 This is a placeholder for readability-aware selection. It does not currently verify whether the linked chapter has readable pages, is region-blocked, or is paywalled.
 
