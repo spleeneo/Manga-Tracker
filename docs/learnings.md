@@ -125,3 +125,14 @@ Learning:
 
 Action:
 - When changing provider priority, check `source-overrides`, chapter target ranking, library summary SQL, updater source selection, and client-side chapter scoring together.
+
+## 2026-06-08 - Alias Tables Need Combined Provider Titles
+
+Context:
+- After the Rain and Koi wa Ameagari no You ni were tracked as separate manga, and MangaPill discovery missed the source because MangaPill returns the combined title `Koi wa Ameagari no You ni After the Rain`.
+
+Learning:
+- Alias groups need to include provider-combined titles, not just individual English/Japanese title variants, because strict source matching intentionally rejects near matches.
+
+Action:
+- Add combined provider titles to `manga-aliases` when a provider returns multiple title variants in one title string.

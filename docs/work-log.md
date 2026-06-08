@@ -513,3 +513,38 @@ Outcome:
 
 Learnings:
 - See `docs/learnings.md`: "2026-06-08 - Source Priority Must Match Across UI, SQL, and Updater Paths".
+
+## 2026-06-08 - Merge After the Rain Aliases And Add MangaPill
+
+Why:
+- After the Rain and Koi wa Ameagari no You ni were tracked as two separate manga even though they are the same title.
+- MangaPill existed for the title, but strict MangaPill discovery rejected MangaPill's combined result title.
+
+Plan:
+- Add an alias group for After the Rain, Koi wa Ameagari no You ni, and MangaPill's combined title.
+- Cover future tracking dedupe and MangaPill matching with focused tests.
+- Repair the local duplicate manga records by merging sources, chapters, and user progress into the canonical After the Rain record.
+- Run a targeted update so MangaPill is attached and scraped.
+- Verify with focused tests, update smoke, and full verification.
+
+Changed:
+- `src/lib/manga-aliases.ts`
+- `tests/api/manga.route.test.ts`
+- `tests/scrapers/mangapill-discovery.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran live MangaPill search probes for `After the Rain` and `Koi wa Ameagari no You ni`; MangaPill returned `https://mangapill.com/manga/2403/koi-wa-ameagari-no-you-ni` as `Koi wa Ameagari no You ni After the Rain`.
+- Ran `npm run test -- tests/api/manga.route.test.ts tests/scrapers/mangapill-discovery.test.ts tests/scrapers/registry.test.ts`: 13 tests passed.
+- Merged the local duplicate `koi-wa-ameagari-no-you-ni` manga into canonical `after-the-rain`, preserving user progress and moving MangaDex/NeloManga sources.
+- Ran targeted `checkForUpdates` for local After the Rain: MangaPill was auto-added, all sources scraped successfully, and 82 MangaPill chapters were inserted.
+- Removed the redundant older NeloManga `after-the-rain` source after confirming the `koi-wa-ameagari-no-you-ni` NeloManga source had one more chapter.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with no failed sources.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 163 passing tests, and a successful production build.
+
+Outcome:
+- Future tracking now canonicalizes After the Rain and Koi wa Ameagari no You ni to one manga record, and strict MangaPill discovery accepts MangaPill's combined title. The local duplicate records were merged into `after-the-rain`, with MangaPill, MangaDex, and the better NeloManga source retained.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-08 - Alias Tables Need Combined Provider Titles".

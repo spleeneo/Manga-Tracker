@@ -20,6 +20,16 @@ const MANGA_ALIAS_GROUPS = [
     ],
   },
   {
+    title: "After the Rain",
+    slug: "after-the-rain",
+    aliases: [
+      "after the rain",
+      "koi wa ameagari no you ni",
+      "koi wa ameagari no youni",
+      "koi wa ameagari no you ni after the rain",
+    ],
+  },
+  {
     title: "Blue Lock",
     slug: "blue-lock",
     aliases: [

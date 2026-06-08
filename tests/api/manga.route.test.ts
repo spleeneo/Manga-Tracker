@@ -186,6 +186,40 @@ describe("POST /api/manga", () => {
     expect(mangaCreate).not.toHaveBeenCalled();
   });
 
+  it("reuses After the Rain aliases instead of creating duplicate manga", async () => {
+    mangaFindUnique.mockResolvedValue(null);
+    mangaFindFirst.mockResolvedValue({ id: "m1", _count: { chapters: 12 } });
+    mangaUpdate.mockResolvedValue({ id: "m1", _count: { chapters: 12 } });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+    sourceFindUnique.mockResolvedValue({ id: "s1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Koi wa Ameagari no You ni",
+        slug: "koi-wa-ameagari-no-you-ni",
+        sources: [{ name: "MangaDex", url: "https://mangadex.org/title/after-rain" }],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.slug).toBe("after-the-rain");
+    expect(mangaFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        slug: { in: expect.arrayContaining(["koi-wa-ameagari-no-you-ni"]) },
+      }),
+    }));
+    expect(mangaUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "m1" },
+      data: { title: "After the Rain", slug: "after-the-rain" },
+    }));
+    expect(mangaCreate).not.toHaveBeenCalled();
+  });
+
   it("reuses existing manga when any incoming source URL is already tracked", async () => {
     mangaFindUnique.mockResolvedValue(null);
     sourceFindFirst.mockResolvedValue({

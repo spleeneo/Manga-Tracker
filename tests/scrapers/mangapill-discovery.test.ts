@@ -16,6 +16,18 @@ describe("MangaPill discovery", () => {
     )).toBe(true);
   });
 
+  it("accepts combined MangaPill titles for known aliases", () => {
+    expect(isMangaPillTitleMatch(
+      { title: "After the Rain", slug: "after-the-rain" },
+      { title: "Koi wa Ameagari no You ni After the Rain" },
+    )).toBe(true);
+
+    expect(isMangaPillTitleMatch(
+      { title: "Koi wa Ameagari no You ni", slug: "koi-wa-ameagari-no-you-ni" },
+      { title: "Koi wa Ameagari no You ni After the Rain" },
+    )).toBe(true);
+  });
+
   it("rejects near matches and spinoffs", () => {
     expect(isMangaPillTitleMatch(
       { title: "Solo Leveling", slug: "solo-leveling" },
