@@ -14,6 +14,11 @@ describe("MangaPill discovery", () => {
       { title: "Witch Hat Atelier", slug: "witch-hat-atelier" },
       { title: "Tongari Boushi no Atelier" },
     )).toBe(true);
+
+    expect(isMangaPillTitleMatch(
+      { title: "Witch Hat Atelier", slug: "witch-hat-atelier" },
+      { title: "Tongari Boushi no Atelier Atelier of Witch Hat" },
+    )).toBe(true);
   });
 
   it("accepts combined MangaPill titles for known aliases", () => {

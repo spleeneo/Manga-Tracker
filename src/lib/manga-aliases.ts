@@ -6,6 +6,7 @@ const MANGA_ALIAS_GROUPS = [
       "witch hat atelier",
       "tongari booshi no atorie",
       "tongari boushi no atelier",
+      "tongari boushi no atelier atelier of witch hat",
       "tongari boshi no atelier",
     ],
   },

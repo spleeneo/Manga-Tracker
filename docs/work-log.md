@@ -514,6 +514,53 @@ Outcome:
 Learnings:
 - See `docs/learnings.md`: "2026-06-08 - Source Priority Must Match Across UI, SQL, and Updater Paths".
 
+## 2026-06-10 - Fix Witch Hat Atelier Source And Reader Routing
+
+Why:
+- Witch Hat Atelier did not show MangaPill as a source locally.
+- Quick read/latest actions could select a broad duplicate source instead of the dedicated Witch Hat source.
+- Witch Hat chapters opened the Mangateo reader shell but did not render pages because the generic single-manga scraper rejected the source's current CDN image URLs.
+
+Plan:
+- Add regressions for Witch Hat source ranking, MangaPill alias matching, and reader image extraction.
+- Share source ranking between server chapter targets and client chapter grouping, with a Witch Hat-specific dedicated-source priority.
+- Keep broad sources visible in the chapter source tabs.
+- Allow Witch Hat's current CDN reader images in the single-manga scraper.
+- Verify the local Witch Hat page and reader in the browser.
+
+Changed:
+- `src/lib/source-preference.ts`
+- `src/lib/chapters.ts`
+- `src/lib/library-summary.ts`
+- `src/components/chapter-list.tsx`
+- `src/components/chapter-item.tsx`
+- `src/lib/manga-aliases.ts`
+- `src/lib/scrapers/single-manga-sites.ts`
+- `tests/api/manga-chapters.route.test.ts`
+- `tests/lib/source-preference.test.ts`
+- `tests/scrapers/mangapill-discovery.test.ts`
+- `tests/scrapers/single-manga-sites.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/scrapers/single-manga-sites.test.ts tests/scrapers/mangapill-discovery.test.ts tests/api/manga-chapters.route.test.ts tests/lib/source-preference.test.ts tests/scrapers/witch-hat-atelier.test.ts tests/api/chapter-reader.route.test.ts`: 38 tests passed.
+- Ran `npm run test -- tests/lib/source-preference.test.ts tests/lib/reader-routing-invariants.test.ts tests/api/manga-chapters.route.test.ts tests/scrapers/single-manga-sites.test.ts tests/scrapers/mangapill-discovery.test.ts`: 32 tests passed after adding broad regression guards.
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 168 passing tests, and a successful production build.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with no failed sources. An earlier attempt hit a transient Prisma `P1017` closed-connection error, then passed on retry.
+- Browser-verified `http://localhost:3000/manga/witch-hat-atelier`: MangaPill appears in the Sources list and chapter source tabs, and Read/Latest point to `/manga/witch-hat-atelier/chapter/4b0ff784-f76e-45c4-91e9-9de04d337f28`.
+- Browser-verified the Witch Hat chapter 97 reader renders 26 page images from `pic.readkakegurui.com`.
+- Upserted the local MangaPill source for Witch Hat Atelier as `https://mangapill.com/manga/4553/tongari-boushi-no-atelier` so the current local library reflects the fixed discovery rule.
+
+Outcome:
+- Witch Hat Atelier's dedicated source now wins quick read/latest target selection over MangaPill, NeloManga, and Manganato duplicates.
+- MangaPill is visible locally for Witch Hat and future discovery accepts MangaPill's current combined Witch Hat title.
+- Stale non-readable reader metadata no longer prevents non-external sources from opening in Mangateo, and the Witch Hat reader renders current CDN pages.
+- Regression guards now check that every configured single-title source is recognized as dedicated, broad providers remain visible beside dedicated fallbacks, and stale reader metadata cannot bypass retryable in-app sources.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-10 - Single-Title Reader Sources Need Live CDN Patterns".
+
 ## 2026-06-08 - Merge After the Rain Aliases And Add MangaPill
 
 Why:

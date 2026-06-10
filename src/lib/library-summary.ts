@@ -121,6 +121,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 
 const SOURCE_RANK_SQL = Prisma.sql`
   CASE
+    WHEN LOWER(m."slug") = 'witch-hat-atelier' AND LOWER(COALESCE(s."sourceName", '')) = 'witch hat atelier manga' THEN 9
     WHEN LOWER(m."slug") = 'bleach' AND LOWER(COALESCE(s."sourceName", '')) = 'bleach live' THEN 8
     ELSE CASE LOWER(COALESCE(s."sourceName", ''))
     WHEN 'mangapill' THEN 8

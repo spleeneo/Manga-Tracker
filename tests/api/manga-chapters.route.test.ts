@@ -322,6 +322,68 @@ describe("GET /api/manga/[slug]/chapters", () => {
     }));
   });
 
+  it("prefers the Witch Hat Atelier dedicated source over broad duplicate chapter targets", async () => {
+    mangaFindUniqueMock.mockResolvedValue({
+      id: "m1",
+      slug: "witch-hat-atelier",
+      title: "Witch Hat Atelier",
+      sources: [
+        { id: "s1", sourceName: "MangaPill", sourceUrl: "https://mangapill.com/manga/example/witch-hat-atelier" },
+        { id: "s2", sourceName: "Manganato", sourceUrl: "https://chapmanganato.to/manga/example" },
+        { id: "s3", sourceName: "Witch Hat Atelier Manga", sourceUrl: "https://witchhatateliermanga.com/" },
+      ],
+    });
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 96 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "mangapill-96",
+        chapterNumber: 96,
+        title: "Chapter 96",
+        url: "https://mangapill.com/chapters/example/witch-hat-atelier-chapter-96",
+        releaseDate: new Date("2026-01-02T00:00:00.000Z"),
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "MangaPill" },
+      },
+      {
+        id: "manganato-96",
+        chapterNumber: 96,
+        title: "Chapter 96",
+        url: "https://chapmanganato.to/example/chapter-96",
+        releaseDate: new Date("2026-01-03T00:00:00.000Z"),
+        createdAt: new Date("2026-01-03T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "Manganato" },
+      },
+      {
+        id: "witch-96",
+        chapterNumber: 96,
+        title: "Witch Hat Atelier Chapter 96",
+        url: "https://witchhatateliermanga.com/manga/witch-hat-atelier-chapter-96/",
+        releaseDate: new Date("2026-01-01T00:00:00.000Z"),
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        sourceId: "s3",
+        readerStatus: "EXTERNAL_ONLY",
+        source: { sourceName: "Witch Hat Atelier Manga" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/witch-hat-atelier/chapters?target=latest") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "witch-hat-atelier" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "witch-96",
+      sourceName: "Witch Hat Atelier Manga",
+      readerStatus: "EXTERNAL_ONLY",
+    }));
+  });
+
   it("returns the preferred source candidate for the next unread target", async () => {
     userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 10 });
     chapterFindFirstMock.mockResolvedValue({ chapterNumber: 11 });

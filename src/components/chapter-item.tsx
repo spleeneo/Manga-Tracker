@@ -26,10 +26,7 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const readerHref = `/manga/${slug}/chapter/${chapter.id}`;
-  const opensExternally = isExternalReaderSource(chapter.sourceName) || (
-    Boolean(chapter.readerStatus)
-    && chapter.readerStatus !== "READABLE"
-  );
+  const opensExternally = isExternalReaderSource(chapter.sourceName);
   const isCurrentLastRead = currentLastReadChapterNumber === chapter.chapterNumber;
 
   const openChapter = () => {

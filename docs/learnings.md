@@ -136,3 +136,15 @@ Learning:
 
 Action:
 - Add combined provider titles to `manga-aliases` when a provider returns multiple title variants in one title string.
+
+## 2026-06-10 - Single-Title Reader Sources Need Live CDN Patterns
+
+Context:
+- Witch Hat Atelier's dedicated source exposed chapter pages with public images on a third-party CDN path, but the generic single-manga scraper only accepted WordPress uploads or generic reader-looking paths.
+- MangaPill discovery also missed Witch Hat because MangaPill returned the combined title `Tongari Boushi no Atelier Atelier of Witch Hat`.
+
+Learning:
+- Dedicated-source reader checks should include the current content CDN pattern, and alias groups need provider-combined titles for strict source discovery.
+
+Action:
+- When a dedicated source stops opening in the reader, compare the live chapter image URLs against both dedicated and generic single-site scraper allow rules, then add a focused parser test.

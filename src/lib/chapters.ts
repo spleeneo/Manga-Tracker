@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getPreferredSourceRank } from "@/lib/source-preference";
 
 export const CHAPTER_PAGE_SIZE = 60;
 
@@ -209,38 +210,7 @@ function pickBestChapterCandidate(chapters: ChapterRecord[], mangaSlug?: string 
 }
 
 function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | null) {
-  const name = sourceName?.toLowerCase();
-  const slug = mangaSlug?.toLowerCase();
-
-  if (slug === "bleach" && name === "bleach live") {
-    return 8;
-  }
-
-  switch (name) {
-    case "mangapill":
-      return 8;
-    case "nelomanga":
-      return 7;
-    case "witch hat atelier manga":
-    case "land of the lustrous":
-    case "blue lock manga":
-    case "fire punch":
-      return 6;
-    case "urek mazino":
-    case "bleach live":
-    case "atsumaru":
-      return 5;
-    case "mangaplus":
-      return 4;
-    case "mangadex":
-      return 3;
-    case "webtoon":
-      return 2;
-    case "manganato":
-      return 1;
-    default:
-      return 0;
-  }
+  return getPreferredSourceRank(sourceName, mangaSlug);
 }
 
 function getTime(value?: Date | string | null) {

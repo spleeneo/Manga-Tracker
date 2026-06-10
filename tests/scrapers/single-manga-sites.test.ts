@@ -132,6 +132,31 @@ describe("SingleMangaSiteScraper", () => {
     ]);
   });
 
+  it("extracts Witch Hat Atelier CDN reader images", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
+      <img src="https://witchhatateliermanga.com/wp-content/uploads/2024/10/Tongari-Booshi-No-Atorie.jpg" />
+      <img src="https://pic.readkakegurui.com/file/sancdn/witch-hat-atelier/chapter-97/1.webp" alt="Witch Hat Atelier Chapter 97 - 1" />
+      <img src="https://pic.readkakegurui.com/file/sancdn/witch-hat-atelier/chapter-97/2.webp" alt="Witch Hat Atelier Chapter 97 - 2" />
+    `));
+
+    const scraper = new SingleMangaSiteScraper();
+    const result = await scraper.fetchReaderPages({
+      id: "chapter-id",
+      url: "https://witchhatateliermanga.com/manga/witch-hat-atelier-chapter-97/",
+      chapterNumber: 97,
+    }, {
+      id: "s1",
+      sourceName: "Witch Hat Atelier Manga",
+      sourceUrl: "https://witchhatateliermanga.com/",
+    });
+
+    expect(result.status).toBe("READABLE");
+    expect(result.pages.map((page) => page.imageUrl)).toEqual([
+      "https://pic.readkakegurui.com/file/sancdn/witch-hat-atelier/chapter-97/1.webp",
+      "https://pic.readkakegurui.com/file/sancdn/witch-hat-atelier/chapter-97/2.webp",
+    ]);
+  });
+
   it("extracts Fire Punch chapters and lazy reader images", async () => {
     fetchWithRetryMock
       .mockResolvedValueOnce(textResponse(`

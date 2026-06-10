@@ -42,6 +42,7 @@ export const SINGLE_MANGA_SITE_CONFIGS: SingleMangaSiteConfig[] = [
     chapterUrlPattern: /witch-hat-atelier-chapter-(\d+)(?:-(\d+))?/i,
     chapterTitlePattern: /chapter\s+(\d+(?:\.\d+)?)/i,
     minimumReaderPages: 1,
+    readerImageAllowPatterns: [/\/witch-hat-atelier\/chapter-\d+(?:\.\d+)?\/\d+\.(?:jpe?g|png|webp)(?:\?|$)/i],
     readerImageDenyPatterns: [/tongari-booshi-no-atorie/i],
   },
   {

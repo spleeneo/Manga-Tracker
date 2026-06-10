@@ -5,7 +5,7 @@ import { ChapterItem } from "./chapter-item";
 import { ArrowDownUp, BookOpen, ExternalLink, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
-import { isDedicatedMangaSourceName } from "@/lib/source-preference";
+import { getPreferredSourceRank } from "@/lib/source-preference";
 
 interface Source {
     id: string;
@@ -54,10 +54,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const [loadingTarget, setLoadingTarget] = useState<ChapterTarget | null>(null);
     const hasLoadedInitialPage = useRef(initialChapters.length > 0);
     const { showToast } = useToast();
-    const visibleSources = useMemo(() => {
-        const dedicatedSources = initialSources.filter((source) => isDedicatedMangaSourceName(source.sourceName));
-        return dedicatedSources.length > 0 ? dedicatedSources : initialSources;
-    }, [initialSources]);
+    const visibleSources = initialSources;
     const visibleSourceIds = useMemo(() => new Set(visibleSources.map((source) => source.id)), [visibleSources]);
 
     const loadChapterPage = useCallback(async ({
@@ -127,35 +124,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
     const sourceById = useMemo(() => new Map(visibleSources.map((source) => [source.id, source])), [visibleSources]);
 
     const getSourceRank = (sourceName?: string) => {
-        if (slug === "bleach" && sourceName?.toLowerCase() === "bleach live") {
-            return 8;
-        }
-
-        switch (sourceName?.toLowerCase()) {
-            case "mangapill":
-                return 8;
-            case "nelomanga":
-                return 7;
-            case "witch hat atelier manga":
-            case "land of the lustrous":
-            case "blue lock manga":
-            case "fire punch":
-                return 6;
-            case "urek mazino":
-            case "bleach live":
-            case "atsumaru":
-                return 5;
-            case "mangaplus":
-                return 4;
-            case "mangadex":
-                return 3;
-            case "webtoon":
-                return 2;
-            case "manganato":
-                return 1;
-            default:
-                return 0;
-        }
+        return getPreferredSourceRank(sourceName, slug);
     };
 
     const getChapterScore = (chapter: Chapter) => {
@@ -224,10 +193,7 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const openChapter = (chapter?: Chapter | null) => {
         if (!chapter?.url) return;
-        const opensExternally = isExternalReaderSource(chapter.sourceName) || (
-            Boolean(chapter.readerStatus)
-            && chapter.readerStatus !== "READABLE"
-        );
+        const opensExternally = isExternalReaderSource(chapter.sourceName);
 
         if (opensExternally) {
             window.open(chapter.url, "_blank", "noopener,noreferrer");
