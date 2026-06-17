@@ -2,13 +2,14 @@ import { isDatabaseConfigured, prisma } from "@/lib/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { ChapterList } from "@/components/chapter-list";
 import { LegalFooter } from "@/components/legal-footer";
 import { MangaDescription } from "@/components/manga-description";
+import { MangaSourceList } from "@/components/manga-source-list";
 import { ThemeSelector } from "@/components/theme-selector";
 import { auth } from "../../../../auth";
 import { getLibraryMangaSummary } from "@/lib/library-summary";
@@ -40,13 +41,25 @@ async function getManga(slug: string, userId: string) {
                 mangaId: manga.id,
             },
         },
-        select: { lastReadChapterNumber: true },
+        select: {
+            lastReadChapterNumber: true,
+            disabledSources: {
+                select: { sourceId: true },
+            },
+        },
     });
     if (!tracked) return null;
 
+    const disabledSourceIds = new Set(tracked.disabledSources.map((source) => source.sourceId));
+    const sources = filterSourcesForManga(manga, manga.sources).map((source) => ({
+        ...source,
+        isDisabled: disabledSourceIds.has(source.id),
+    }));
+
     return {
         ...manga,
-        sources: filterSourcesForManga(manga, manga.sources),
+        sources,
+        enabledSources: sources.filter((source) => !source.isDisabled),
         lastReadChapterNumber: tracked.lastReadChapterNumber,
     };
 }
@@ -138,26 +151,7 @@ export default async function MangaPage({ params }: PageProps) {
 
                         <div className="surface rounded-lg p-4">
                             <h3 className="mb-3 font-semibold">Sources</h3>
-                            {manga.sources.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No sources linked yet.</p>
-                            ) : (
-                                <ul className="flex flex-wrap gap-2 md:block md:space-y-2">
-                                    {manga.sources.map((source: { id: string; sourceUrl: string; sourceName: string }) => (
-                                        <li key={source.id}>
-                                            <a
-                                                href={source.sourceUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:px-2"
-                                            >
-                                                <ExternalLink className="h-3 w-3" />
-                                                {source.sourceName}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
+                            <MangaSourceList slug={manga.slug} sources={manga.sources} />
                         </div>
                     </div>
 
@@ -244,7 +238,7 @@ export default async function MangaPage({ params }: PageProps) {
                             <ChapterList
                                 mangaId={manga.id}
                                 slug={manga.slug}
-                                initialSources={manga.sources}
+                                initialSources={manga.enabledSources}
                                 initialChapters={[]}
                                 initialNextCursor={null}
                                 initialLastReadChapterNumber={manga.lastReadChapterNumber}

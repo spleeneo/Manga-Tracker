@@ -9,15 +9,15 @@ datasource db {
 }
 
 model Manga {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   title       String
-  slug        String    @unique
+  slug        String      @unique
   coverUrl    String?
   author      String?
   status      String?
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   chapters    Chapter[]
   sources     Source[]
   userManga   UserManga[]
@@ -25,7 +25,7 @@ model Manga {
 }
 
 model Source {
-  id            String    @id @default(uuid())
+  id            String                    @id @default(uuid())
   mangaId       String
   sourceName    String
   sourceUrl     String
@@ -33,35 +33,36 @@ model Source {
   lastCheckedAt DateTime?
   lastSuccessAt DateTime?
   lastError     String?
-  failureCount  Int       @default(0)
+  failureCount  Int                       @default(0)
   disabledUntil DateTime?
-  manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  manga         Manga                     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
   chapters      Chapter[]
   preferredBy   UserManga[]
+  disabledBy    UserMangaDisabledSource[]
 
   @@unique([mangaId, sourceUrl])
   @@index([sourceName])
 }
 
 model Chapter {
-  id            String    @id @default(uuid())
-  mangaId       String
-  sourceId      String?
+  id                String        @id @default(uuid())
+  mangaId           String
+  sourceId          String?
   providerChapterId String?
-  source        Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  chapterNumber Float
-  title         String?
-  url           String
-  releaseDate   DateTime?
-  isRead        Boolean   @default(false)
-  readerStatus  String?
-  readerCheckedAt DateTime?
-  readerPageCount Int?
-  readerError   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  manga         Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  userChapters UserChapter[]
+  source            Source?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  chapterNumber     Float
+  title             String?
+  url               String
+  releaseDate       DateTime?
+  isRead            Boolean       @default(false)
+  readerStatus      String?
+  readerCheckedAt   DateTime?
+  readerPageCount   Int?
+  readerError       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  manga             Manga         @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  userChapters      UserChapter[]
 
   @@unique([sourceId, providerChapterId])
   @@unique([sourceId, chapterNumber])
@@ -116,26 +117,39 @@ model VerificationToken {
 }
 
 model UserManga {
-  id                String    @id @default(cuid())
-  userId            String
-  mangaId           String
-  status            String    @default("READING")
-  preferredSourceId String?
+  id                    String                    @id @default(cuid())
+  userId                String
+  mangaId               String
+  status                String                    @default("READING")
+  preferredSourceId     String?
   lastReadChapterNumber Float?
-  lastReadAt        DateTime?
-  syncStatus        String    @default("IDLE")
-  syncStartedAt     DateTime?
-  syncFinishedAt    DateTime?
-  syncError         String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  manga             Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  preferredSource   Source?   @relation(fields: [preferredSourceId], references: [id], onDelete: SetNull)
+  lastReadAt            DateTime?
+  syncStatus            String                    @default("IDLE")
+  syncStartedAt         DateTime?
+  syncFinishedAt        DateTime?
+  syncError             String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga                 Manga                     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  preferredSource       Source?                   @relation(fields: [preferredSourceId], references: [id], onDelete: SetNull)
+  disabledSources       UserMangaDisabledSource[]
 
   @@unique([userId, mangaId])
   @@index([mangaId])
   @@index([userId, updatedAt])
+}
+
+model UserMangaDisabledSource {
+  id          String    @id @default(cuid())
+  userMangaId String
+  sourceId    String
+  createdAt   DateTime  @default(now())
+  userManga   UserManga @relation(fields: [userMangaId], references: [id], onDelete: Cascade)
+  source      Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userMangaId, sourceId])
+  @@index([sourceId])
 }
 
 model UserChapter {
@@ -169,20 +183,20 @@ model ChatMessage {
 }
 
 model SyncJob {
-  id          String    @id @default(cuid())
-  type        String
-  status      String    @default("QUEUED")
-  userId      String?
-  mangaId     String
-  attempts    Int       @default(0)
-  runAfter    DateTime  @default(now())
-  lockedAt    DateTime?
-  finishedAt  DateTime?
-  error       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  manga       Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  type       String
+  status     String    @default("QUEUED")
+  userId     String?
+  mangaId    String
+  attempts   Int       @default(0)
+  runAfter   DateTime  @default(now())
+  lockedAt   DateTime?
+  finishedAt DateTime?
+  error      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga      Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 
   @@index([status, runAfter])
   @@index([userId, status])

@@ -561,6 +561,34 @@ Outcome:
 Learnings:
 - See `docs/learnings.md`: "2026-06-10 - Single-Title Reader Sources Need Live CDN Patterns".
 
+## 2026-06-17 - Per-Manga Source Disable Controls
+
+Why:
+- Users need a way to hide a noisy or unwanted source for a specific manga without deleting the shared source or affecting other users.
+
+Plan:
+- Add a per-user/per-manga disabled-source setting.
+- Add an authenticated API route to disable and reenable one source.
+- Make chapter pages, chapter targets, and library summary actions ignore disabled sources.
+- Add manga-detail source controls for toggling sources.
+- Verify with focused route tests, lint, full verification, and a browser check when possible.
+
+Changed:
+- Added `UserMangaDisabledSource` and a migration.
+- Added `PATCH /api/manga/[slug]/sources/[sourceId]`.
+- Updated manga chapter loading and summary SQL to exclude disabled sources.
+- Replaced the static source list on manga detail pages with enable/disable controls.
+- Added focused API tests for source toggling and disabled-source filtering.
+
+Verification:
+- Ran `npm run test -- tests/api/manga-source-settings.route.test.ts tests/api/manga-chapters.route.test.ts`: 17 tests passed.
+- Ran `npm run lint`: passed with 8 existing `<img>` warnings.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 178 passing tests, and a successful production build.
+- Started the local dev server and opened `http://127.0.0.1:3000/manga/witch-hat-atelier` in the in-app browser. The app returned the expected auth-gated 404 without a signed-in browser session, so the visual source-toggle flow was not manually verified.
+
+Outcome:
+- Done locally. Source toggles are implemented and covered by automated route tests; browser UI verification still needs a signed-in local session.
+
 ## 2026-06-08 - Merge After the Rain Aliases And Add MangaPill
 
 Why:

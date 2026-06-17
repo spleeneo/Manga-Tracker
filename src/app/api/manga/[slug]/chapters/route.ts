@@ -50,7 +50,12 @@ export async function GET(
           mangaId: manga.id,
         },
       },
-      select: { lastReadChapterNumber: true },
+      select: {
+        lastReadChapterNumber: true,
+        disabledSources: {
+          select: { sourceId: true },
+        },
+      },
     });
     if (!tracked) {
       return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
@@ -58,13 +63,13 @@ export async function GET(
 
     const mangaSources = manga.sources ?? [];
     const visibleSources = filterSourcesForManga(manga, mangaSources);
-    const visibleSourceIds = new Set(visibleSources.map((source) => source.id));
+    const disabledSourceIds = new Set((tracked.disabledSources ?? []).map((source) => source.sourceId));
+    const enabledSources = visibleSources.filter((source) => !disabledSourceIds.has(source.id));
+    const visibleSourceIds = new Set(enabledSources.map((source) => source.id));
     const sourceIds = mangaSources.length > 0 ? [...visibleSourceIds] : undefined;
 
-    if (sourceId && visibleSourceIds.size > 0) {
-      if (!visibleSourceIds.has(sourceId)) {
-        return NextResponse.json({ error: "Source not found" }, { status: 404 });
-      }
+    if (sourceId && !visibleSourceIds.has(sourceId)) {
+      return NextResponse.json({ error: "Source not found" }, { status: 404 });
     }
 
     if (target === "first" || target === "latest" || target === "next-unread") {

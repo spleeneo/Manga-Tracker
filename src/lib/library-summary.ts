@@ -184,6 +184,12 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "UserMangaDisabledSource" disabled_source
+          WHERE disabled_source."userMangaId" = um."id"
+            AND disabled_source."sourceId" = c."sourceId"
+        )
     ) counts ON true
     LEFT JOIN LATERAL (
       SELECT DISTINCT ON (c."chapterNumber")
@@ -196,6 +202,12 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "UserMangaDisabledSource" disabled_source
+          WHERE disabled_source."userMangaId" = um."id"
+            AND disabled_source."sourceId" = c."sourceId"
+        )
       ORDER BY
         c."chapterNumber" DESC,
         ${SOURCE_RANK_SQL} DESC,
@@ -213,6 +225,12 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         WHERE c."mangaId" = m."id"
           AND c."releaseDate" IS NOT NULL
           AND c."releaseDate" <= now()
+          AND NOT EXISTS (
+            SELECT 1
+            FROM "UserMangaDisabledSource" disabled_source
+            WHERE disabled_source."userMangaId" = um."id"
+              AND disabled_source."sourceId" = c."sourceId"
+          )
         ORDER BY
           c."chapterNumber" DESC,
           ${SOURCE_RANK_SQL} DESC,
@@ -256,6 +274,12 @@ async function getSummaryRows(userId: string, mangaId?: string) {
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
       WHERE c."mangaId" = m."id"
         AND (um."lastReadChapterNumber" IS NULL OR c."chapterNumber" > um."lastReadChapterNumber")
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "UserMangaDisabledSource" disabled_source
+          WHERE disabled_source."userMangaId" = um."id"
+            AND disabled_source."sourceId" = c."sourceId"
+        )
       ORDER BY
         c."chapterNumber" ASC,
         ${SOURCE_RANK_SQL} DESC,
