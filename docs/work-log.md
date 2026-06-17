@@ -589,6 +589,38 @@ Verification:
 Outcome:
 - Done locally. Source toggles are implemented and covered by automated route tests; browser UI verification still needs a signed-in local session.
 
+## 2026-06-17 - Fix Premature Reader Progress Updates
+
+Why:
+- A chapter could be saved as latest-read while the user was only scrolling, before they had actually reached that chapter.
+- The reader also showed repeated "Progress was not updated" popups when background auto-mark attempts failed.
+
+Plan:
+- Identify the scroll-based auto-mark condition.
+- Add a focused regression for the completion calculation.
+- Require loaded last-page evidence before auto-marking a chapter read.
+- Keep manual progress errors visible while suppressing repeated background auto-mark popups.
+- Run focused tests and broader verification.
+
+Changed:
+- `src/components/chapter-reader.tsx`
+- `src/lib/reader-progress.ts`
+- `tests/lib/reader-progress.test.ts`
+- `docs/learnings.md`
+- `docs/work-log.md`
+
+Verification:
+- Ran `npm run test -- tests/lib/reader-progress.test.ts tests/api/manga-progress.route.test.ts`: 9 tests passed.
+- Ran `npm run lint`: passed with 8 existing `<img>` warnings.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 181 passing tests, and a successful production build.
+- Started the local dev server and opened a known reader URL in the in-app browser. The app returned the expected auth-gated 404 without a signed-in browser session, so the scrolling reader flow was not manually verified.
+
+Outcome:
+- Done locally. Auto progress now requires loaded last-page evidence, and background auto-mark failures no longer show repeated user-facing popups.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-17 - Reader Progress Must Use Loaded Page Evidence".
+
 ## 2026-06-08 - Merge After the Rain Aliases And Add MangaPill
 
 Why:

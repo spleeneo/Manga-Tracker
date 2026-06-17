@@ -148,3 +148,14 @@ Learning:
 
 Action:
 - When a dedicated source stops opening in the reader, compare the live chapter image URLs against both dedicated and generic single-site scraper allow rules, then add a focused parser test.
+
+## 2026-06-17 - Reader Progress Must Use Loaded Page Evidence
+
+Context:
+- Infinite reader scrolling could append the next chapter before its lazy images had loaded, making the chapter section measure as if it were already near completion.
+
+Learning:
+- Scroll-based progress should not rely on section height alone. Lazy images and content visibility can make unread chapters appear completed before the user reaches their pages.
+
+Action:
+- Auto progress now requires the loaded final page image to be reached before marking a chapter read, and background auto-mark failures do not spam user-facing error toasts.

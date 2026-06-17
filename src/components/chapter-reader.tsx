@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
+import { isReaderChapterCompleted } from "@/lib/reader-progress";
 
 type ReaderStatus = "READABLE" | "EXTERNAL_ONLY" | "PAYWALLED" | "BLOCKED" | "UNSUPPORTED" | "ERROR";
 
@@ -72,6 +73,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   const markedReadRef = useRef(new Set<number>());
+  const autoMarkFailedRef = useRef(new Set<number>());
+  const isMarkingReadRef = useRef(false);
   const activeChapterIdRef = useRef(chapter.id);
   const nextChapterQueueRef = useRef(nextChapters);
   const loadedChaptersRef = useRef<LoadedReaderChapter[]>([{
@@ -141,8 +144,11 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   }, []);
 
   const markRead = async (targetChapter = activeLoadedChapter?.chapter, { silent = false }: { silent?: boolean } = {}) => {
-    if (!targetChapter || markedReadRef.current.has(targetChapter.chapterNumber) || isMarkingRead) return;
+    if (!targetChapter || markedReadRef.current.has(targetChapter.chapterNumber) || isMarkingReadRef.current) return;
+    if (silent && autoMarkFailedRef.current.has(targetChapter.chapterNumber)) return;
+
     markedReadRef.current.add(targetChapter.chapterNumber);
+    isMarkingReadRef.current = true;
     setIsMarkingRead(true);
 
     try {
@@ -158,15 +164,22 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           title: `Chapter ${targetChapter.chapterNumber} marked read`,
         });
       }
+      autoMarkFailedRef.current.delete(targetChapter.chapterNumber);
     } catch (error) {
       markedReadRef.current.delete(targetChapter.chapterNumber);
+      if (silent) {
+        autoMarkFailedRef.current.add(targetChapter.chapterNumber);
+      }
       console.error(error);
-      showToast({
-        type: "error",
-        title: "Progress was not updated",
-        description: "Please try again.",
-      });
+      if (!silent) {
+        showToast({
+          type: "error",
+          title: "Progress was not updated",
+          description: "Please try again.",
+        });
+      }
     } finally {
+      isMarkingReadRef.current = false;
       setIsMarkingRead(false);
     }
   };
@@ -268,9 +281,17 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
       if (!section || item.reader?.status !== "READABLE") return false;
 
       const rect = section.getBoundingClientRect();
-      const sectionWasEntered = rect.top < viewportBottom * 0.25;
-      const sectionEndReached = rect.bottom <= viewportBottom + MARK_READ_THRESHOLD_PX;
-      return sectionWasEntered && sectionEndReached;
+      const pages = Array.from(section.querySelectorAll<HTMLImageElement>("[data-reader-page-index]"));
+      const lastPage = pages[pages.length - 1] ?? null;
+      const lastPageLoaded = Boolean(lastPage?.complete && lastPage.naturalHeight > 0);
+
+      return isReaderChapterCompleted({
+        sectionRect: rect,
+        lastPageRect: lastPage?.getBoundingClientRect() ?? null,
+        lastPageLoaded,
+        viewportHeight: viewportBottom,
+        thresholdPx: MARK_READ_THRESHOLD_PX,
+      });
     });
 
     return completedChapters[completedChapters.length - 1]?.chapter ?? null;
@@ -499,6 +520,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                       {chapterReader.pages.map((page) => (
                         <img
                           key={`${loadedChapter.chapter.id}-${page.index}-${page.imageUrl}`}
+                          data-reader-page-index={page.index}
                           src={page.imageUrl}
                           alt={`Chapter ${chapterDisplay.chapterNumber} page ${page.index + 1}`}
                           className={fitWidth ? "mx-auto h-auto w-full max-w-full rounded-sm bg-card" : "mx-auto h-auto max-w-none rounded-sm bg-card"}
