@@ -41,7 +41,7 @@ describe("GET /api/manga/[slug]/chapters", () => {
       title: "One Piece",
       sources: [{ id: "s1", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" }],
     });
-    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 1, disabledSources: [] });
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 1, disabledSources: [], sourcePreferences: [] });
     sourceFindFirstMock.mockResolvedValue({ id: "s1" });
   });
 
@@ -328,6 +328,64 @@ describe("GET /api/manga/[slug]/chapters", () => {
     }));
   });
 
+  it("uses user source order when choosing a duplicate latest target", async () => {
+    mangaFindUniqueMock.mockResolvedValue({
+      id: "m1",
+      slug: "one-piece",
+      title: "One Piece",
+      sources: [
+        { id: "s1", sourceName: "MangaPill", sourceUrl: "https://mangapill.com/manga/2/one-piece" },
+        { id: "s2", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" },
+      ],
+    });
+    userMangaFindUniqueMock.mockResolvedValue({
+      id: "um1",
+      lastReadChapterNumber: 1,
+      disabledSources: [],
+      sourcePreferences: [
+        { sourceId: "s2", position: 0 },
+        { sourceId: "s1", position: 1 },
+      ],
+    });
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 42 });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "mangapill-42",
+        chapterNumber: 42,
+        title: "Forty Two",
+        url: "mangapill-url",
+        releaseDate: new Date("2024-01-02T00:00:00.000Z"),
+        createdAt: new Date("2024-01-02T00:00:00.000Z"),
+        sourceId: "s1",
+        readerStatus: null,
+        source: { sourceName: "MangaPill" },
+      },
+      {
+        id: "mangadex-42",
+        chapterNumber: 42,
+        title: "Forty Two",
+        url: "mangadex-url",
+        releaseDate: new Date("2024-01-01T00:00:00.000Z"),
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        sourceId: "s2",
+        readerStatus: null,
+        source: { sourceName: "MangaDex" },
+      },
+    ]);
+
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters?target=latest") };
+    const res = await GET(req as never, {
+      params: Promise.resolve({ slug: "one-piece" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "mangadex-42",
+      sourceName: "MangaDex",
+    }));
+  });
+
   it("prefers MangaPlus over MangaDex for duplicate latest chapter targets", async () => {
     chapterFindFirstMock.mockResolvedValue({ chapterNumber: 35 });
     chapterFindManyMock.mockResolvedValue([
@@ -472,7 +530,21 @@ describe("GET /api/manga/[slug]/chapters", () => {
   });
 
   it("returns the preferred source candidate for the next unread target", async () => {
-    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 10 });
+    mangaFindUniqueMock.mockResolvedValue({
+      id: "m1",
+      slug: "one-piece",
+      title: "One Piece",
+      sources: [
+        { id: "s1", sourceName: "Manganato", sourceUrl: "https://chapmanganato.to/manga/example" },
+        { id: "s2", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" },
+      ],
+    });
+    userMangaFindUniqueMock.mockResolvedValue({
+      id: "um1",
+      lastReadChapterNumber: 10,
+      disabledSources: [],
+      sourcePreferences: [],
+    });
     chapterFindFirstMock.mockResolvedValue({ chapterNumber: 11 });
     chapterFindManyMock.mockResolvedValue([
       {

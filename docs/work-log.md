@@ -621,6 +621,92 @@ Outcome:
 Learnings:
 - See `docs/learnings.md`: "2026-06-17 - Reader Progress Must Use Loaded Page Evidence".
 
+## 2026-06-17 - Repair Production Library After Source Toggle Migration
+
+Why:
+- The deployed library page showed "Library unavailable / Could not load your library" after the per-manga source toggle change.
+- The library summary query references `UserMangaDisabledSource`; production had the migration file in git but the configured Neon database had not applied that migration.
+
+Plan:
+- Check production/configured database migration status.
+- Apply only the missing disabled-source table and constraints with idempotent SQL.
+- Mark the migration as applied in Prisma's migration table.
+- Verify the live app health endpoint and table availability.
+
+Changed:
+- Applied the `UserMangaDisabledSource` table, unique index, source index, and foreign keys directly to the configured Neon database.
+- Marked `20260617120000_add_user_manga_disabled_sources` as applied with Prisma.
+- No application code changed.
+
+Verification:
+- Ran `npx prisma migrate status`: confirmed `20260617120000_add_user_manga_disabled_sources` was initially not applied, then confirmed only older unrelated migration-history drift remains.
+- Ran idempotent `npx prisma db execute --schema prisma/schema.prisma --stdin`: succeeded.
+- Ran `npx prisma migrate resolve --applied 20260617120000_add_user_manga_disabled_sources`: succeeded.
+- Ran a Prisma Client count against `userMangaDisabledSource`: succeeded with `0` rows.
+- Probed `https://mangateo.vercel.app/api/health`: returned 200 with database ok.
+- Probed unauthenticated `https://mangateo.vercel.app/api/manga/library`: returned 401, which is expected without a session.
+
+Outcome:
+- Production database now has the table required by the library summary query. Users may need to refresh the page to retry the failed client request.
+
+## 2026-06-17 - Drag-Reorder Manga Sources
+
+Why:
+- Users need direct control over which source wins for a given manga, especially when multiple providers have duplicate chapters.
+
+Plan:
+- Store source order per user and per tracked manga.
+- Add an authenticated API route to save the ordered source ids.
+- Apply custom order to manga detail source display, client "Best Available" picking, server chapter targets, and library summary SQL.
+- Add focused tests for the ranking helper, order route, and chapter target selection.
+- Verify with focused tests, lint, and full verification.
+
+Changed:
+- Added `UserMangaSourcePreference` and a migration.
+- Added `PUT /api/manga/[slug]/sources` to save source order.
+- Added `src/lib/source-ranking.ts` for shared source score calculation.
+- Updated manga detail sources to drag/drop reorder and save order.
+- Updated chapter list, chapter target API, and library summary SQL to honor saved order.
+- Added focused API and ranking tests.
+
+Verification:
+- Ran `npm run test -- tests/lib/source-ranking.test.ts tests/api/manga-source-order.route.test.ts tests/api/manga-chapters.route.test.ts`: 20 tests passed.
+- Ran `npm run lint`: passed with 8 existing `<img>` warnings.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 188 passing tests, and a successful production build.
+- Applied the new `UserMangaSourcePreference` table to the configured Neon database with idempotent SQL and marked `20260617140000_add_user_manga_source_preferences` as applied.
+- Started the local dev server and browser-verified the signed-in Witch Hat Atelier manga page renders five source drag handles alongside the existing enable/disable controls.
+
+Outcome:
+- Done locally. Source order can be saved per tracked manga and now participates in detail-page source display, client best-source picking, server chapter targets, and library summary source selection.
+
+## 2026-06-17 - Restore MangaDex Cover Loading
+
+Why:
+- Many library cover images stopped loading even though reader chapter images still loaded.
+- Browser verification showed failed images were MangaDex cover URLs proxied through `/api/proxy/image`.
+
+Plan:
+- Reproduce the image failure in the browser and isolate whether the failure is stale metadata or proxy headers.
+- Patch the smallest provider-specific proxy behavior.
+- Add a focused route test for the header behavior.
+- Verify with the focused test and browser image load counts.
+
+Changed:
+- Updated the image proxy to use `Mangateo/1.0` for `uploads.mangadex.org` while keeping the existing NeloManga and MangaPill header handling.
+- Added a proxy route regression test for MangaDex cover headers.
+
+Verification:
+- Ran direct probes showing MangaDex cover GET requests accepted `Mangateo/1.0` and rejected the shared browser-style user agent.
+- Ran `npm run test -- tests/api/proxy-image.route.test.ts`: 2 tests passed.
+- Restarted the local dev server and browser-verified the library page rendered 52 images with 52 loaded and 0 failed.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 189 passing tests, and a successful production build.
+
+Outcome:
+- Done locally. MangaDex covers load through the proxy again while other provider-specific image headers are preserved.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-17 - Image Proxy Headers Are Host-Specific".
+
 ## 2026-06-08 - Merge After the Rain Aliases And Add MangaPill
 
 Why:

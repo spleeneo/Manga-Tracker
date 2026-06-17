@@ -27,4 +27,25 @@ describe("GET /api/proxy/image", () => {
       }),
     }));
   });
+
+  it("uses the app user agent for MangaDex cover images", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(1)),
+    } as unknown as Response);
+    const imageUrl = "https://uploads.mangadex.org/covers/md1/cover.jpg";
+
+    const response = await GET(new NextRequest(
+      `http://localhost/api/proxy/image?url=${encodeURIComponent(imageUrl)}`,
+    ));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(imageUrl, expect.objectContaining({
+      headers: expect.objectContaining({
+        Referer: "https://uploads.mangadex.org",
+        "User-Agent": "Mangateo/1.0",
+      }),
+    }));
+  });
 });

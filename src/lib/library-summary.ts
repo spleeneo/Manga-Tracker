@@ -121,6 +121,7 @@ function buildSummaryFromRow(row: SummaryRow): LibraryMangaSummary {
 
 const SOURCE_RANK_SQL = Prisma.sql`
   CASE
+    WHEN usp."position" IS NOT NULL THEN 10000 - usp."position"
     WHEN LOWER(m."slug") = 'witch-hat-atelier' AND LOWER(COALESCE(s."sourceName", '')) = 'witch hat atelier manga' THEN 9
     WHEN LOWER(m."slug") = 'bleach' AND LOWER(COALESCE(s."sourceName", '')) = 'bleach live' THEN 8
     ELSE CASE LOWER(COALESCE(s."sourceName", ''))
@@ -183,6 +184,9 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         )::int AS "readChapters"
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      LEFT JOIN "UserMangaSourcePreference" usp
+        ON usp."userMangaId" = um."id"
+        AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
         AND NOT EXISTS (
           SELECT 1
@@ -201,6 +205,9 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         COALESCE(c."releaseDate", c."createdAt") AS "availableAt"
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      LEFT JOIN "UserMangaSourcePreference" usp
+        ON usp."userMangaId" = um."id"
+        AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
         AND NOT EXISTS (
           SELECT 1
@@ -222,6 +229,9 @@ async function getSummaryRows(userId: string, mangaId?: string) {
           c."releaseDate"
         FROM "Chapter" c
         LEFT JOIN "Source" s ON s."id" = c."sourceId"
+        LEFT JOIN "UserMangaSourcePreference" usp
+          ON usp."userMangaId" = um."id"
+          AND usp."sourceId" = s."id"
         WHERE c."mangaId" = m."id"
           AND c."releaseDate" IS NOT NULL
           AND c."releaseDate" <= now()
@@ -272,6 +282,9 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         c."releaseDate"
       FROM "Chapter" c
       LEFT JOIN "Source" s ON s."id" = c."sourceId"
+      LEFT JOIN "UserMangaSourcePreference" usp
+        ON usp."userMangaId" = um."id"
+        AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
         AND (um."lastReadChapterNumber" IS NULL OR c."chapterNumber" > um."lastReadChapterNumber")
         AND NOT EXISTS (

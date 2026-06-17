@@ -46,15 +46,28 @@ async function getManga(slug: string, userId: string) {
             disabledSources: {
                 select: { sourceId: true },
             },
+            sourcePreferences: {
+                select: {
+                    sourceId: true,
+                    position: true,
+                },
+            },
         },
     });
     if (!tracked) return null;
 
     const disabledSourceIds = new Set(tracked.disabledSources.map((source) => source.sourceId));
+    const sourcePositionById = new Map(tracked.sourcePreferences.map((source) => [source.sourceId, source.position]));
     const sources = filterSourcesForManga(manga, manga.sources).map((source) => ({
         ...source,
         isDisabled: disabledSourceIds.has(source.id),
-    }));
+        position: sourcePositionById.get(source.id) ?? null,
+    })).sort((a, b) => {
+        const aPosition = a.position ?? Number.MAX_SAFE_INTEGER;
+        const bPosition = b.position ?? Number.MAX_SAFE_INTEGER;
+        if (aPosition !== bPosition) return aPosition - bPosition;
+        return a.sourceName.localeCompare(b.sourceName);
+    });
 
     return {
         ...manga,

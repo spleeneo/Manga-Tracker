@@ -3,6 +3,7 @@ import { getMangaChapterPage, getChapterMode, getChapterSortDirection, getMangaC
 import { getCurrentUserId } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { filterSourcesForManga } from "@/lib/source-overrides";
+import { getSourceRankMap } from "@/lib/source-ranking";
 
 export async function GET(
   request: NextRequest,
@@ -55,6 +56,12 @@ export async function GET(
         disabledSources: {
           select: { sourceId: true },
         },
+        sourcePreferences: {
+          select: {
+            sourceId: true,
+            position: true,
+          },
+        },
       },
     });
     if (!tracked) {
@@ -64,9 +71,18 @@ export async function GET(
     const mangaSources = manga.sources ?? [];
     const visibleSources = filterSourcesForManga(manga, mangaSources);
     const disabledSourceIds = new Set((tracked.disabledSources ?? []).map((source) => source.sourceId));
-    const enabledSources = visibleSources.filter((source) => !disabledSourceIds.has(source.id));
+    const sourcePositionById = new Map(
+      (tracked.sourcePreferences ?? []).map((source) => [source.sourceId, source.position]),
+    );
+    const enabledSources = visibleSources
+      .filter((source) => !disabledSourceIds.has(source.id))
+      .map((source) => ({
+        ...source,
+        position: sourcePositionById.get(source.id) ?? null,
+      }));
     const visibleSourceIds = new Set(enabledSources.map((source) => source.id));
     const sourceIds = mangaSources.length > 0 ? [...visibleSourceIds] : undefined;
+    const sourceRanks = getSourceRankMap(enabledSources, manga.slug);
 
     if (sourceId && !visibleSourceIds.has(sourceId)) {
       return NextResponse.json({ error: "Source not found" }, { status: 404 });
@@ -78,6 +94,7 @@ export async function GET(
         mangaSlug: manga.slug,
         sourceId,
         sourceIds: sourceId ? undefined : sourceIds,
+        sourceRanks,
         lastReadChapterNumber: tracked.lastReadChapterNumber,
         target,
       });

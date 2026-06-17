@@ -159,3 +159,14 @@ Learning:
 
 Action:
 - Auto progress now requires the loaded final page image to be reached before marking a chapter read, and background auto-mark failures do not spam user-facing error toasts.
+
+## 2026-06-17 - Image Proxy Headers Are Host-Specific
+
+Context:
+- MangaDex cover images failed through the image proxy while direct GET requests still returned image data.
+
+Learning:
+- A browser-like user agent can be rejected by MangaDex's upload CDN even when it is required by other image hosts, so the proxy must not reuse one provider's headers globally.
+
+Action:
+- Keep proxy header rules scoped per host and add route tests for provider-specific image headers when adding or changing image sources.

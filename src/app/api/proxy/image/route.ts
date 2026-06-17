@@ -17,8 +17,9 @@ export async function GET(request: NextRequest) {
         const parsedUrl = new URL(url);
         const isNelo = url.includes('nelomanga.net') || url.includes('2xstorage.com') || url.includes('waitst.com');
         const isMangaPillCdn = parsedUrl.hostname.endsWith('readdetectiveconan.com');
+        const isMangaDexUploads = parsedUrl.hostname === 'uploads.mangadex.org';
         const headers: Record<string, string> = {
-            'User-Agent': NELOMANGA_USER_AGENT,
+            'User-Agent': isMangaDexUploads ? 'Mangateo/1.0' : NELOMANGA_USER_AGENT,
         };
 
         if (isNelo) {

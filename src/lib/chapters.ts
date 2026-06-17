@@ -119,6 +119,7 @@ export async function getMangaChapterTarget({
   mangaSlug,
   sourceId,
   sourceIds,
+  sourceRanks,
   lastReadChapterNumber,
   target,
 }: {
@@ -126,6 +127,7 @@ export async function getMangaChapterTarget({
   mangaSlug?: string | null;
   sourceId?: string;
   sourceIds?: string[];
+  sourceRanks?: Record<string, number>;
   lastReadChapterNumber?: number | null;
   target: ChapterTarget;
 }) {
@@ -177,7 +179,7 @@ export async function getMangaChapterTarget({
       },
     },
   });
-  const chapter = pickBestChapterCandidate(candidates, mangaSlug);
+  const chapter = pickBestChapterCandidate(candidates, mangaSlug, sourceRanks);
 
   return chapter
     ? {
@@ -194,9 +196,13 @@ export async function getMangaChapterTarget({
     : null;
 }
 
-function pickBestChapterCandidate(chapters: ChapterRecord[], mangaSlug?: string | null) {
+function pickBestChapterCandidate(
+  chapters: ChapterRecord[],
+  mangaSlug?: string | null,
+  sourceRanks?: Record<string, number>,
+) {
   return [...chapters].sort((a, b) => {
-    const rankDelta = getChapterSourceRank(b.source?.sourceName, mangaSlug) - getChapterSourceRank(a.source?.sourceName, mangaSlug);
+    const rankDelta = getChapterSourceRank(b, mangaSlug, sourceRanks) - getChapterSourceRank(a, mangaSlug, sourceRanks);
     if (rankDelta !== 0) return rankDelta;
 
     const releaseDelta = getTime(b.releaseDate) - getTime(a.releaseDate);
@@ -209,8 +215,16 @@ function pickBestChapterCandidate(chapters: ChapterRecord[], mangaSlug?: string 
   })[0] ?? null;
 }
 
-function getChapterSourceRank(sourceName?: string | null, mangaSlug?: string | null) {
-  return getPreferredSourceRank(sourceName, mangaSlug);
+function getChapterSourceRank(
+  chapter: ChapterRecord,
+  mangaSlug?: string | null,
+  sourceRanks?: Record<string, number>,
+) {
+  if (chapter.sourceId && sourceRanks?.[chapter.sourceId] != null) {
+    return sourceRanks[chapter.sourceId];
+  }
+
+  return getPreferredSourceRank(chapter.source?.sourceName, mangaSlug);
 }
 
 function getTime(value?: Date | string | null) {

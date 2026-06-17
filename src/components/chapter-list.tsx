@@ -5,12 +5,13 @@ import { ChapterItem } from "./chapter-item";
 import { ArrowDownUp, BookOpen, ExternalLink, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
-import { getPreferredSourceRank } from "@/lib/source-preference";
+import { getSourceRankScore } from "@/lib/source-ranking";
 
 interface Source {
     id: string;
     sourceName: string;
     sourceUrl: string;
+    position?: number | null;
 }
 
 interface Chapter {
@@ -123,13 +124,9 @@ export function ChapterList({ slug, initialSources, initialChapters, initialNext
 
     const sourceById = useMemo(() => new Map(visibleSources.map((source) => [source.id, source])), [visibleSources]);
 
-    const getSourceRank = (sourceName?: string) => {
-        return getPreferredSourceRank(sourceName, slug);
-    };
-
     const getChapterScore = (chapter: Chapter) => {
-        const sourceName = chapter.sourceId ? sourceById.get(chapter.sourceId)?.sourceName : undefined;
-        const sourceRank = getSourceRank(sourceName);
+        const source = chapter.sourceId ? sourceById.get(chapter.sourceId) : undefined;
+        const sourceRank = getSourceRankScore(source, slug);
         const dateScore = chapter.releaseDate ? new Date(chapter.releaseDate).getTime() / 1_000_000_000_000 : 0;
         return sourceRank * 10 + dateScore;
     };
