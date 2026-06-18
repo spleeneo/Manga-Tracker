@@ -4,16 +4,7 @@ import { fetchReaderPages } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
 import type { ReaderResult } from "@/lib/scrapers/types";
 import { NextResponse } from "next/server";
-
-const READER_SOURCE_PRIORITY = [
-  "Witch Hat Atelier Manga",
-  "MangaPill",
-  "MangaDex",
-  "Urek Mazino",
-  "Bleach Live",
-  "Manganato",
-  "NeloManga",
-];
+import { getSourceRankMap } from "@/lib/source-ranking";
 
 type ReaderChapter = {
   id: string;
@@ -27,11 +18,6 @@ type ReaderChapter = {
     sourceUrl: string;
   } | null;
 };
-
-function sourceRank(sourceName?: string | null) {
-  const index = READER_SOURCE_PRIORITY.indexOf(sourceName ?? "");
-  return index === -1 ? READER_SOURCE_PRIORITY.length : index;
-}
 
 async function readChapter(chapter: ReaderChapter): Promise<ReaderResult> {
   if (!chapter.source) {
@@ -90,7 +76,18 @@ export async function GET(
           mangaId: manga.id,
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        disabledSources: {
+          select: { sourceId: true },
+        },
+        sourcePreferences: {
+          select: {
+            sourceId: true,
+            position: true,
+          },
+        },
+      },
     });
     if (!tracked) {
       return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
@@ -126,11 +123,14 @@ export async function GET(
     let usedAlternative = false;
 
     if (result.status !== "READABLE" && !isExternalReaderSource(chapter.source?.sourceName)) {
+      const disabledSourceIds = new Set(tracked.disabledSources.map((source) => source.sourceId));
+      const sourcePositionById = new Map(tracked.sourcePreferences.map((source) => [source.sourceId, source.position]));
       const alternatives = await prisma.chapter.findMany({
         where: {
           mangaId: manga.id,
           chapterNumber: chapter.chapterNumber,
           id: { not: chapter.id },
+          sourceId: { notIn: [...disabledSourceIds] },
         },
         select: {
           id: true,
@@ -147,8 +147,23 @@ export async function GET(
           },
         },
       });
+      const sourceRanks = getSourceRankMap(
+        alternatives
+          .map((alternative) => alternative.source)
+          .filter((source): source is NonNullable<typeof source> => Boolean(source))
+          .map((source) => ({
+            ...source,
+            position: sourcePositionById.get(source.id) ?? null,
+          })),
+        slug,
+      );
 
-      alternatives.sort((a, b) => sourceRank(a.source?.sourceName) - sourceRank(b.source?.sourceName));
+      alternatives.sort((a, b) => {
+        const aRank = a.source?.id ? sourceRanks[a.source.id] ?? 0 : 0;
+        const bRank = b.source?.id ? sourceRanks[b.source.id] ?? 0 : 0;
+        if (aRank !== bRank) return bRank - aRank;
+        return (a.source?.sourceName ?? "").localeCompare(b.source?.sourceName ?? "");
+      });
 
       for (const alternative of alternatives) {
         const alternativeResult = await readChapter(alternative);

@@ -49,7 +49,7 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
     mangaFindUniqueMock.mockResolvedValue({ id: "m1" });
-    userMangaFindUniqueMock.mockResolvedValue({ id: "um1" });
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", disabledSources: [], sourcePreferences: [] });
     chapterFindFirstMock.mockResolvedValue({
       id: "c1",
       providerChapterId: "md-c1",
@@ -202,6 +202,84 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
       where: { id: "c2" },
       data: expect.objectContaining({ readerStatus: "READABLE", readerError: null }),
     }));
+  });
+
+  it("uses saved source order when choosing a reader fallback", async () => {
+    chapterFindFirstMock.mockResolvedValue({
+      id: "md-73",
+      providerChapterId: "md-73",
+      chapterNumber: 73,
+      title: "Seventy Three",
+      url: "https://urekmazino.com/chapter/73/",
+      source: {
+        id: "urek",
+        sourceName: "Urek Mazino",
+        sourceUrl: "https://urekmazino.com/",
+      },
+    });
+    userMangaFindUniqueMock.mockResolvedValue({
+      id: "um1",
+      disabledSources: [],
+      sourcePreferences: [
+        { sourceId: "dedicated", position: 0 },
+        { sourceId: "mangapill", position: 1 },
+      ],
+    });
+    chapterFindManyMock.mockResolvedValue([
+      {
+        id: "mp-73",
+        providerChapterId: "mp-73",
+        chapterNumber: 73,
+        title: "Seventy Three",
+        url: "https://mangapill.com/chapters/5454-10073000/choujin-x-chapter-73",
+        source: {
+          id: "mangapill",
+          sourceName: "MangaPill",
+          sourceUrl: "https://mangapill.com/manga/5454/choujin-x",
+        },
+      },
+      {
+        id: "dedicated-73",
+        providerChapterId: "dedicated-73",
+        chapterNumber: 73,
+        title: "Seventy Three",
+        url: "https://w1.choujin-x.online/comic/choujin-x-chapter-73/",
+        source: {
+          id: "dedicated",
+          sourceName: "Choujin X Manga",
+          sourceUrl: "https://w1.choujin-x.online/",
+        },
+      },
+    ]);
+    fetchReaderPagesMock
+      .mockResolvedValueOnce({
+        status: "BLOCKED",
+        pages: [],
+        externalUrl: "https://urekmazino.com/chapter/73/",
+        reason: "Urek Mazino blocked this chapter.",
+      })
+      .mockResolvedValueOnce({
+        status: "READABLE",
+        pages: [{ index: 0, imageUrl: "https://w1.choujin-x.online/page-1.jpg" }],
+        externalUrl: "https://w1.choujin-x.online/comic/choujin-x-chapter-73/",
+      });
+
+    const res = await GET(new Request("http://localhost") as never, {
+      params: Promise.resolve({ slug: "choujin-x", chapterId: "md-73" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe("READABLE");
+    expect(body.chapter).toEqual(expect.objectContaining({
+      id: "dedicated-73",
+      sourceName: "Choujin X Manga",
+    }));
+    expect(fetchReaderPagesMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "dedicated-73" }),
+      expect.objectContaining({ sourceName: "Choujin X Manga" }),
+    );
   });
 
   it("does not replace external-reader chapters with another provider alternative", async () => {

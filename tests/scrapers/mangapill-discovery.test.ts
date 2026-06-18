@@ -33,6 +33,13 @@ describe("MangaPill discovery", () => {
     )).toBe(true);
   });
 
+  it("accepts MangaPill's Choujin X alternate title when the URL slug matches", () => {
+    expect(isMangaPillTitleMatch(
+      { title: "Choujin X", slug: "choujin-x" },
+      { title: "Choujin X Overhuman X", sourceUrl: "https://mangapill.com/manga/5454/choujin-x" },
+    )).toBe(true);
+  });
+
   it("rejects near matches and spinoffs", () => {
     expect(isMangaPillTitleMatch(
       { title: "Solo Leveling", slug: "solo-leveling" },

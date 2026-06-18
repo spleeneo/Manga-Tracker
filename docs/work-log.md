@@ -28,6 +28,72 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-06-17 - Backfill Missing Sources For Tracked Manga
+
+Why:
+- Choujin X was tracked without MangaPill even though MangaPill has it at `https://mangapill.com/manga/5454/choujin-x`.
+- MangaPill search returns the title as `Choujin X Overhuman X`, so the old exact-title-only MangaPill discovery rejected the correct result.
+- Future providers should be discovered for already tracked manga during normal update cycles instead of only when a manga is first tracked.
+
+Plan:
+- Add shared source discovery that every searchable chapter provider can participate in.
+- Keep matching strict, but accept exact provider URL slug matches in addition to exact title/alias matches.
+- Run shared discovery before scraping sources during updates.
+- Make the global update cycle operate on tracked manga so existing libraries can pick up newly added providers.
+- Cover the Choujin X case and the future-provider backfill behavior with focused tests.
+
+Changed:
+- Added `src/lib/source-discovery.ts` for shared missing-source discovery.
+- Updated MangaPill discovery to reuse the shared matcher.
+- Updated `checkForUpdates` to attach missing registered provider sources before scraping.
+- Updated the global update query to process tracked manga instead of only ongoing manga records.
+- Added focused tests for URL-slug matching, generic source discovery, MangaPill's Choujin X title, and update-cycle source attachment.
+
+Verification:
+- Live-probed MangaPill search for `Choujin X`; the correct `https://mangapill.com/manga/5454/choujin-x` result now matches while other Choujin-like results do not.
+- Ran `npm run test -- tests/lib/source-discovery.test.ts tests/lib/manga-updater.test.ts tests/scrapers/mangapill-discovery.test.ts`: 16 tests passed.
+- Ran `npm run test -- tests/scrapers/provider-contract.test.ts tests/scrapers/mangapill.test.ts tests/scrapers/registry.test.ts`: 10 tests passed.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with no failed sources. MangaPlus emitted its existing upstream blocked search log, but the update completed successfully.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 194 passing tests, and a successful production build.
+- Ran a targeted update for the configured `Choujin X` row (`38b04d72-b7be-4d0d-8e85-c01234845e57`): MangaPill was added at `https://mangapill.com/manga/5454/choujin-x`, 133 chapters were added, and no sources failed. MangaPlus emitted its existing upstream blocked search log during discovery.
+
+Outcome:
+- Done locally. Existing tracked manga can now pick up missing sources from registered searchable chapter providers during update checks, including Choujin X from MangaPill.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-17 - Source Discovery Needs URL-Slug Matching".
+
+## 2026-06-17 - Align Source Order With Reader Targets
+
+Why:
+- Choujin X could show the dedicated source first on the manga page, while some reader entry points or fallbacks still preferred another provider.
+- Reader fallback still had hardcoded provider priority and did not load per-manga source preferences.
+- Newly discovered dedicated sources also needed a sensible default rank so the displayed source order and target selection do not diverge when no custom order has been saved yet.
+
+Plan:
+- Make the manga detail source list sort by the shared source ranking helper.
+- Rank generic dedicated `* Manga` sources above MangaDex by default while keeping MangaPill above generic single-title fallbacks.
+- Make reader fallback alternatives load saved source preferences and disabled sources.
+- Add focused tests for fallback ordering and generic dedicated source rank.
+- Re-check the configured Choujin X summary target.
+
+Changed:
+- Updated `getPreferredSourceRank` to rank generic dedicated manga sources ahead of MangaDex.
+- Updated the manga detail page to sort sources by `getSourceRankScore`.
+- Updated the reader route to exclude disabled alternative sources and sort fallback alternatives by saved source order.
+- Added focused tests for source preference ranking and reader fallback ordering.
+
+Verification:
+- Ran `npm run test -- tests/api/chapter-reader.route.test.ts tests/lib/source-preference.test.ts tests/lib/source-ranking.test.ts tests/api/manga-chapters.route.test.ts`: 29 tests passed.
+- Queried the configured Choujin X summary after the ranking changes: latest chapter 73 resolves to `Choujin X Manga` at `https://w1.choujin-x.online/comic/choujin-x-chapter-73/`.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 196 passing tests, and a successful production build.
+
+Outcome:
+- Done locally. Source ordering now drives manga detail source order, latest/next-unread target selection, chapter target selection, and non-external reader fallback alternatives.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-17 - Source Order Must Drive Every Reader Entry Point".
+
 ## 2026-06-02 - Development Process Guardrails
 
 Why:

@@ -1,5 +1,5 @@
-import { getMangaAliasSlugs, slugifyMangaTitle } from "@/lib/manga-aliases";
 import { SearchResult } from "@/lib/scrapers/types";
+import { isSearchResultForManga } from "@/lib/source-discovery";
 import { MangaPillScraper } from "./mangapill";
 
 type MangaIdentity = {
@@ -7,20 +7,12 @@ type MangaIdentity = {
   slug?: string | null;
 };
 
-function getAcceptedSlugs(manga: MangaIdentity) {
-  return new Set([
-    slugifyMangaTitle(manga.title),
-    ...(manga.slug ? [slugifyMangaTitle(manga.slug)] : []),
-    ...getMangaAliasSlugs(manga.title, manga.slug),
-  ]);
-}
-
-export function isMangaPillTitleMatch(manga: MangaIdentity, result: Pick<SearchResult, "title">) {
-  return getAcceptedSlugs(manga).has(slugifyMangaTitle(result.title));
+export function isMangaPillTitleMatch(manga: MangaIdentity, result: Pick<SearchResult, "title"> & { sourceUrl?: string }) {
+  return isSearchResultForManga(manga, { ...result, sourceUrl: result.sourceUrl ?? "" });
 }
 
 export async function discoverMangaPillSource(manga: MangaIdentity) {
   const scraper = new MangaPillScraper();
   const results = await scraper.search(manga.title);
-  return results.find((result) => isMangaPillTitleMatch(manga, result)) ?? null;
+  return results.find((result) => isSearchResultForManga(manga, result)) ?? null;
 }

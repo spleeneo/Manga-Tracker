@@ -58,6 +58,7 @@ export function getPreferredSourceRank(sourceName?: string | null, mangaSlug?: s
     case "manganato":
       return 1;
     default:
+      if (isDedicatedMangaSourceName(sourceName)) return 6;
       return 0;
   }
 }

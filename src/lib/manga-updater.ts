@@ -3,17 +3,10 @@ import { scrapeChapters } from "./scrapers/registry";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
-import { discoverMangaPillSource } from "@/lib/scrapers/mangapill-discovery";
+import { discoverMissingSourcesForManga } from "@/lib/source-discovery";
 
 function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
     return sources.some((source) => isDedicatedMangaSourceName(source.sourceName));
-}
-
-function hasMangaPillSource(sources: Array<{ sourceName: string; sourceUrl: string }>) {
-    return sources.some((source) => (
-        source.sourceName.toLowerCase() === "mangapill"
-        || source.sourceUrl.toLowerCase().includes("mangapill.com")
-    ));
 }
 
 export async function checkForUpdates(specificMangaId?: string) {
@@ -22,7 +15,7 @@ export async function checkForUpdates(specificMangaId?: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = specificMangaId
         ? { id: specificMangaId }
-        : { status: "ONGOING" };
+        : { userManga: { some: {} } };
 
     const mangas = await prisma.manga.findMany({
         where,
@@ -55,12 +48,30 @@ export async function checkForUpdates(specificMangaId?: string) {
             sources = [source];
         }
 
-        if (sources.length === 0) {
-            results.push({ manga: manga.title, status: "No sources identified" });
-            continue;
+        if (!override) {
+            const discoveredSources = await discoverMissingSourcesForManga(manga, sources);
+            for (const discoveredSource of discoveredSources) {
+                const source = await prisma.source.upsert({
+                    where: {
+                        mangaId_sourceUrl: {
+                            mangaId: manga.id,
+                            sourceUrl: discoveredSource.sourceUrl,
+                        },
+                    },
+                    update: {
+                        sourceName: discoveredSource.sourceName,
+                    },
+                    create: {
+                        mangaId: manga.id,
+                        sourceName: discoveredSource.sourceName,
+                        sourceUrl: discoveredSource.sourceUrl,
+                    },
+                });
+                sources = filterSourcesForManga(manga, [source, ...sources]);
+            }
         }
 
-        if (!override && manga.sources.length > 0 && !hasSingleMangaSiteSource(manga.sources)) {
+        if (!override && sources.length > 0 && !hasSingleMangaSiteSource(sources)) {
             const [discoveredSource] = await discoverSingleMangaSiteSources(manga.title);
             if (discoveredSource && !sources.some((source) => source.sourceUrl === discoveredSource.sourceUrl)) {
                 const source = await prisma.source.upsert({
@@ -83,27 +94,9 @@ export async function checkForUpdates(specificMangaId?: string) {
             }
         }
 
-        if (!override && manga.sources.length > 0 && !hasMangaPillSource(manga.sources)) {
-            const discoveredMangaPillSource = await discoverMangaPillSource(manga);
-            if (discoveredMangaPillSource && !sources.some((source) => source.sourceUrl === discoveredMangaPillSource.sourceUrl)) {
-                const source = await prisma.source.upsert({
-                    where: {
-                        mangaId_sourceUrl: {
-                            mangaId: manga.id,
-                            sourceUrl: discoveredMangaPillSource.sourceUrl,
-                        },
-                    },
-                    update: {
-                        sourceName: discoveredMangaPillSource.sourceName,
-                    },
-                    create: {
-                        mangaId: manga.id,
-                        sourceName: discoveredMangaPillSource.sourceName,
-                        sourceUrl: discoveredMangaPillSource.sourceUrl,
-                    },
-                });
-                sources = filterSourcesForManga(manga, [source, ...sources]);
-            }
+        if (sources.length === 0) {
+            results.push({ manga: manga.title, status: "No sources identified" });
+            continue;
         }
 
         const sourceResults = await Promise.all(sources.map(async (source) => {

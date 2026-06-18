@@ -170,3 +170,25 @@ Learning:
 
 Action:
 - Keep proxy header rules scoped per host and add route tests for provider-specific image headers when adding or changing image sources.
+
+## 2026-06-17 - Source Discovery Needs URL-Slug Matching
+
+Context:
+- Choujin X existed on MangaPill at `/manga/5454/choujin-x`, but MangaPill search labeled it `Choujin X Overhuman X`, so exact title matching rejected the valid source.
+
+Learning:
+- Provider search results can append alternate localized titles. Exact title matching alone is too strict when the provider URL contains an exact canonical slug.
+
+Action:
+- Missing-source discovery now accepts exact title/alias matches or exact provider URL slug matches, and the updater uses shared discovery for all registered searchable chapter providers.
+
+## 2026-06-17 - Source Order Must Drive Every Reader Entry Point
+
+Context:
+- A manga page could show a dedicated source first, but a reader fallback path still used hardcoded provider priority and unranked sources could appear in an order that did not match chapter target selection.
+
+Learning:
+- Source order is a user-facing contract. The manga detail source list, latest/next-unread targets, chapter target API, and reader fallback must all use the same ranking semantics.
+
+Action:
+- Use the shared source ranking helper for manga detail source ordering and reader fallback alternatives, and keep generic dedicated manga sources ranked ahead of MangaDex by default.

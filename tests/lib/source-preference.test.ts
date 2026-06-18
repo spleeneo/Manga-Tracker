@@ -25,4 +25,9 @@ describe("source preference", () => {
     expect(getPreferredSourceRank("MangaPill", "houseki-no-kuni"))
       .toBeGreaterThan(getPreferredSourceRank("Land of the Lustrous", "houseki-no-kuni"));
   });
+
+  it("ranks newly discovered dedicated manga sources ahead of MangaDex by default", () => {
+    expect(getPreferredSourceRank("Choujin X Manga", "choujin-x"))
+      .toBeGreaterThan(getPreferredSourceRank("MangaDex", "choujin-x"));
+  });
 });

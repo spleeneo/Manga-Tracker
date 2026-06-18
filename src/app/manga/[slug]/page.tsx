@@ -15,6 +15,7 @@ import { auth } from "../../../../auth";
 import { getLibraryMangaSummary } from "@/lib/library-summary";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { filterSourcesForManga } from "@/lib/source-overrides";
+import { getSourceRankScore } from "@/lib/source-ranking";
 
 interface PageProps {
     params: Promise<{
@@ -63,9 +64,8 @@ async function getManga(slug: string, userId: string) {
         isDisabled: disabledSourceIds.has(source.id),
         position: sourcePositionById.get(source.id) ?? null,
     })).sort((a, b) => {
-        const aPosition = a.position ?? Number.MAX_SAFE_INTEGER;
-        const bPosition = b.position ?? Number.MAX_SAFE_INTEGER;
-        if (aPosition !== bPosition) return aPosition - bPosition;
+        const rankDelta = getSourceRankScore(b, manga.slug) - getSourceRankScore(a, manga.slug);
+        if (rankDelta !== 0) return rankDelta;
         return a.sourceName.localeCompare(b.sourceName);
     });
 

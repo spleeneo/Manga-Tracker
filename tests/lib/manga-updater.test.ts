@@ -9,7 +9,7 @@ const {
   upsertSource,
   scrapeChapters,
   discoverSingleMangaSiteSources,
-  discoverMangaPillSource,
+  discoverMissingSourcesForManga,
 } = vi.hoisted(() => ({
   findManyManga: vi.fn(),
   findManyChapter: vi.fn(),
@@ -19,7 +19,7 @@ const {
   upsertSource: vi.fn(),
   scrapeChapters: vi.fn(),
   discoverSingleMangaSiteSources: vi.fn(),
-  discoverMangaPillSource: vi.fn(),
+  discoverMissingSourcesForManga: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -45,8 +45,8 @@ vi.mock("@/lib/scrapers/single-manga-sites", () => ({
   discoverSingleMangaSiteSources,
 }));
 
-vi.mock("@/lib/scrapers/mangapill-discovery", () => ({
-  discoverMangaPillSource,
+vi.mock("@/lib/source-discovery", () => ({
+  discoverMissingSourcesForManga,
 }));
 
 import { checkForUpdates } from "@/lib/manga-updater";
@@ -59,7 +59,7 @@ describe("checkForUpdates", () => {
     updateSource.mockResolvedValue({});
     upsertSource.mockResolvedValue({});
     discoverSingleMangaSiteSources.mockResolvedValue([]);
-    discoverMangaPillSource.mockResolvedValue(null);
+    discoverMissingSourcesForManga.mockResolvedValue([]);
   });
 
   it("reports manga with no sources", async () => {
@@ -185,7 +185,7 @@ describe("checkForUpdates", () => {
     expect(scrapeChapters).toHaveBeenCalledTimes(2);
   });
 
-  it("adds a strict MangaPill match for already tracked manga before scraping", async () => {
+  it("adds a missing registered source for already tracked manga before scraping", async () => {
     findManyManga.mockResolvedValue([
       {
         id: "m1",
@@ -194,11 +194,11 @@ describe("checkForUpdates", () => {
         sources: [{ id: "s1", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" }],
       },
     ]);
-    discoverMangaPillSource.mockResolvedValue({
+    discoverMissingSourcesForManga.mockResolvedValue([{
       title: "Dandadan",
       sourceName: "MangaPill",
       sourceUrl: "https://mangapill.com/manga/5460/dandadan",
-    });
+    }]);
     upsertSource.mockResolvedValue({
       id: "s2",
       sourceName: "MangaPill",
@@ -224,7 +224,7 @@ describe("checkForUpdates", () => {
     }));
   });
 
-  it("does not search MangaPill when the manga already has a MangaPill source", async () => {
+  it("asks shared source discovery to skip providers that already have a source", async () => {
     findManyManga.mockResolvedValue([
       {
         id: "m1",
@@ -237,7 +237,21 @@ describe("checkForUpdates", () => {
 
     await checkForUpdates("m1");
 
-    expect(discoverMangaPillSource).not.toHaveBeenCalled();
+    expect(discoverMissingSourcesForManga).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Dandadan" }),
+      [expect.objectContaining({ sourceName: "MangaPill" })],
+    );
     expect(upsertSource).not.toHaveBeenCalled();
+  });
+
+  it("checks all tracked manga during the global update cycle", async () => {
+    findManyManga.mockResolvedValue([]);
+
+    await checkForUpdates();
+
+    expect(findManyManga).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userManga: { some: {} } },
+      include: { sources: true },
+    }));
   });
 });
