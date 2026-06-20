@@ -20,6 +20,7 @@ function UpdateLight({ className = "" }: { className?: string }) {
 }
 
 const syncingBadgeClass = "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase text-foreground shadow-[0_4px_12px_hsl(var(--background)/0.65)] ring-1 ring-background/80 backdrop-blur-sm [background-color:hsl(var(--card))] [border-color:hsl(var(--primary))]";
+const syncButtonClass = "z-20 flex h-7 w-7 items-center justify-center rounded-full border text-foreground shadow-[0_5px_16px_hsl(0_0%_0%/0.34)] ring-1 ring-background/90 backdrop-blur-sm transition-all [background-color:hsl(var(--card)/0.96)] [border-color:hsl(var(--border))] hover:-translate-y-0.5 hover:text-primary-foreground hover:shadow-[0_7px_18px_hsl(var(--primary)/0.25)] hover:[background-color:hsl(var(--primary))] hover:[border-color:hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-80";
 
 function MangaDeleteButton({
     title,
@@ -128,7 +129,7 @@ function MangaSyncButton({
                 onSync();
             }}
             disabled={syncing}
-            className={`z-20 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-[0_5px_12px_hsl(0_0%_0%/0.22)] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-card ${className}`}
+            className={`${syncButtonClass} ${className}`}
             aria-label={syncing ? `${title} is syncing` : `Sync ${title}`}
             title={syncing ? "Syncing this manga" : "Sync this manga"}
         >
