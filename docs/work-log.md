@@ -28,6 +28,31 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-06-20 - Make Main Push The Default Delivery Rule
+
+Why:
+- The repository already said to push verified work to `main` when approved, but that left ambiguity after the user gave standing approval for this project.
+- Future work should not remain local after verification unless the user explicitly asks to pause, keep it local, or avoid pushing.
+
+Plan:
+- Update always-read repository instructions.
+- Align the development methodology delivery section with the same standing rule.
+- Record the process change in the work log.
+
+Changed:
+- Updated `AGENTS.md` to say complete verified work should be committed and pushed to `main` by default.
+- Updated `docs/development-methodology.md` default workflow and delivery language with the same rule.
+- Added this work-log entry.
+
+Verification:
+- Documentation-only change reviewed by diff.
+
+Outcome:
+- Done locally; commit and push should follow immediately because this rule itself is now the delivery default.
+
+Learnings:
+- No new reusable learning added.
+
 ## 2026-06-20 - Shared Daily Update Queue And Single-Manga Sync
 
 Why:

@@ -12,7 +12,7 @@ Default working rule:
 6. Report exactly what passed and what was not verified.
 7. Save reusable lessons in `docs/learnings.md` when a bug, failed assumption, or useful pattern should influence future work.
 8. Update `docs/work-log.md` for meaningful features, fixes, refactors, investigations, and production-relevant changes. Record why the work is happening, the plan, what changed, verification, outcome, and links to learnings.
-9. After a complete piece of work is verified, commit it and push it to `main` when the user has approved the change for delivery. Pushing to `main` triggers the CI/CD pipeline.
+9. After a complete piece of work is verified, commit it and push it to `main` by default. The user has given standing approval for verified work in this repository to be delivered this way. Do not wait for separate delivery approval unless the user explicitly asks to keep the work local, pause before delivery, or avoid pushing. Pushing to `main` triggers the CI/CD pipeline.
 
 Minimum verification before calling a change done:
 

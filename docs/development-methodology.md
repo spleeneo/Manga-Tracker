@@ -14,7 +14,7 @@ This project should prefer short, verified development loops over large untested
 8. Record what was verified and any remaining risk.
 9. Save reusable learnings when a bug, failed assumption, or useful pattern should influence future work.
 10. Update the work log for meaningful work so future development can resume with context.
-11. Commit and push completed, verified work to `main` when it is approved for delivery, so CI/CD runs.
+11. Commit and push completed, verified work to `main` by default, so CI/CD runs. The user has given standing approval for verified work in this repository to be delivered this way unless they explicitly ask to keep the work local, pause before delivery, or avoid pushing.
 
 ## Methods To Use
 
@@ -175,6 +175,6 @@ Update it when work is meaningful enough that future debugging, resumption, or r
 
 ## Delivery
 
-After a feature, fix, or coherent piece of work is complete and verified, it should be committed and pushed to `main` when approved for delivery. The existing GitHub Actions workflow runs CI on `main`, and the deploy job runs after verification succeeds.
+After a feature, fix, or coherent piece of work is complete and verified, it should be committed and pushed to `main` by default. The user has given standing approval for verified work in this repository to be delivered this way unless they explicitly ask to keep the work local, pause before delivery, or avoid pushing. The existing GitHub Actions workflow runs CI on `main`, and the deploy job runs after verification succeeds.
 
 Do not treat local completion as delivery. Delivery happens when the work is pushed, CI/CD runs, and the result is visible in the target environment.
