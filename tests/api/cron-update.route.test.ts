@@ -1,15 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { checkForUpdates, processQueuedSyncJobs } = vi.hoisted(() => ({
-  checkForUpdates: vi.fn(),
+const { enqueueTrackedMangaSyncJobs, processQueuedSyncJobs } = vi.hoisted(() => ({
+  enqueueTrackedMangaSyncJobs: vi.fn(),
   processQueuedSyncJobs: vi.fn(),
 }));
 
-vi.mock("@/lib/manga-updater", () => ({
-  checkForUpdates,
-}));
-
 vi.mock("@/lib/sync-jobs", () => ({
+  enqueueTrackedMangaSyncJobs,
   processQueuedSyncJobs,
 }));
 
@@ -26,7 +23,8 @@ describe("GET /api/cron/update", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "secret123";
-    processQueuedSyncJobs.mockResolvedValue(0);
+    enqueueTrackedMangaSyncJobs.mockResolvedValue({ enqueued: 2, jobs: [{ id: "j1" }, { id: "j2" }] });
+    processQueuedSyncJobs.mockResolvedValue({ processed: 2, completed: 2, failed: 0, retrying: 0, skipped: 0, remaining: 0 });
   });
 
   it("returns 401 without valid secret", async () => {
@@ -36,7 +34,6 @@ describe("GET /api/cron/update", () => {
   });
 
   it("returns success with valid header secret", async () => {
-    checkForUpdates.mockResolvedValue([{ manga: "One Piece", status: "No new chapters updates" }]);
     const req = mockNextRequest("http://localhost/api/cron/update", {
       "x-cron-secret": "secret123",
     });
@@ -45,6 +42,9 @@ describe("GET /api/cron/update", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.processedJobs).toBe(0);
+    expect(body.enqueued).toBe(2);
+    expect(body.processed).toBe(2);
+    expect(enqueueTrackedMangaSyncJobs).toHaveBeenCalledOnce();
+    expect(processQueuedSyncJobs).toHaveBeenCalledWith({ limit: 20, concurrency: 4 });
   });
 });

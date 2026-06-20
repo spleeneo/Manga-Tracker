@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, CalendarClock, CheckCircle2, Loader2, Trash2, X } from "lucide-react";
+import { BookOpen, CalendarClock, CheckCircle2, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
@@ -109,6 +109,34 @@ function MangaDeleteButton({
     );
 }
 
+function MangaSyncButton({
+    title,
+    syncing,
+    onSync,
+    className = "",
+}: {
+    title: string;
+    syncing: boolean;
+    onSync: () => void;
+    className?: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={(event) => {
+                event.stopPropagation();
+                onSync();
+            }}
+            disabled={syncing}
+            className={`z-20 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-[0_5px_12px_hsl(0_0%_0%/0.22)] transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70 dark:bg-card ${className}`}
+            aria-label={syncing ? `${title} is syncing` : `Sync ${title}`}
+            title={syncing ? "Syncing this manga" : "Sync this manga"}
+        >
+            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </button>
+    );
+}
+
 function formatNextChapterEstimate(manga: MangaCardData) {
     if (manga.status?.toUpperCase() !== "ONGOING" || !manga.estimatedNextChapterAt || manga.releaseEstimateSampleSize < 2) {
         return null;
@@ -132,15 +160,19 @@ function formatNextChapterEstimate(manga: MangaCardData) {
 export function MangaCard({
     manga,
     loadingAction,
+    loadingSync,
     removing,
     onDelete,
     onProgress,
+    onSync,
 }: {
     manga: MangaCardData;
     loadingAction?: "latest" | "catch-up" | null;
+    loadingSync?: boolean;
     removing?: boolean;
     onDelete: (slug: string, title: string) => void;
     onProgress: (slug: string, action: "latest" | "catch-up") => void;
+    onSync: (slug: string, title: string) => void;
 }) {
     const router = useRouter();
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
@@ -150,7 +182,7 @@ export function MangaCard({
         ? readTarget?.url
         : readTarget?.id ? `/manga/${manga.slug}/chapter/${readTarget.id}` : readTarget?.url;
     const readChapterNumber = readTarget?.chapterNumber;
-    const isSyncing = manga.syncStatus === "SYNCING";
+    const isSyncing = manga.syncStatus === "SYNCING" || Boolean(loadingSync);
     const hasUnread = manga.unreadChapters > 0;
     const nextReleaseEstimate = formatNextChapterEstimate(manga);
     const openManga = () => router.push(`/manga/${manga.slug}`);
@@ -186,6 +218,12 @@ export function MangaCard({
                 title={manga.title}
                 removing={removing}
                 onDelete={() => onDelete(manga.slug, manga.title)}
+            />
+            <MangaSyncButton
+                title={manga.title}
+                syncing={isSyncing}
+                onSync={() => onSync(manga.slug, manga.title)}
+                className="absolute right-5 top-1"
             />
 
             <div className="flex min-w-0 flex-1 flex-col p-3">
@@ -299,6 +337,12 @@ export function MangaCard({
                 title={manga.title}
                 removing={removing}
                 onDelete={() => onDelete(manga.slug, manga.title)}
+            />
+            <MangaSyncButton
+                title={manga.title}
+                syncing={isSyncing}
+                onSync={() => onSync(manga.slug, manga.title)}
+                className="absolute right-7 top-2"
             />
 
             <div className="flex min-h-[150px] flex-1 flex-col p-3.5">

@@ -28,14 +28,18 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 - Updates `isRead` to provided boolean and returns `200` with updated chapter.
 - Returns `500` when update fails (invalid chapter id or DB error).
 
-### `GET /api/manga/[slug]/check-updates`
+### `POST /api/manga/[slug]/check-updates`
 - Returns `404` when manga is not found.
-- Calls updater for the specific manga id and returns update results.
-- Returns `500` when updater throws.
+- Requires the signed-in user to track the manga.
+- Marks the user's manga row as `SYNCING`.
+- Enqueues or reuses one shared manga update job and schedules best-effort background processing.
+- Returns `500` when queueing fails.
 
 ### `GET /api/cron/update`
-- Requires a valid cron secret token (to be implemented in hardening phase).
-- Returns `{ success: true, results }` when updater succeeds.
+- Requires a valid cron secret token.
+- Enqueues every manga tracked by at least one user.
+- Processes a bounded batch of shared update jobs.
+- Returns queue counts such as `enqueued`, `processed`, `completed`, `failed`, and `remaining`.
 - Returns `500` with `{ success: false }` on failure.
 
 ## Updater behavior (`checkForUpdates`)
@@ -46,6 +50,13 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 - Continues processing other sources when one source scraper fails.
 - Updates manga `updatedAt` when one or more new chapters are inserted.
 - Returns per-manga status summary for UI/cron consumption.
+
+## Queue behavior (`SyncJob`)
+- Shared manga update jobs use `userId = null`.
+- Only one queued/running shared update job should exist for a manga.
+- Manual library sync marks the requesting user's library rows as `SYNCING` and enqueues shared jobs.
+- Completed shared jobs mark waiting `UserManga` rows for that manga as `UPDATED`; permanent failures mark them `FAILED`.
+- Queue processing claims due jobs atomically before running scraper work.
 
 ## Manual verification checklist
 - Add manga via search flow and confirm source list and chapter ingestion.

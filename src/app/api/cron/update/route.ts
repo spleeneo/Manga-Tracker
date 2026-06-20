@@ -1,5 +1,4 @@
-import { checkForUpdates } from "@/lib/manga-updater";
-import { processQueuedSyncJobs } from "@/lib/sync-jobs";
+import { enqueueTrackedMangaSyncJobs, processQueuedSyncJobs } from "@/lib/sync-jobs";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic'; // Ensure this isn't cached
@@ -20,9 +19,13 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const processedJobs = await processQueuedSyncJobs(10);
-        const results = processedJobs > 0 ? [] : await checkForUpdates();
-        return NextResponse.json({ success: true, processedJobs, results });
+        const enqueued = await enqueueTrackedMangaSyncJobs();
+        const processed = await processQueuedSyncJobs({ limit: 20, concurrency: 4 });
+        return NextResponse.json({
+            success: true,
+            enqueued: enqueued.enqueued,
+            ...processed,
+        });
     } catch (error) {
         console.error("Cron update failed:", error);
         return NextResponse.json(

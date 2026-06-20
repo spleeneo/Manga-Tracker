@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 import { AppNav } from "@/components/app-nav";
 import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
+import { CheckUpdatesButton } from "@/components/check-updates-button";
 import { ChapterList } from "@/components/chapter-list";
 import { LegalFooter } from "@/components/legal-footer";
 import { MangaDescription } from "@/components/manga-description";
@@ -222,6 +223,7 @@ export default async function MangaPage({ params }: PageProps) {
                                         >
                                             Latest
                                         </a>
+                                        <CheckUpdatesButton slug={manga.slug} />
                                     </div>
                                 </div>
                             </div>

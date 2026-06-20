@@ -64,7 +64,7 @@ A personal manga tracking application that aggregates chapters from multiple fre
 ## Operational Endpoints
 
 - `GET /api/health`: service health/readiness endpoint (database + provider status).
-- `GET /api/cron/update`: triggers update scan for all ongoing manga.
+- `GET /api/cron/update`: enqueues and processes shared update jobs for all tracked manga.
   - Requires `CRON_SECRET` and one of:
     - `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automatically when `CRON_SECRET` exists),
     - header `x-cron-secret`, or
@@ -85,7 +85,9 @@ A personal manga tracking application that aggregates chapters from multiple fre
 4. Vercel will run `postinstall` and generate Prisma Client.
 5. Run `npm run db:migrate` locally against Neon, or use `npx prisma migrate deploy` in a trusted deployment step.
 
-`vercel.json` schedules the update cron once per day at 05:00 UTC. Increase frequency only after checking provider rate limits and Vercel/Neon free-tier usage.
+`vercel.json` schedules the update cron once per day at 10:00 UTC, which is noon in Paris during CEST. When Paris switches to CET, use `0 11 * * *` if strict local-noon timing matters. Increase frequency only after checking provider rate limits and Vercel/Neon free-tier usage.
+
+Manual library and single-manga syncs do not wait for the daily cron. They enqueue shared manga update jobs from authenticated HTTP requests and start best-effort processing immediately in the current Vercel Function.
 
 ## Google Login Setup
 

@@ -22,9 +22,14 @@ This means two users can track the same `Manga` and reuse the same `Source` and 
 
 ## Update Flow
 
-- Manual update calls `POST /api/manga/[slug]/check-updates`.
+- Manual single-manga update calls `POST /api/manga/[slug]/check-updates`.
+- Manual library update calls `POST /api/manga/updates`.
 - Scheduled update calls `GET /api/cron/update`.
-- `checkForUpdates` loads ongoing manga and each source, scrapes chapters, and creates missing `Chapter` rows.
+- Update requests enqueue shared `SyncJob` rows for manga-level work with `userId = null`, so one tracked manga is scraped once even when multiple users track it.
+- Manual routes return after queueing and use Next.js `after(...)` to start best-effort background processing immediately.
+- The daily cron enqueues all manga with at least one `UserManga` row and processes queued jobs as the scheduled sweep and retry safety net.
+- Queued jobs are claimed with Postgres row locking and processed with bounded parallelism.
+- `updateSingleManga` loads one manga and each source, scrapes chapters, and creates missing `Chapter` rows.
 - Duplicate detection is per source using `providerChapterId` when available, with chapter number as a fallback.
 - Metadata refresh uses the first source for the manga and updates shared `Manga` metadata.
 
@@ -40,4 +45,4 @@ This means two users can track the same `Manga` and reuse the same `Source` and 
 - Shared manga/chapter data saves scraper work and keeps chapters deduplicated across users.
 - Per-user read state avoids leaking progress between accounts.
 - Current "Best Available" logic is heuristic, not true readability detection.
-- Scrapers run directly from API routes/server jobs; there is no queue yet.
+- Scrapers still run inside Vercel Functions, so manual background processing is best-effort; durable queued jobs remain in Postgres for the daily cron to retry.

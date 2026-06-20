@@ -1,10 +1,20 @@
 import { prisma } from "@/lib/db";
-import { checkForUpdates } from "@/lib/manga-updater";
+import { updateSingleManga } from "@/lib/manga-updater";
 
 const SYNC_JOB_TYPE = "MANGA_UPDATE";
 const MAX_ATTEMPTS = 3;
+const DEFAULT_QUEUE_LIMIT = 20;
+const DEFAULT_CONCURRENCY = 4;
 
-export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
+type SyncJobRef = { id: string };
+type ClaimedJob = { id: string };
+
+type ProcessQueuedSyncJobsOptions = {
+  limit?: number;
+  concurrency?: number;
+};
+
+async function markUserMangaSyncing(userId: string, mangaId: string) {
   const now = new Date();
 
   await prisma.userManga.update({
@@ -21,11 +31,14 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
       syncError: null,
     },
   });
+}
 
+export async function enqueueSharedMangaSyncJob(mangaId: string): Promise<SyncJobRef> {
+  const now = new Date();
   const activeJobs = await prisma.syncJob.findMany({
     where: {
       type: SYNC_JOB_TYPE,
-      userId,
+      userId: null,
       mangaId,
       status: { in: ["QUEUED", "RUNNING"] },
     },
@@ -73,7 +86,7 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
   return prisma.syncJob.create({
     data: {
       type: SYNC_JOB_TYPE,
-      userId,
+      userId: null,
       mangaId,
       status: "QUEUED",
       runAfter: now,
@@ -82,23 +95,52 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
   });
 }
 
-export async function processSyncJob(jobId: string) {
-  const job = await prisma.syncJob.findUnique({
-    where: { id: jobId },
-    select: {
-      id: true,
-      status: true,
-      userId: true,
-      mangaId: true,
-      attempts: true,
-      manga: { select: { title: true } },
-    },
+export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
+  await markUserMangaSyncing(userId, mangaId);
+  return enqueueSharedMangaSyncJob(mangaId);
+}
+
+export async function enqueueUserLibrarySyncJobs(userId: string) {
+  const library = await prisma.userManga.findMany({
+    where: { userId },
+    select: { mangaId: true },
   });
 
-  if (!job || job.status === "DONE" || job.status === "RUNNING") return;
+  const jobs: SyncJobRef[] = [];
+  for (const entry of library) {
+    jobs.push(await enqueueMangaSyncJob(userId, entry.mangaId));
+  }
 
-  await prisma.syncJob.update({
-    where: { id: job.id },
+  return {
+    queued: library.length,
+    jobs,
+  };
+}
+
+export async function enqueueTrackedMangaSyncJobs() {
+  const mangas = await prisma.manga.findMany({
+    where: { userManga: { some: {} } },
+    select: { id: true },
+  });
+
+  const jobs: SyncJobRef[] = [];
+  for (const manga of mangas) {
+    jobs.push(await enqueueSharedMangaSyncJob(manga.id));
+  }
+
+  return {
+    enqueued: mangas.length,
+    jobs,
+  };
+}
+
+async function claimSyncJob(jobId: string) {
+  const result = await prisma.syncJob.updateMany({
+    where: {
+      id: jobId,
+      status: "QUEUED",
+      runAfter: { lte: new Date() },
+    },
     data: {
       status: "RUNNING",
       attempts: { increment: 1 },
@@ -107,28 +149,96 @@ export async function processSyncJob(jobId: string) {
     },
   });
 
+  return result.count > 0;
+}
+
+async function claimQueuedSyncJobs(limit: number) {
+  return prisma.$queryRaw<ClaimedJob[]>`
+    UPDATE "SyncJob"
+    SET
+      "status" = 'RUNNING',
+      "attempts" = "attempts" + 1,
+      "lockedAt" = NOW(),
+      "error" = NULL,
+      "updatedAt" = NOW()
+    WHERE "id" IN (
+      SELECT "id"
+      FROM "SyncJob"
+      WHERE "type" = ${SYNC_JOB_TYPE}
+        AND "status" = 'QUEUED'
+        AND "runAfter" <= NOW()
+      ORDER BY "createdAt" ASC
+      FOR UPDATE SKIP LOCKED
+      LIMIT ${limit}
+    )
+    RETURNING "id"
+  `;
+}
+
+async function markWaitingUsersUpdated(mangaId: string) {
+  await prisma.userManga.updateMany({
+    where: {
+      mangaId,
+      syncStatus: "SYNCING",
+    },
+    data: {
+      syncStatus: "UPDATED",
+      syncFinishedAt: new Date(),
+      syncError: null,
+    },
+  });
+}
+
+async function markWaitingUsersFailed(mangaId: string, message: string) {
+  await prisma.userManga.updateMany({
+    where: {
+      mangaId,
+      syncStatus: "SYNCING",
+    },
+    data: {
+      syncStatus: "FAILED",
+      syncFinishedAt: new Date(),
+      syncError: message,
+    },
+  });
+}
+
+async function markWaitingUsersRetrying(mangaId: string, message: string) {
+  await prisma.userManga.updateMany({
+    where: {
+      mangaId,
+      syncStatus: "SYNCING",
+    },
+    data: {
+      syncFinishedAt: null,
+      syncError: message,
+    },
+  });
+}
+
+async function runClaimedSyncJob(jobId: string) {
+  const job = await prisma.syncJob.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      status: true,
+      mangaId: true,
+      attempts: true,
+      manga: { select: { title: true } },
+    },
+  });
+
+  if (!job || job.status !== "RUNNING") {
+    return { id: jobId, status: "skipped" as const };
+  }
+
   try {
-    const results = await checkForUpdates(job.mangaId);
-    const failedResult = results.find((result) => "allSourcesFailed" in result && result.allSourcesFailed);
-    if (failedResult) {
-      throw new Error(failedResult.status);
+    const result = await updateSingleManga(job.mangaId);
+    if ("allSourcesFailed" in result && result.allSourcesFailed) {
+      throw new Error(result.status);
     }
 
-    if (job.userId) {
-      await prisma.userManga.update({
-        where: {
-          userId_mangaId: {
-            userId: job.userId,
-            mangaId: job.mangaId,
-          },
-        },
-        data: {
-          syncStatus: "UPDATED",
-          syncFinishedAt: new Date(),
-          syncError: null,
-        },
-      });
-    }
+    await markWaitingUsersUpdated(job.mangaId);
 
     await prisma.syncJob.update({
       where: { id: job.id },
@@ -139,54 +249,81 @@ export async function processSyncJob(jobId: string) {
         error: null,
       },
     });
+
+    return { id: job.id, status: "completed" as const };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown update error";
-    const nextAttempts = job.attempts + 1;
-    const failedPermanently = nextAttempts >= MAX_ATTEMPTS;
+    const failedPermanently = job.attempts >= MAX_ATTEMPTS;
 
-    if (job.userId) {
-      await prisma.userManga.update({
-        where: {
-          userId_mangaId: {
-            userId: job.userId,
-            mangaId: job.mangaId,
-          },
-        },
-        data: {
-          syncStatus: failedPermanently ? "FAILED" : "SYNCING",
-          syncFinishedAt: failedPermanently ? new Date() : null,
-          syncError: message,
-        },
-      });
+    if (failedPermanently) {
+      await markWaitingUsersFailed(job.mangaId, message);
+    } else {
+      await markWaitingUsersRetrying(job.mangaId, message);
     }
 
     await prisma.syncJob.update({
       where: { id: job.id },
       data: {
         status: failedPermanently ? "FAILED" : "QUEUED",
-        runAfter: new Date(Date.now() + Math.min(nextAttempts, MAX_ATTEMPTS) * 60_000),
+        runAfter: new Date(Date.now() + Math.min(job.attempts, MAX_ATTEMPTS) * 60_000),
         lockedAt: null,
         finishedAt: failedPermanently ? new Date() : null,
         error: message,
       },
     });
+
+    return { id: job.id, status: failedPermanently ? "failed" as const : "retrying" as const };
   }
 }
 
-export async function processQueuedSyncJobs(limit = 5) {
-  const jobs = await prisma.syncJob.findMany({
+export async function processSyncJob(jobId: string) {
+  const claimed = await claimSyncJob(jobId);
+  if (!claimed) {
+    return { id: jobId, status: "skipped" as const };
+  }
+
+  return runClaimedSyncJob(jobId);
+}
+
+async function runWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+) {
+  const results: R[] = [];
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(items[currentIndex]);
+    }
+  }));
+
+  return results;
+}
+
+export async function processQueuedSyncJobs(options: ProcessQueuedSyncJobsOptions = {}) {
+  const limit = options.limit ?? DEFAULT_QUEUE_LIMIT;
+  const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+  const jobs = await claimQueuedSyncJobs(limit);
+  const results = await runWithConcurrency(jobs, concurrency, (job) => runClaimedSyncJob(job.id));
+  const remaining = await prisma.syncJob.count({
     where: {
+      type: SYNC_JOB_TYPE,
       status: "QUEUED",
       runAfter: { lte: new Date() },
     },
-    orderBy: { createdAt: "asc" },
-    take: limit,
-    select: { id: true },
   });
 
-  for (const job of jobs) {
-    await processSyncJob(job.id);
-  }
-
-  return jobs.length;
+  return {
+    processed: jobs.length,
+    completed: results.filter((result) => result.status === "completed").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    retrying: results.filter((result) => result.status === "retrying").length,
+    skipped: results.filter((result) => result.status === "skipped").length,
+    remaining,
+  };
 }

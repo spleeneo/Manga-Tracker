@@ -41,6 +41,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
     const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
     const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+    const [syncingSlug, setSyncingSlug] = useState<string | null>(null);
     const { showToast } = useToast();
 
     const sortedItems = useMemo(() => {
@@ -188,6 +189,45 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         }
     };
 
+    const syncManga = async (slug: string, title: string) => {
+        setSyncingSlug(slug);
+        const previousItems = items;
+        setItems((current) => current.map((manga) => (
+            manga.slug === slug
+                ? {
+                    ...manga,
+                    syncStatus: "SYNCING",
+                    syncStartedAt: new Date(),
+                    syncFinishedAt: null,
+                    syncError: null,
+                }
+                : manga
+        )));
+
+        try {
+            const res = await fetch(`/api/manga/${slug}/check-updates`, {
+                method: "POST",
+            });
+            if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
+            showToast({
+                type: "success",
+                title: "Manga update started",
+                description: `${title} is syncing in the background.`,
+            });
+            window.dispatchEvent(new Event("mangateo:library-refresh"));
+        } catch (error) {
+            console.error(error);
+            setItems(previousItems);
+            showToast({
+                type: "error",
+                title: "Manga update was not started",
+                description: "Please try again.",
+            });
+        } finally {
+            setSyncingSlug(null);
+        }
+    };
+
     const renderMangaGrid = (sectionItems: MangaCardData[]) => (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {sectionItems.map((manga) => (
@@ -196,8 +236,10 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
                     manga={manga}
                     loadingAction={progressAction?.slug === manga.slug ? progressAction.action === "caught-up" ? "catch-up" : "latest" : null}
                     removing={removingSlug === manga.slug}
+                    loadingSync={syncingSlug === manga.slug}
                     onDelete={(slug) => void deleteManga(slug)}
                     onProgress={markProgress}
+                    onSync={(slug, title) => void syncManga(slug, title)}
                 />
             ))}
         </div>

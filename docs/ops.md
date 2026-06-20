@@ -64,7 +64,7 @@ Use `/api/health` after deployment to confirm the function region and database t
 
 ## Cron
 
-`vercel.json` schedules `GET /api/cron/update` once per day at 05:00 UTC.
+`vercel.json` schedules `GET /api/cron/update` once per day at 10:00 UTC. That is noon in Paris during CEST. When Paris switches to CET, use `0 11 * * *` if strict local-noon timing matters.
 
 The cron endpoint requires `CRON_SECRET` through one of:
 
@@ -73,6 +73,8 @@ The cron endpoint requires `CRON_SECRET` through one of:
 - `?secret=...`
 
 Increase cron frequency only after checking provider rate limits and free-tier usage.
+
+The cron route enqueues all manga tracked by at least one user and processes a bounded batch of shared manga update jobs. Manual single-manga and library update buttons are normal authenticated HTTP requests, so they can run at any time on Vercel Hobby; they enqueue the same shared jobs and start best-effort processing with `after(...)` without waiting for the next daily cron.
 
 ## Routine Checks
 

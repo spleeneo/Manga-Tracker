@@ -1,6 +1,5 @@
-import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/session";
-import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
+import { enqueueUserLibrarySyncJobs, processQueuedSyncJobs } from "@/lib/sync-jobs";
 import { after } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -11,34 +10,17 @@ export async function POST() {
             return NextResponse.json({ error: "Authentication required" }, { status: 401 });
         }
 
-        const library = await prisma.userManga.findMany({
-            where: { userId },
-            select: {
-                mangaId: true,
-                manga: {
-                    select: {
-                        title: true,
-                    },
-                },
-            },
-        });
-
-        const jobs: Array<{ id: string }> = [];
-        for (const entry of library) {
-            jobs.push(await enqueueMangaSyncJob(userId, entry.mangaId));
-        }
+        const { queued } = await enqueueUserLibrarySyncJobs(userId);
 
         after(async () => {
-            for (const job of jobs) {
-                try {
-                    await processSyncJob(job.id);
-                } catch (error) {
-                    console.error("Library update job failed:", error);
-                }
+            try {
+                await processQueuedSyncJobs({ limit: Math.max(queued, 1), concurrency: 4 });
+            } catch (error) {
+                console.error("Library update jobs failed:", error);
             }
         });
 
-        return NextResponse.json({ success: true, queued: library.length });
+        return NextResponse.json({ success: true, queued });
     } catch (error) {
         console.error("Library update failed:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

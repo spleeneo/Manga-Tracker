@@ -1,18 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  checkForUpdatesMock,
+  afterMock,
+  enqueueMangaSyncJobMock,
   fetchMetadataMock,
   getCurrentUserIdMock,
   mangaFindUniqueMock,
   mangaUpdateMock,
+  processSyncJobMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
-  checkForUpdatesMock: vi.fn(),
+  afterMock: vi.fn(),
+  enqueueMangaSyncJobMock: vi.fn(),
   fetchMetadataMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   mangaUpdateMock: vi.fn(),
+  processSyncJobMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
 }));
 
@@ -20,8 +24,9 @@ vi.mock("@/lib/session", () => ({
   getCurrentUserId: getCurrentUserIdMock,
 }));
 
-vi.mock("@/lib/manga-updater", () => ({
-  checkForUpdates: checkForUpdatesMock,
+vi.mock("@/lib/sync-jobs", () => ({
+  enqueueMangaSyncJob: enqueueMangaSyncJobMock,
+  processSyncJob: processSyncJobMock,
 }));
 
 vi.mock("@/lib/scrapers/registry", () => ({
@@ -40,6 +45,14 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: afterMock,
+  };
+});
+
 import { POST as checkUpdates } from "@/app/api/manga/[slug]/check-updates/route";
 import { GET as getManga } from "@/app/api/manga/get/route";
 import { POST as refreshMetadata } from "@/app/api/manga/[slug]/refresh-metadata/route";
@@ -48,6 +61,7 @@ describe("owned manga API routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
+    enqueueMangaSyncJobMock.mockResolvedValue({ id: "job1" });
   });
 
   it("requires ownership before checking updates", async () => {
@@ -59,13 +73,12 @@ describe("owned manga API routes", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    expect(enqueueMangaSyncJobMock).not.toHaveBeenCalled();
   });
 
-  it("checks updates for tracked manga", async () => {
+  it("queues updates for tracked manga", async () => {
     mangaFindUniqueMock.mockResolvedValue({ id: "m1", slug: "one-piece" });
     userMangaFindUniqueMock.mockResolvedValue({ id: "um1" });
-    checkForUpdatesMock.mockResolvedValue([{ status: "ok" }]);
 
     const res = await checkUpdates(new Request("http://localhost") as never, {
       params: Promise.resolve({ slug: "one-piece" }),
@@ -74,7 +87,10 @@ describe("owned manga API routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(checkForUpdatesMock).toHaveBeenCalledWith("m1");
+    expect(body.queued).toBe(1);
+    expect(enqueueMangaSyncJobMock).toHaveBeenCalledWith("u1", "m1");
+    expect(afterMock).toHaveBeenCalledOnce();
+    expect(processSyncJobMock).not.toHaveBeenCalled();
   });
 
   it("requires ownership before returning manga data", async () => {

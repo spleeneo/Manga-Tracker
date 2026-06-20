@@ -28,6 +28,43 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-06-20 - Shared Daily Update Queue And Single-Manga Sync
+
+Why:
+- Library-wide syncing was slow because global updates processed manga mostly sequentially and manual routes could wait on provider scraping.
+- Multiple users tracking the same manga should share one server-side update job instead of duplicating scraper work.
+- Auto updates should stay compatible with Vercel Hobby daily cron and run around Paris noon.
+- The UI needed a single-manga sync control in addition to the global library update button.
+
+Plan:
+- Refactor the updater around a single-manga update entry point.
+- Move scheduled and manual updates onto shared `SyncJob` rows with `userId = null`.
+- Process queued jobs with bounded parallelism and atomic Postgres claiming.
+- Change the daily Vercel cron to 10:00 UTC for Paris noon during CEST.
+- Add detail-page and library-card single-manga sync controls.
+- Update tests, docs, smoke update, and full verification.
+
+Changed:
+- Added shared manga sync job enqueueing, user-library enqueueing, tracked-manga enqueueing, atomic job claiming, bounded parallel processing, and shared waiting-user completion/failure updates.
+- Updated cron and manual update routes to queue work and start immediate best-effort background processing.
+- Added a shared active-job partial unique index migration.
+- Added single-manga sync controls to the manga detail page and library cards.
+- Updated architecture, operations, README, and functional audit docs.
+
+Verification:
+- Ran `npm run test -- tests/lib/sync-jobs.test.ts tests/lib/manga-updater.test.ts tests/api/cron-update.route.test.ts tests/api/manga-updates.route.test.ts tests/api/manga-owned-routes.test.ts`: 21 tests passed.
+- Ran `npm run lint`: passed with 8 existing `<img>` warnings.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with no failed sources. MangaPlus emitted the known upstream `Account Banned` discovery log, but the update completed successfully.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 196 passing tests, and a successful production build.
+- Browser-verified the signed-in local library at `http://localhost:3000`: global Update Library button is visible and library cards expose icon-only "Sync this manga" buttons.
+- Browser-verified `http://localhost:3000/manga/hunter-x-hunter`: the detail page exposes `Sync Manga`, and a live click returned the "Manga update started" success toast.
+
+Outcome:
+- Done locally. Daily cron now runs at 10:00 UTC, shared manga update jobs dedupe scraper work across users, manual updates queue work immediately, and single-manga sync is available from both library cards and manga detail pages.
+
+Learnings:
+- No new reusable learning yet.
+
 ## 2026-06-17 - Backfill Missing Sources For Tracked Manga
 
 Why:

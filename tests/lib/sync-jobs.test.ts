@@ -2,39 +2,48 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   userMangaUpdateMock,
+  userMangaUpdateManyMock,
   syncJobCreateMock,
   syncJobDeleteManyMock,
   syncJobFindUniqueMock,
   syncJobFindManyMock,
+  syncJobUpdateManyMock,
   syncJobUpdateMock,
-  checkForUpdatesMock,
+  syncJobCountMock,
+  updateSingleMangaMock,
 } = vi.hoisted(() => ({
   userMangaUpdateMock: vi.fn(),
+  userMangaUpdateManyMock: vi.fn(),
   syncJobCreateMock: vi.fn(),
   syncJobDeleteManyMock: vi.fn(),
   syncJobFindUniqueMock: vi.fn(),
   syncJobFindManyMock: vi.fn(),
+  syncJobUpdateManyMock: vi.fn(),
   syncJobUpdateMock: vi.fn(),
-  checkForUpdatesMock: vi.fn(),
+  syncJobCountMock: vi.fn(),
+  updateSingleMangaMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     userManga: {
       update: userMangaUpdateMock,
+      updateMany: userMangaUpdateManyMock,
     },
     syncJob: {
       create: syncJobCreateMock,
       deleteMany: syncJobDeleteManyMock,
       findUnique: syncJobFindUniqueMock,
       findMany: syncJobFindManyMock,
+      updateMany: syncJobUpdateManyMock,
       update: syncJobUpdateMock,
+      count: syncJobCountMock,
     },
   },
 }));
 
 vi.mock("@/lib/manga-updater", () => ({
-  checkForUpdates: checkForUpdatesMock,
+  updateSingleManga: updateSingleMangaMock,
 }));
 
 import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
@@ -43,10 +52,13 @@ describe("enqueueMangaSyncJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     userMangaUpdateMock.mockResolvedValue({});
+    userMangaUpdateManyMock.mockResolvedValue({ count: 0 });
     syncJobCreateMock.mockResolvedValue({ id: "created-job" });
     syncJobDeleteManyMock.mockResolvedValue({ count: 0 });
+    syncJobUpdateManyMock.mockResolvedValue({ count: 1 });
     syncJobUpdateMock.mockResolvedValue({ id: "updated-job" });
-    checkForUpdatesMock.mockResolvedValue([{ manga: "Out", status: "No new chapters updates" }]);
+    syncJobCountMock.mockResolvedValue(0);
+    updateSingleMangaMock.mockResolvedValue({ manga: "Out", status: "No new chapters updates" });
   });
 
   it("creates a new job when no active job exists", async () => {
@@ -58,17 +70,17 @@ describe("enqueueMangaSyncJob", () => {
     expect(syncJobFindManyMock).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         type: "MANGA_UPDATE",
-        userId: "u1",
+        userId: null,
         mangaId: "m1",
         status: { in: ["QUEUED", "RUNNING"] },
       }),
     }));
     expect(syncJobCreateMock).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        type: "MANGA_UPDATE",
-        userId: "u1",
-        mangaId: "m1",
-        status: "QUEUED",
+        data: expect.objectContaining({
+          type: "MANGA_UPDATE",
+          userId: null,
+          mangaId: "m1",
+          status: "QUEUED",
       }),
     }));
   });
@@ -111,30 +123,26 @@ describe("enqueueMangaSyncJob", () => {
   it("keeps a sync job queued for retry when every source fails", async () => {
     syncJobFindUniqueMock.mockResolvedValue({
       id: "job1",
-      status: "QUEUED",
-      userId: "u1",
+      status: "RUNNING",
       mangaId: "m1",
-      attempts: 0,
+      attempts: 1,
       manga: { title: "Out" },
     });
-    checkForUpdatesMock.mockResolvedValue([{
+    updateSingleMangaMock.mockResolvedValue({
       manga: "Out",
       status: "All sources failed: blocked",
       failedSources: 1,
       allSourcesFailed: true,
-    }]);
+    });
 
     await processSyncJob("job1");
 
-    expect(userMangaUpdateMock).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(userMangaUpdateManyMock).toHaveBeenLastCalledWith(expect.objectContaining({
       where: {
-        userId_mangaId: {
-          userId: "u1",
-          mangaId: "m1",
-        },
+        mangaId: "m1",
+        syncStatus: "SYNCING",
       },
       data: expect.objectContaining({
-        syncStatus: "SYNCING",
         syncFinishedAt: null,
         syncError: "All sources failed: blocked",
       }),

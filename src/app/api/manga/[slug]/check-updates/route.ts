@@ -1,7 +1,8 @@
-import { checkForUpdates } from "@/lib/manga-updater";
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
+import { after } from "next/server";
+import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 
 export async function POST(
     request: NextRequest,
@@ -35,8 +36,17 @@ export async function POST(
             return NextResponse.json({ error: "Manga not tracked" }, { status: 403 });
         }
 
-        const results = await checkForUpdates(manga.id);
-        return NextResponse.json({ success: true, results });
+        const job = await enqueueMangaSyncJob(userId, manga.id);
+
+        after(async () => {
+            try {
+                await processSyncJob(job.id);
+            } catch (error) {
+                console.error("Manual manga update job failed:", error);
+            }
+        });
+
+        return NextResponse.json({ success: true, queued: 1, jobId: job.id });
     } catch (error) {
         console.error("Manual update failed:", error);
         return NextResponse.json(
