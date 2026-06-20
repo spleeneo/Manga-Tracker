@@ -5,6 +5,7 @@ const SYNC_JOB_TYPE = "MANGA_UPDATE";
 const MAX_ATTEMPTS = 3;
 const DEFAULT_QUEUE_LIMIT = 20;
 const DEFAULT_CONCURRENCY = 4;
+const STALE_RUNNING_JOB_MS = 10 * 60_000;
 
 type SyncJobRef = { id: string };
 type ClaimedJob = { id: string };
@@ -13,6 +14,31 @@ type ProcessQueuedSyncJobsOptions = {
   limit?: number;
   concurrency?: number;
 };
+
+type RecoverStaleSyncJobsOptions = {
+  mangaId?: string;
+  staleAfterMs?: number;
+};
+
+export async function recoverStaleRunningSyncJobs(options: RecoverStaleSyncJobsOptions = {}) {
+  const staleAfterMs = options.staleAfterMs ?? STALE_RUNNING_JOB_MS;
+  const staleBefore = new Date(Date.now() - staleAfterMs);
+
+  return prisma.syncJob.updateMany({
+    where: {
+      type: SYNC_JOB_TYPE,
+      status: "RUNNING",
+      lockedAt: { lt: staleBefore },
+      ...(options.mangaId ? { mangaId: options.mangaId } : {}),
+    },
+    data: {
+      status: "QUEUED",
+      runAfter: new Date(),
+      lockedAt: null,
+      error: "Previous sync worker timed out before completion",
+    },
+  });
+}
 
 async function markUserMangaSyncing(userId: string, mangaId: string) {
   const now = new Date();
@@ -34,6 +60,8 @@ async function markUserMangaSyncing(userId: string, mangaId: string) {
 }
 
 export async function enqueueSharedMangaSyncJob(mangaId: string): Promise<SyncJobRef> {
+  await recoverStaleRunningSyncJobs({ mangaId });
+
   const now = new Date();
   const activeJobs = await prisma.syncJob.findMany({
     where: {
@@ -277,6 +305,8 @@ async function runClaimedSyncJob(jobId: string) {
 }
 
 export async function processSyncJob(jobId: string) {
+  await recoverStaleRunningSyncJobs();
+
   const claimed = await claimSyncJob(jobId);
   if (!claimed) {
     return { id: jobId, status: "skipped" as const };
@@ -306,6 +336,8 @@ async function runWithConcurrency<T, R>(
 }
 
 export async function processQueuedSyncJobs(options: ProcessQueuedSyncJobsOptions = {}) {
+  await recoverStaleRunningSyncJobs();
+
   const limit = options.limit ?? DEFAULT_QUEUE_LIMIT;
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
   const jobs = await claimQueuedSyncJobs(limit);

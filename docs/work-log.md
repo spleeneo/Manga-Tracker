@@ -28,6 +28,38 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-06-20 - Recover Stale Shared Sync Jobs
+
+Why:
+- After the shared queue rollout, many library rows stayed in `SYNCING`.
+- Database inspection showed 21 `UserManga` rows in `SYNCING`, 31 shared `SyncJob` rows stuck in `RUNNING`, and 5 retryable queued jobs.
+- The shared queue did not recover jobs left `RUNNING` when a best-effort Vercel background invocation stopped before completion.
+
+Plan:
+- Add stale `RUNNING` job recovery before enqueueing or processing sync jobs.
+- Cover stale lock recovery with a focused queue test.
+- Run focused tests, update smoke, and full verification.
+- Requeue/process the currently stuck jobs after the fix is verified.
+
+Changed:
+- Added `recoverStaleRunningSyncJobs` to requeue shared `RUNNING` jobs older than 10 minutes.
+- Call stale recovery before shared enqueueing, single-job processing, and queued-batch processing.
+- Added a focused regression test for stale shared-job recovery.
+
+Verification:
+- Ran `npm run test -- tests/lib/sync-jobs.test.ts`: 5 tests passed.
+- Ran `npm run test -- tests/lib/sync-jobs.test.ts tests/lib/manga-updater.test.ts tests/api/cron-update.route.test.ts tests/api/manga-updates.route.test.ts tests/api/manga-owned-routes.test.ts`: 22 tests passed.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored), with the known MangaPlus `Account Banned` discovery log.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 197 passing tests, and a successful production build.
+- Ran a one-off recovery against the configured database: requeued 31 stale running shared jobs, processed due jobs in three rounds, and drained the due queue.
+- Confirmed post-recovery database state: all 32 `UserManga` rows are `UPDATED`, 1109 sync jobs are `DONE`, 1 historical sync job is `FAILED`, and there are 0 queued/running/stale-running jobs.
+
+Outcome:
+- Done locally and repaired in the configured database. Future queue runs recover stale `RUNNING` jobs before enqueueing or processing work.
+
+Learnings:
+- See `docs/learnings.md`: "2026-06-20 - Serverless Queues Need Stale Lock Recovery".
+
 ## 2026-06-20 - Make Main Push The Default Delivery Rule
 
 Why:

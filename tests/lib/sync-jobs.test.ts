@@ -46,7 +46,7 @@ vi.mock("@/lib/manga-updater", () => ({
   updateSingleManga: updateSingleMangaMock,
 }));
 
-import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
+import { enqueueMangaSyncJob, processSyncJob, recoverStaleRunningSyncJobs } from "@/lib/sync-jobs";
 
 describe("enqueueMangaSyncJob", () => {
   beforeEach(() => {
@@ -118,6 +118,28 @@ describe("enqueueMangaSyncJob", () => {
     });
     expect(syncJobUpdateMock).not.toHaveBeenCalled();
     expect(syncJobCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("requeues stale running shared jobs so future workers can retry them", async () => {
+    syncJobUpdateManyMock.mockResolvedValueOnce({ count: 2 });
+
+    const result = await recoverStaleRunningSyncJobs({ staleAfterMs: 10 * 60_000 });
+
+    expect(result).toEqual({ count: 2 });
+    expect(syncJobUpdateManyMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        type: "MANGA_UPDATE",
+        status: "RUNNING",
+        lockedAt: expect.objectContaining({
+          lt: expect.any(Date),
+        }),
+      }),
+      data: expect.objectContaining({
+        status: "QUEUED",
+        lockedAt: null,
+        error: "Previous sync worker timed out before completion",
+      }),
+    }));
   });
 
   it("keeps a sync job queued for retry when every source fails", async () => {

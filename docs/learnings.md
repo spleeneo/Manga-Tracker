@@ -192,3 +192,15 @@ Learning:
 
 Action:
 - Use the shared source ranking helper for manga detail source ordering and reader fallback alternatives, and keep generic dedicated manga sources ranked ahead of MangaDex by default.
+
+## 2026-06-20 - Serverless Queues Need Stale Lock Recovery
+
+Context:
+- Shared manga sync jobs run inside Vercel Functions using `after(...)` for immediate manual processing.
+- A function can stop after claiming jobs as `RUNNING`, leaving shared jobs locked and user library rows stuck in `SYNCING`.
+
+Learning:
+- Any durable queue processed by best-effort serverless workers needs stale `RUNNING` job recovery before enqueueing or claiming more work.
+
+Action:
+- Requeue stale running sync jobs before enqueueing or processing queue work, and keep a regression test for stale lock recovery.
