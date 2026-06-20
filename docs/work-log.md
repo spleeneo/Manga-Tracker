@@ -53,6 +53,31 @@ Outcome:
 Learnings:
 - No new reusable learning added.
 
+## 2026-06-20 - Review Delivery Rule Consistency
+
+Why:
+- The standing `main` delivery rule needed a second pass across project docs and GitHub templates to avoid contradictory instructions.
+
+Plan:
+- Search active repo instructions, docs, README, and GitHub templates for delivery, approval, push, and main-branch language.
+- Update any active template or instruction that still made delivery approval sound like a per-change decision.
+- Leave dated historical work-log entries unchanged because they describe past work rather than current rules.
+
+Changed:
+- Clarified `README.md` contributing notes so maintainer/AI work follows `AGENTS.md` while external contributors use branch-and-PR flow.
+- Updated `.github/pull_request_template.md` so the delivery checklist names `main` delivery as the default and labels non-delivery as an exception.
+- Added this work-log entry.
+
+Verification:
+- Ran `rg -n "approved|approval|approve|delivery|deliver|push|main|keep.*local|avoid pushing|pause before delivery|CI/CD|deploy" AGENTS.md README.md docs .github -S` and reviewed the matches.
+- Documentation/template-only change reviewed by diff.
+
+Outcome:
+- Done locally; active instructions now consistently say verified work is delivered to `main` by default unless the user explicitly requests otherwise.
+
+Learnings:
+- No new reusable learning added.
+
 ## 2026-06-20 - Shared Daily Update Queue And Single-Manga Sync
 
 Why:

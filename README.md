@@ -134,6 +134,8 @@ This will execute a script to delete all entries from the configured Postgres da
 
 ## Contributing
 
+Project maintainers and AI-assisted work in this shared repository follow [AGENTS.md](AGENTS.md): completed verified work is committed and pushed to `main` by default unless the user explicitly asks otherwise. External contributors should use the branch-and-PR flow below.
+
 1.  Fork the repository
 2.  Create your feature branch (`git checkout -b feature/amazing-feature`)
 3.  Commit your changes (`git commit -m 'Add some amazing feature'`)

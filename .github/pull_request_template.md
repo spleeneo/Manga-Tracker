@@ -24,6 +24,5 @@ Verification details:
 
 ## Delivery
 
-- [ ] This work is ready to merge/push to `main` and run CI/CD.
-- [ ] This work should not be delivered yet; reason:
-
+- [ ] This work is verified and should follow the repository default: merge/push to `main` so CI/CD runs.
+- [ ] Exception: this work should not be delivered yet; reason:
