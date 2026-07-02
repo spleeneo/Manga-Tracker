@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, CheckCircle2, Loader2 } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { formatChapterReleaseDate } from "@/lib/chapter-release-date";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 
 interface ChapterItemProps {
@@ -28,6 +29,7 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
   const readerHref = `/manga/${slug}/chapter/${chapter.id}`;
   const opensExternally = isExternalReaderSource(chapter.sourceName);
   const isCurrentLastRead = currentLastReadChapterNumber === chapter.chapterNumber;
+  const formattedReleaseDate = formatChapterReleaseDate(chapter.releaseDate);
 
   const openChapter = () => {
     if (opensExternally) {
@@ -162,11 +164,13 @@ export function ChapterItem({ slug, chapter, currentLastReadChapterNumber, onPro
             +{chapter.alternativeCount} alt
           </span>
         ) : null}
-        {chapter.releaseDate && (
-          <span className="text-[10px] font-bold uppercase text-muted-foreground/70">
-            {new Date(chapter.releaseDate).toLocaleDateString()}
-          </span>
-        )}
+        <span
+          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground/70"
+          title={formattedReleaseDate ? `Released ${formattedReleaseDate}` : "Release date unavailable"}
+        >
+          <CalendarDays className="h-3 w-3" aria-hidden="true" />
+          {formattedReleaseDate ? `Released ${formattedReleaseDate}` : "Date unavailable"}
+        </span>
       </div>
 
       <button

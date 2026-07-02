@@ -1018,3 +1018,25 @@ Verification:
 
 Outcome:
 - Parents can link a child account and enforce conservative, server-side manga restrictions with customizable tags/ratings and per-title decisions. Child-facing denials do not reveal the sensitive classification reason.
+
+## 2026-07-02 - Show Chapter Release Dates On Manga Pages
+
+Why:
+- Chapter cards should make each chapter's release date visible, including a clear state when a provider does not supply one.
+
+Plan:
+- Format valid provider dates consistently and render a labeled date row on every chapter card.
+- Cover valid, missing, and invalid date values with a focused unit test, then run the full verification gate and inspect the manga page in the browser.
+
+Changed:
+- Added a reusable chapter release-date formatter.
+- Chapter cards now display `Released <date>` or `Date unavailable` with a calendar icon.
+
+Verification:
+- `npm run test -- tests/lib/chapter-release-date.test.ts`: 2 tests passed.
+- `npm run lint`: passed with the repository's 8 existing `<img>` warnings (as the first stage of `npm run verify`).
+- Browser-verified the signed-in Hunter X Hunter manga page: chapter cards rendered `Date unavailable` for the selected MangaPill chapters, whose provider data has no release dates, and the browser console had no errors.
+- `npm run verify` could not complete because concurrent, unrelated content-classification/provider work in the shared worktree caused circular-import scraper failures and two manga-route test failures. Before those failures, 182 tests passed; the focused release-date test remained green. The production build stage was therefore not reached.
+
+Outcome:
+- Chapter release-date metadata is now consistently visible when available, while missing or invalid provider dates are disclosed instead of silently omitted.
