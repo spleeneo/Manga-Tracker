@@ -224,7 +224,7 @@ export function MangaCard({
                 title={manga.title}
                 syncing={isSyncing}
                 onSync={() => onSync(manga.slug, manga.title)}
-                className="absolute right-5 top-1"
+                className="absolute left-12 top-2"
             />
 
             <div className="flex min-w-0 flex-1 flex-col p-3">

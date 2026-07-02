@@ -949,3 +949,23 @@ Verification:
 
 Outcome:
 - Provider priority docs now match the implementation: MangaPill ranks above single-title fallbacks for best-available selection, while `Bleach Live` remains the current title-specific exception. The audit checklist now describes alias reuse, `(mangaId, sourceUrl)` duplicate protection, and queued sync jobs.
+
+## 2026-07-02 - Prevent Mobile Manga Card Action Overlap
+
+Why:
+- The per-manga refresh icon overlapped the quick-read chapter tag on narrow library cards.
+
+Plan:
+- Give the refresh control a dedicated position over the mobile cover image.
+- Run the full verification gate and inspect the responsive card in the browser where authentication permits.
+
+Changed:
+- Moved the mobile refresh control from the card's upper-right action area to the upper-right of the cover image.
+
+Verification:
+- Ran `npm run verify`: passed with 8 existing `<img>` lint warnings, 197 passing tests, and a successful production build.
+- Opened the local app at a 390x844 mobile viewport; the library remained auth-gated in the browser session, so the signed-in card could not be visually inspected end to end.
+- Confirmed from the mobile card geometry that the 28px refresh control now sits within the 80px cover (`left-12 top-2`) instead of sharing the quick-read tag's upper-right area.
+
+Outcome:
+- The mobile refresh icon and quick-read chapter tag now occupy separate card regions.
