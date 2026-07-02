@@ -8,6 +8,7 @@ import { normalizeMangaStatus } from "@/lib/manga-status";
 import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
+import { evaluateMangaAccess, getChildPolicy, getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 
 export async function POST(request: Request) {
     try {
@@ -17,7 +18,17 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { title, slug, coverUrl, status, description, sourceUrl, sources = [] } = body;
+        const { title, slug, coverUrl, status, description, sourceUrl, sources = [], contentRating, classificationSource, tags = [] } = body;
+        const normalizedTags = Array.isArray(tags) ? tags.filter((tag): tag is { id: string; name: string; group?: string } => Boolean(tag && typeof tag.id === "string" && typeof tag.name === "string")) : [];
+        const childPolicy = await getChildPolicy(userId);
+        if (childPolicy) {
+            const access = evaluateMangaAccess(childPolicy, {
+                contentRating: typeof contentRating === "string" ? contentRating : null,
+                classificationSource: classificationSource === "MANGADEX" ? classificationSource : null,
+                tags: normalizedTags.map((tag) => tag.name),
+            });
+            if (!access.allowed) return parentalControlError(access.reason);
+        }
 
         // Normalize sources list
         // If a compatibility caller provides a single sourceUrl, fold it into the sources array.
@@ -128,6 +139,11 @@ export async function POST(request: Request) {
             }
         }
 
+        if (existingManga && childPolicy) {
+            const existingAccess = await getMangaAccess(userId, existingManga.id);
+            if (!existingAccess.allowed) return parentalControlError(existingAccess.reason);
+        }
+
         const mangaId = existingManga ? existingManga.id : (await prisma.manga.create({
             data: {
                 title: finalMangaData.title,
@@ -135,8 +151,25 @@ export async function POST(request: Request) {
                 coverUrl: finalMangaData.coverUrl,
                 status: normalizeMangaStatus(finalMangaData.status, "ONGOING"),
                 description: finalMangaData.description,
+                contentRating: classificationSource === "MANGADEX" && typeof contentRating === "string" ? contentRating.toLowerCase() : null,
+                classificationSource: classificationSource === "MANGADEX" ? "MANGADEX" : null,
+                classifiedAt: classificationSource === "MANGADEX" ? new Date() : null,
+                tags: normalizedTags.length ? { create: normalizedTags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })) } : undefined,
             }
         })).id;
+
+        if (existingManga && classificationSource === "MANGADEX" && typeof contentRating === "string") {
+            await prisma.manga.update({
+                where: { id: mangaId },
+                data: {
+                    contentRating: contentRating.toLowerCase(), classificationSource: "MANGADEX", classifiedAt: new Date(),
+                    tags: normalizedTags.length ? {
+                        deleteMany: {},
+                        create: normalizedTags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })),
+                    } : undefined,
+                },
+            });
+        }
 
         // Process all sources
         const hasSources = sourcesToProcess.length > 0;

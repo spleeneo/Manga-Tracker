@@ -993,3 +993,28 @@ Verification:
 
 Outcome:
 - Mobile manga cards now sync with a deliberate right swipe and no longer show a refresh icon; desktop cards retain the explicit sync button.
+
+## 2026-07-02 - Add Tag-Based Parental Controls
+
+Why:
+- Families need child accounts that cannot discover or open manga classified with disallowed ratings or sensitive tags.
+
+Plan:
+- Link parent and child accounts by email, persist trusted MangaDex classifications, and evaluate one server-side access policy across discovery, library, detail, chapter, reader, progress, source, and update paths.
+- Provide parent-managed rating/tag settings and per-title allow/block overrides, with unclassified manga denied by default.
+
+Changed:
+- Added additive parental-link, child-policy, normalized content-tag, manga-classification, and title-override database models and applied the additive SQL directly to Neon because the existing migration history is drifted and deployment does not run migrations.
+- Added the conservative `safe`-only preset with `Gore` and `Sexual Violence` blocked, plus a centralized policy evaluator and stable 403 reason codes.
+- Added parent invitation, policy, unlink, and override APIs; invitations activate automatically when the invited Google account signs in.
+- Added the parental-control settings page, persisted full MangaDex tags/content ratings during Explore imports and metadata refreshes, filtered child discovery/library results, disabled unclassified provider search for children, and protected direct reader/API entry points.
+
+Verification:
+- Focused policy, parental API, Explore, manga import, library, chapter, reader, next-chapter, and read-status suites passed (49 tests in the primary route regression run).
+- `npm run test`: 212 tests passed across 51 files.
+- `npm run build`: production build passed and included both parental-control API routes and the settings page.
+- `npm run lint`: passed with the repository's 8 existing `<img>` warnings.
+- Browser-verified the signed-in desktop navigation and `/settings/parental-controls` page; the invitation form rendered correctly and produced no browser console warnings or errors. No invitation was submitted during verification.
+
+Outcome:
+- Parents can link a child account and enforce conservative, server-side manga restrictions with customizable tags/ratings and per-title decisions. Child-facing denials do not reveal the sensitive classification reason.

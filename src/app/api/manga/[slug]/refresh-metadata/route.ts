@@ -3,6 +3,7 @@ import { fetchMetadata } from "@/lib/scrapers/registry";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 
 export async function POST(
     request: NextRequest,
@@ -24,6 +25,8 @@ export async function POST(
         if (!manga) {
             return NextResponse.json({ error: "Manga not found" }, { status: 404 });
         }
+        const access = await getMangaAccess(userId, manga.id);
+        if (!access.allowed) return parentalControlError(access.reason);
 
         const tracked = await prisma.userManga.findUnique({
             where: {
@@ -54,6 +57,13 @@ export async function POST(
                 coverUrl: meta.coverUrl || manga.coverUrl,
                 status: normalizeMangaStatus(meta.status || manga.status, "ONGOING"),
                 description: meta.description || manga.description,
+                contentRating: meta.classificationSource === "MANGADEX" ? meta.contentRating?.toLowerCase() : manga.contentRating,
+                classificationSource: meta.classificationSource ?? manga.classificationSource,
+                classifiedAt: meta.classificationSource ? new Date() : manga.classifiedAt,
+                tags: meta.classificationSource === "MANGADEX" && meta.tags ? {
+                    deleteMany: {},
+                    create: meta.tags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })),
+                } : undefined,
                 updatedAt: new Date()
             }
         });

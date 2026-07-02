@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { ChapterReader } from "@/components/chapter-reader";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { auth } from "../../../../../../auth";
+import { getMangaAccess } from "@/lib/parental-controls";
+import Link from "next/link";
 
 interface PageProps {
   params: Promise<{
@@ -25,6 +27,8 @@ export default async function ReaderPage({ params }: PageProps) {
     },
   });
   if (!manga) notFound();
+  const access = await getMangaAccess(session.user.id, manga.id);
+  if (!access.allowed) return <div className="min-h-screen bg-background"><div className="page-wrap py-16"><div className="surface mx-auto max-w-lg rounded-lg p-8 text-center"><h1 className="text-2xl font-bold">Unavailable under parental controls</h1><Link href="/" className="ui-button ui-button-primary mt-6">Back to library</Link></div></div></div>;
 
   const tracked = await prisma.userManga.findUnique({
     where: {

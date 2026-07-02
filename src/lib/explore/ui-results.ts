@@ -19,6 +19,8 @@ export interface MangaDexExploreResult {
   tags: ExploreTagSummary[];
   source: ExploreSource;
   isTracked: boolean;
+  contentRating?: string;
+  classificationSource?: "MANGADEX";
 }
 
 export interface AggregatedExploreSearchResult {
@@ -42,6 +44,8 @@ export interface ExploreDisplayManga {
   sources: ExploreSource[];
   isTracked: boolean;
   resultKind: "browse" | "search";
+  contentRating?: string;
+  classificationSource?: "MANGADEX";
 }
 
 export function slugifyExploreTitle(title: string) {

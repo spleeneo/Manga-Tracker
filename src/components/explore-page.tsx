@@ -190,6 +190,9 @@ export function ExplorePage() {
           status: manga.status || "ONGOING",
           description: manga.description,
           sources: manga.sources,
+          contentRating: manga.contentRating,
+          classificationSource: manga.classificationSource,
+          tags: manga.tags,
         }),
       });
       const data = await res.json();

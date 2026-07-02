@@ -17,6 +17,7 @@ import { getLibraryMangaSummary } from "@/lib/library-summary";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { filterSourcesForManga } from "@/lib/source-overrides";
 import { getSourceRankScore } from "@/lib/source-ranking";
+import { getMangaAccess } from "@/lib/parental-controls";
 
 interface PageProps {
     params: Promise<{
@@ -106,6 +107,10 @@ export default async function MangaPage({ params }: PageProps) {
 
     if (!manga) {
         notFound();
+    }
+    const access = await getMangaAccess(session.user.id, manga.id);
+    if (!access.allowed) {
+        return <RestrictedMangaPage />;
     }
 
     const summary = await getLibraryMangaSummary(session.user.id, manga.id);
@@ -265,4 +270,8 @@ export default async function MangaPage({ params }: PageProps) {
             <LegalFooter />
         </div>
     );
+}
+
+function RestrictedMangaPage() {
+    return <div className="min-h-screen bg-background"><div className="page-wrap py-16"><div className="surface mx-auto max-w-lg rounded-lg p-8 text-center"><h1 className="text-2xl font-bold">Unavailable under parental controls</h1><p className="mt-3 text-muted-foreground">Ask your parent or guardian if you think this title should be available.</p><Link href="/" className="ui-button ui-button-primary mt-6">Back to library</Link></div></div></div>;
 }

@@ -119,7 +119,14 @@ export class MangaDexScraper implements Scraper {
             description: manga.attributes.description.en || Object.values(manga.attributes.description)[0],
             coverUrl: fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : undefined,
             status: normalizeMangaStatus(manga.attributes.status),
-            author: author
+            author: author,
+            contentRating: manga.attributes.contentRating,
+            classificationSource: "MANGADEX",
+            tags: (manga.attributes.tags ?? []).map((tag: { id: string; attributes: { name: Record<string, string>; group?: string } }) => ({
+                id: tag.id,
+                name: tag.attributes.name.en || Object.values(tag.attributes.name)[0],
+                group: tag.attributes.group,
+            })),
         };
     }
 

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { BookMarked, Compass } from "lucide-react";
+import { BookMarked, Compass, Shield } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Library", icon: BookMarked },
   { href: "/explore", label: "Explore", icon: Compass },
+  { href: "/settings/parental-controls", label: "Parental controls", icon: Shield },
 ];
 
 export function AppNav() {

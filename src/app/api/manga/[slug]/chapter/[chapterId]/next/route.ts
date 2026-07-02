@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/session";
+import { getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 import { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_LIMIT = 1;
@@ -28,6 +29,8 @@ export async function GET(
     if (!manga) {
       return NextResponse.json({ error: "Manga not found" }, { status: 404 });
     }
+    const access = await getMangaAccess(userId, manga.id);
+    if (!access.allowed) return parentalControlError(access.reason);
 
     const tracked = await prisma.userManga.findUnique({
       where: {

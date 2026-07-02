@@ -42,6 +42,9 @@ export interface MangaMetadata {
     coverUrl?: string;
     status?: string;
     author?: string;
+    contentRating?: string;
+    classificationSource?: "MANGADEX";
+    tags?: Array<{ id: string; name: string; group?: string }>;
 }
 
 export interface SearchResult extends MangaMetadata {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { evaluateMangaAccess, getChildPolicy } from "@/lib/parental-controls";
 
 const MANGADEX_API = "https://api.mangadex.org";
 const MANGADEX_TITLE_URL = "https://mangadex.org/title";
@@ -28,6 +29,8 @@ export interface ExploreManga {
   status?: string;
   year?: number;
   tags: Array<{ id: string; name: string }>;
+  contentRating: string;
+  classificationSource: "MANGADEX";
   source: { name: "MangaDex"; url: string };
   isTracked: boolean;
 }
@@ -53,6 +56,7 @@ interface MangaDexMangaItem {
     description?: Record<string, string>;
     status?: string;
     year?: number;
+    contentRating?: string;
     tags?: Array<{
       id: string;
       attributes: {
@@ -186,11 +190,13 @@ function mapManga(item: MangaDexMangaItem): Omit<ExploreManga, "isTracked"> {
     coverUrl: fileName ? `https://uploads.mangadex.org/covers/${item.id}/${fileName}.256.jpg` : undefined,
     status: item.attributes.status?.toUpperCase(),
     year: item.attributes.year,
-    tags: (item.attributes.tags ?? []).slice(0, 4).map((tag) => ({
+    tags: (item.attributes.tags ?? []).map((tag) => ({
       id: tag.id,
       name: firstLocalized(tag.attributes.name) ?? "Tag",
     })),
     source: { name: "MangaDex", url: sourceUrl },
+    contentRating: item.attributes.contentRating ?? "",
+    classificationSource: "MANGADEX",
   };
 }
 
@@ -213,6 +219,21 @@ async function decorateTracked(userId: string, mangas: Omit<ExploreManga, "isTra
     ...manga,
     isTracked: trackedUrls.has(manga.source.url),
   }));
+}
+
+async function filterPermitted(userId: string, mangas: Omit<ExploreManga, "isTracked">[]) {
+  const policy = await getChildPolicy(userId);
+  if (!policy || mangas.length === 0) return mangas;
+  const knownSources = await prisma.source.findMany({
+    where: { sourceUrl: { in: mangas.map((manga) => manga.source.url) } },
+    select: { sourceUrl: true, manga: { select: { childOverrides: { where: { childId: userId }, take: 1, select: { decision: true } } } } },
+  });
+  const overrideByUrl = new Map(knownSources.map((source) => [source.sourceUrl, source.manga?.childOverrides?.[0]?.decision as "ALLOW" | "BLOCK" | undefined]));
+  return mangas.filter((manga) => evaluateMangaAccess(policy, {
+    contentRating: manga.contentRating || null,
+    classificationSource: manga.classificationSource,
+    tags: manga.tags.map((tag) => tag.name),
+  }, overrideByUrl.get(manga.source.url)).allowed);
 }
 
 export async function getExploreManga(userId: string, query: ExploreQuery) {
@@ -248,8 +269,9 @@ export async function getExploreManga(userId: string, query: ExploreQuery) {
     });
   }
 
+  const permitted = await filterPermitted(userId, value);
   return {
-    results: await decorateTracked(userId, value),
+    results: await decorateTracked(userId, permitted),
     nextOffset,
   };
 }

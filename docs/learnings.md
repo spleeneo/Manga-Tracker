@@ -204,3 +204,14 @@ Learning:
 
 Action:
 - Requeue stale running sync jobs before enqueueing or processing queue work, and keep a regression test for stale lock recovery.
+
+## 2026-07-02 - Content Restrictions Must Guard Resources, Not Cards
+
+Context:
+- Manga can be reached through Explore, library cards, detail URLs, chapter APIs, internal readers, progress endpoints, source links, and external-reader redirects.
+
+Learning:
+- UI filtering is not an authorization boundary. A content policy must be evaluated from persisted trusted metadata at every server-side resource entry point, and unknown metadata must fail closed for restricted accounts.
+
+Action:
+- Keep parental decisions in the shared policy evaluator, return stable server-side denial codes, and add the guard whenever a new manga or chapter access path is introduced.

@@ -22,6 +22,11 @@ model Manga {
   sources     Source[]
   userManga   UserManga[]
   syncJobs    SyncJob[]
+  contentRating       String?
+  classificationSource String?
+  classifiedAt        DateTime?
+  tags                MangaTag[]
+  childOverrides      ChildMangaOverride[]
 }
 
 model Source {
@@ -82,6 +87,71 @@ model User {
   chapters      UserChapter[]
   chatMessages  ChatMessage[]
   syncJobs      SyncJob[]
+  parentLinks   ParentChildLink[] @relation("ParentLinks")
+  childLink     ParentChildLink?  @relation("ChildLink")
+  childPolicy   ChildPolicy?
+  childOverrides ChildMangaOverride[] @relation("ChildOverrides")
+  grantedOverrides ChildMangaOverride[] @relation("GrantedOverrides")
+}
+
+model ParentChildLink {
+  id         String   @id @default(cuid())
+  parentId   String
+  childId    String?  @unique
+  childEmail String   @unique
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  parent     User     @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  child      User?    @relation("ChildLink", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+}
+
+model ChildPolicy {
+  id                  String   @id @default(cuid())
+  childId             String   @unique
+  enabled             Boolean  @default(true)
+  allowedContentRatings String[] @default(["safe"])
+  blockedTagNames     String[] @default(["gore", "sexual violence"])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  child               User     @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model ContentTag {
+  id        String     @id
+  name      String
+  group     String?
+  manga     MangaTag[]
+
+  @@index([name])
+}
+
+model MangaTag {
+  mangaId String
+  tagId   String
+  manga   Manga      @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  tag     ContentTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([mangaId, tagId])
+  @@index([tagId])
+}
+
+model ChildMangaOverride {
+  id          String   @id @default(cuid())
+  childId     String
+  mangaId     String
+  decision    String
+  grantedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  child       User     @relation("ChildOverrides", fields: [childId], references: [id], onDelete: Cascade)
+  manga       Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  grantedBy   User     @relation("GrantedOverrides", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@unique([childId, mangaId])
+  @@index([mangaId])
 }
 
 model Account {

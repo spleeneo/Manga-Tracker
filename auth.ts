@@ -10,6 +10,17 @@ function getAllowedEmails() {
     .filter(Boolean);
 }
 
+async function activateChildInvite(user: { id?: string; email?: string | null }) {
+  if (!user.id || !user.email) return;
+  const childEmail = user.email.trim().toLowerCase();
+  const invite = await prisma.parentChildLink.findUnique({ where: { childEmail } });
+  if (!invite || (invite.childId && invite.childId !== user.id)) return;
+  await prisma.$transaction([
+    prisma.parentChildLink.update({ where: { id: invite.id }, data: { childId: user.id, status: "ACTIVE" } }),
+    prisma.childPolicy.upsert({ where: { childId: user.id }, update: {}, create: { childId: user.id } }),
+  ]);
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -20,8 +31,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user }) {
       const allowedEmails = getAllowedEmails();
-      if (allowedEmails.length === 0) return true;
-      return Boolean(user.email && allowedEmails.includes(user.email.toLowerCase()));
+      const allowed = allowedEmails.length === 0 || Boolean(user.email && allowedEmails.includes(user.email.toLowerCase()));
+      if (allowed) await activateChildInvite(user);
+      return allowed;
     },
     async session({ session, user }) {
       if (session.user) {
@@ -29,5 +41,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
+  },
+  events: {
+    async createUser({ user }) { await activateChildInvite(user); },
   },
 });

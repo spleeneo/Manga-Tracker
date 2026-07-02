@@ -3,6 +3,7 @@ import { getLibraryMangaSummary } from "@/lib/library-summary";
 import { getCurrentUserId } from "@/lib/session";
 import { filterSourcesForManga } from "@/lib/source-overrides";
 import { NextRequest, NextResponse } from "next/server";
+import { getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 
 type ProgressAction = "set" | "caught-up" | "next" | "previous";
 
@@ -130,6 +131,8 @@ export async function POST(
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
+    const access = await getMangaAccess(userId, result.manga.id);
+    if (!access.allowed) return parentalControlError(access.reason);
 
     const mangaSources = result.manga.sources ?? [];
     const progress = await resolveProgressChapterNumber({
