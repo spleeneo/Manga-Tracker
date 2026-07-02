@@ -969,3 +969,27 @@ Verification:
 
 Outcome:
 - The mobile refresh icon and quick-read chapter tag now occupy separate card regions.
+
+## 2026-07-02 - Replace Mobile Manga Refresh Icon With Swipe To Sync
+
+Why:
+- The mobile card should stay visually clean and use a direct touch gesture for per-manga sync instead of dedicating space to a refresh icon.
+
+Plan:
+- Add a guarded right-swipe gesture that does not interfere with vertical scrolling or ordinary taps.
+- Reveal a sync affordance behind the card while swiping and trigger the existing sync flow past a clear threshold.
+- Keep the explicit refresh button on desktop, add focused gesture tests, and verify the signed-in mobile flow in the browser.
+
+Changed:
+- Removed the per-manga refresh icon from mobile cards while retaining it on desktop cards.
+- Added an 80px right-swipe interaction with a 64px sync threshold, vertical-gesture rejection, click suppression after a swipe, and snap-back animation.
+- Added focused tests for swipe direction, gesture axis, distance limiting, and the sync threshold.
+
+Verification:
+- `npm run test -- tests/lib/mobile-card-swipe.test.ts`: 3 tests passed.
+- `npm run lint`: passed with 8 existing `<img>` warnings.
+- Browser-verified the signed-in library at 390x844: swiping the Mad card to the right started its background sync, displayed its syncing state, returned the card to rest, and did not navigate away from the library.
+- `npm run verify`: passed with 8 existing `<img>` lint warnings, 200 passing tests, and a successful production build.
+
+Outcome:
+- Mobile manga cards now sync with a deliberate right swipe and no longer show a refresh icon; desktop cards retain the explicit sync button.

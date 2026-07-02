@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, CalendarClock, CheckCircle2, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
+import { getMobileCardSwipeOffset, shouldSyncFromMobileCardSwipe } from "@/lib/mobile-card-swipe";
 
 export type MangaCardData = LibraryMangaSummary;
 
@@ -176,6 +177,10 @@ export function MangaCard({
     onSync: (slug: string, title: string) => void;
 }) {
     const router = useRouter();
+    const [mobileSwipeOffset, setMobileSwipeOffset] = useState(0);
+    const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+    const mobileSwipeOffsetRef = useRef(0);
+    const suppressMobileClickRef = useRef(false);
     const progress = manga.totalChapters > 0 ? (manga.readChapters / manga.totalChapters) * 100 : 0;
     const readTarget = manga.nextUnreadChapter ?? manga.latestChapter;
     const readTargetOpensExternally = isExternalReaderSource(readTarget?.sourceName);
@@ -187,13 +192,53 @@ export function MangaCard({
     const hasUnread = manga.unreadChapters > 0;
     const nextReleaseEstimate = formatNextChapterEstimate(manga);
     const openManga = () => router.push(`/manga/${manga.slug}`);
+    const resetMobileSwipe = () => {
+        mobileSwipeStartRef.current = null;
+        mobileSwipeOffsetRef.current = 0;
+        setMobileSwipeOffset(0);
+    };
+    const finishMobileSwipe = () => {
+        const shouldSync = shouldSyncFromMobileCardSwipe(mobileSwipeOffsetRef.current);
+        suppressMobileClickRef.current = mobileSwipeOffsetRef.current > 8;
+        resetMobileSwipe();
+        if (shouldSync && !isSyncing) onSync(manga.slug, manga.title);
+    };
 
     return (
         <>
-        <div
-            className="interactive-surface manga-card-surface group relative flex h-32 cursor-pointer overflow-visible rounded-lg sm:hidden"
-            onClick={openManga}
-        >
+        <div className="relative rounded-lg sm:hidden">
+            <div
+                className="absolute inset-y-0 left-0 flex w-20 flex-col items-center justify-center gap-1 rounded-l-lg bg-primary text-primary-foreground"
+                aria-hidden="true"
+            >
+                <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
+                <span className="text-[10px] font-bold uppercase">Sync</span>
+            </div>
+            <div
+                className="interactive-surface manga-card-surface group relative flex h-32 cursor-pointer touch-pan-y overflow-visible rounded-lg transition-transform duration-150"
+                style={{ transform: `translate3d(${mobileSwipeOffset}px, 0, 0)` }}
+                onPointerDown={(event) => {
+                    mobileSwipeStartRef.current = { x: event.clientX, y: event.clientY };
+                    suppressMobileClickRef.current = false;
+                }}
+                onPointerMove={(event) => {
+                    const start = mobileSwipeStartRef.current;
+                    if (!start) return;
+                    const offset = getMobileCardSwipeOffset(start.x, start.y, event.clientX, event.clientY);
+                    mobileSwipeOffsetRef.current = offset;
+                    setMobileSwipeOffset(offset);
+                }}
+                onPointerUp={finishMobileSwipe}
+                onPointerCancel={resetMobileSwipe}
+                onClickCapture={(event) => {
+                    if (!suppressMobileClickRef.current) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    suppressMobileClickRef.current = false;
+                }}
+                onClick={openManga}
+                aria-label={`Swipe right to sync ${manga.title}`}
+            >
             <Link
                 href={`/manga/${manga.slug}`}
                 className="relative block w-20 shrink-0 self-stretch overflow-hidden rounded-l-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -220,13 +265,6 @@ export function MangaCard({
                 removing={removing}
                 onDelete={() => onDelete(manga.slug, manga.title)}
             />
-            <MangaSyncButton
-                title={manga.title}
-                syncing={isSyncing}
-                onSync={() => onSync(manga.slug, manga.title)}
-                className="absolute left-12 top-2"
-            />
-
             <div className="flex min-w-0 flex-1 flex-col p-3">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                     <div className="min-w-0">
@@ -295,6 +333,7 @@ export function MangaCard({
                         </button>
                     ) : null}
                 </div>
+            </div>
             </div>
         </div>
 
