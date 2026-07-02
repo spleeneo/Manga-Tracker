@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { getMangaAccess, parentalControlError } from "@/lib/parental-controls";
+import { refreshMangaClassification } from "@/lib/content-classification";
 
 export async function POST(
     request: NextRequest,
@@ -67,6 +68,7 @@ export async function POST(
                 updatedAt: new Date()
             }
         });
+        await refreshMangaClassification(manga.id);
 
         return NextResponse.json(updatedManga);
     } catch (error) {

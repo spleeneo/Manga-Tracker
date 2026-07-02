@@ -1,4 +1,5 @@
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { withProviderClassification } from "@/lib/classification-utils";
 import { fetchWithRetry, ScraperRequestError } from "./http";
 import { MangaMetadata, ReaderChapterInput, ReaderResult, ReaderSourceInput, ScrapedChapter, Scraper, SearchResult } from "./types";
 
@@ -112,12 +113,12 @@ export class MangaPillScraper implements Scraper {
     const coverUrl = html.match(/<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]+alt=["'][^"']*["']/i)?.[1]
       ?? html.match(/<img[^>]+alt=["'][^"']*["'][^>]+(?:data-src|src)=["']([^"']+)["']/i)?.[1];
 
-    return {
+    return withProviderClassification(this.name, {
       title: decodeHtml(title),
       description: extractDescription(html),
       coverUrl: coverUrl ? toAbsoluteUrl(coverUrl, url) : undefined,
       status: normalizeMangaStatus(extractStatus(html), "ONGOING"),
-    };
+    }, html);
   }
 
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {

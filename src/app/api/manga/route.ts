@@ -9,6 +9,7 @@ import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 import { evaluateMangaAccess, getChildPolicy, getMangaAccess, parentalControlError } from "@/lib/parental-controls";
+import { refreshMangaClassification } from "@/lib/content-classification";
 
 export async function POST(request: Request) {
     try {
@@ -242,12 +243,11 @@ export async function POST(request: Request) {
             },
         });
 
-        if (shouldScrape) {
-            const job = await enqueueMangaSyncJob(userId, mangaId);
-            after(async () => {
-                await processSyncJob(job.id);
-            });
-        }
+        const job = shouldScrape ? await enqueueMangaSyncJob(userId, mangaId) : null;
+        if (shouldScrape) after(async () => {
+            if (job) await processSyncJob(job.id);
+            await refreshMangaClassification(mangaId);
+        });
 
         return NextResponse.json({
             id: mangaId,

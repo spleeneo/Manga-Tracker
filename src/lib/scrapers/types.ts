@@ -43,7 +43,7 @@ export interface MangaMetadata {
     status?: string;
     author?: string;
     contentRating?: string;
-    classificationSource?: "MANGADEX";
+    classificationSource?: string;
     tags?: Array<{ id: string; name: string; group?: string }>;
 }
 

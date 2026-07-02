@@ -48,6 +48,7 @@ vi.mock("@/lib/scrapers/single-manga-sites", () => ({
 vi.mock("@/lib/source-discovery", () => ({
   discoverMissingSourcesForManga,
 }));
+vi.mock("@/lib/content-classification", () => ({ refreshMangaClassification: vi.fn() }));
 
 import { checkForUpdates } from "@/lib/manga-updater";
 

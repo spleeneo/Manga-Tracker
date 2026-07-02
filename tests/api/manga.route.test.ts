@@ -46,6 +46,7 @@ vi.mock("next/server", async (importOriginal) => {
 vi.mock("@/lib/scrapers/registry", () => ({
   fetchMetadata: vi.fn(),
 }));
+vi.mock("@/lib/content-classification", () => ({ refreshMangaClassification: vi.fn() }));
 
 vi.mock("@/lib/sync-jobs", () => ({
   enqueueMangaSyncJob: enqueueMangaSyncJobMock,

@@ -2,6 +2,7 @@ import { ScrapedChapter, Scraper, MangaMetadata, ReaderResult, SearchResult } fr
 import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "./nelomanga-config";
 import { fetchWithRetry, ScraperRequestError } from "./http";
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { withProviderClassification } from "@/lib/classification-utils";
 
 interface NeloChapterApiItem {
     chapter_slug: string;
@@ -195,7 +196,7 @@ export class NeloMangaScraper implements Scraper {
         };
 
         console.log(`[NeloManga] Fetched metadata for: ${metadata.title}`);
-        return metadata;
+        return withProviderClassification(this.name, metadata, html);
     }
 
     async search(query: string): Promise<SearchResult[]> {

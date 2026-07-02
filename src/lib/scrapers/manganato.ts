@@ -1,6 +1,7 @@
 import { fetchWithRetry } from "./http";
 import { MangaMetadata, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { withProviderClassification } from "@/lib/classification-utils";
 
 const BASE = "https://manganato.com";
 
@@ -81,12 +82,12 @@ export class ManganatoScraper implements Scraper {
     const coverUrl = html.match(/<span[^>]+class="info-image"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1];
     const rawStatus = extractInfoValue(html, "Status");
 
-    return {
+    return withProviderClassification(this.name, {
       title,
       description,
       coverUrl,
       status: normalizeMangaStatus(rawStatus, "ONGOING"),
-    };
+    }, html);
   }
 
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {

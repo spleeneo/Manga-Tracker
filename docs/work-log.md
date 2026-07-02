@@ -1019,6 +1019,25 @@ Verification:
 Outcome:
 - Parents can link a child account and enforce conservative, server-side manga restrictions with customizable tags/ratings and per-title decisions. Child-facing denials do not reveal the sensitive classification reason.
 
+## 2026-07-02 - Aggregate Classification Across Every Manga Source
+
+Why:
+- A shared manga can have several providers, and a restrictive tag exposed by any one of them must not be ignored.
+
+Changed:
+- Added provider classification extraction for MangaPill, Manganato, NeloManga, and Webtoon HTML metadata, including conservative rating inference for explicit tags such as `Ecchi`, `Adult`, `Erotica`, and `Hentai`.
+- Added a shared refresh that calls metadata for every linked source, unions tags, records all contributing providers, and persists the strictest content rating.
+- Wired classification refresh into manga imports, manual metadata refreshes, and update cycles, including newly discovered sources. Provider failures do not erase an existing classification, and providers without usable metadata do not count as safe.
+
+Verification:
+- Focused classification, provider, manga-import, and updater suites passed: 34 tests across 7 files.
+- `npm run smoke:update`: passed against One Piece across NeloManga, MangaPill, MangaDex, MangaPlus, and VIZ; the known MangaPlus account-ban failure remained isolated while the update succeeded.
+- The live merged One Piece record retained MangaDex's strict `suggestive` rating and union including `Gore`, so the default child policy blocks it.
+- `npm run verify`: passed with 8 existing `<img>` warnings, 219 tests, and a successful production build.
+
+Outcome:
+- Every linked provider is now consulted during classification refresh, and any available restrictive provider signal affects the shared manga policy.
+
 ## 2026-07-02 - Show Chapter Release Dates On Manga Pages
 
 Why:

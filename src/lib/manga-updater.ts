@@ -4,6 +4,7 @@ import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-over
 import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
 import { discoverMissingSourcesForManga } from "@/lib/source-discovery";
+import { refreshMangaClassification } from "@/lib/content-classification";
 
 function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
     return sources.some((source) => isDedicatedMangaSourceName(source.sourceName));
@@ -179,6 +180,12 @@ async function updateMangaRecord(manga: MangaForUpdate) {
     const totalNewChapters = sourceResults.reduce((total, result) => total + result.createdCount, 0);
     const failedSources = sourceResults.filter((result) => result.error);
     const allSourcesFailed = failedSources.length === sourceResults.length;
+
+    try {
+        await refreshMangaClassification(manga.id);
+    } catch (error) {
+        console.error(`Failed to refresh provider classifications for ${manga.title}`, error);
+    }
 
     if (totalNewChapters > 0) {
         await prisma.manga.update({

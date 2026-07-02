@@ -1,5 +1,6 @@
 import { fetchWithRetry } from "./http";
 import { MangaMetadata, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { withProviderClassification } from "@/lib/classification-utils";
 
 const WEBTOON_BASE_URL = "https://www.webtoons.com";
 const MAX_PAGES = 100;
@@ -129,12 +130,12 @@ export class WebtoonScraper implements Scraper {
     const description = stripTags(html.match(/<p[^>]*class="summary"[^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? "");
     const coverUrl = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)?.[1];
 
-    return {
+    return withProviderClassification(this.name, {
       title,
       description,
       coverUrl,
       status: "ONGOING",
-    };
+    }, html);
   }
 
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {

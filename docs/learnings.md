@@ -215,3 +215,14 @@ Learning:
 
 Action:
 - Keep parental decisions in the shared policy evaluator, return stable server-side denial codes, and add the guard whenever a new manga or chapter access path is introduced.
+
+## 2026-07-02 - Multi-Provider Safety Must Merge Conservatively
+
+Context:
+- Different providers can expose different ratings and genre/tag sets for the same manga, while some expose no classification at all.
+
+Learning:
+- Classification must query every linked source, union all tags, and choose the strictest rating. Missing provider metadata is not evidence that a title is safe, and transient provider failures must not erase known restrictions.
+
+Action:
+- Refresh the shared classification after source discovery and update cycles; infer ratings only from explicit adult-content labels and retain the last known classification when no provider returns usable metadata.
