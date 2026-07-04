@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
+import { selectContinueReadingManga } from "@/lib/continue-reading";
 
 type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
 
@@ -67,19 +68,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     }, [items]);
 
     const continueManga = useMemo(() => {
-        const lastReadManga = [...items]
-            .filter((manga) => manga.lastReadAt)
-            .sort((a, b) => new Date(b.lastReadAt ?? 0).getTime() - new Date(a.lastReadAt ?? 0).getTime())[0];
-
-        if (lastReadManga) return lastReadManga;
-
-        return [...sortedItems]
-            .filter((manga) => manga.unreadChapters > 0)
-            .sort((a, b) => {
-                const aChapter = a.nextUnreadChapter?.releaseDate;
-                const bChapter = b.nextUnreadChapter?.releaseDate;
-                return (bChapter ? new Date(bChapter).getTime() : 0) - (aChapter ? new Date(aChapter).getTime() : 0);
-            })[0] ?? sortedItems[0];
+        return selectContinueReadingManga(items, sortedItems);
     }, [items, sortedItems]);
     const continueReadTarget = continueManga?.nextUnreadChapter ?? continueManga?.latestChapter;
     const continueReadOpensExternally = isExternalReaderSource(continueReadTarget?.sourceName);

@@ -28,6 +28,30 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-07-04 - Prefer Unread Manga In Homepage Banner
+
+Why:
+- The homepage banner could select the most recently read manga even when its last available chapter had just been finished.
+- The banner should instead continue the most recent reading activity that still has unread chapters.
+
+Plan:
+- Restrict recent-reading selection to manga with unread chapters.
+- Preserve the existing newest-unread fallback for titles without reading history.
+- Add focused regression tests and verify the rendered homepage banner.
+
+Changed:
+- Extracted the banner choice into `selectContinueReadingManga`.
+- Recent reading history now wins only among titles with unread chapters.
+- Added tests for skipping a newly caught-up manga and for the newest-unread fallback.
+
+Verification:
+- Ran `npm run test -- tests/lib/continue-reading.test.ts`: 2 tests passed.
+- Verified the local homepage banner rendered an unread title, its unread count, and its next chapter; no browser console errors were present.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 200 passing tests, and a successful production build.
+
+Outcome:
+- Done. The banner no longer resurfaces a just-finished title while another recently read manga has unread chapters.
+
 ## 2026-07-04 - Skip Completed Manga In Daily Sync
 
 Why:
