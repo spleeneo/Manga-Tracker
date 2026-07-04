@@ -147,7 +147,13 @@ export async function enqueueUserLibrarySyncJobs(userId: string) {
 
 export async function enqueueTrackedMangaSyncJobs() {
   const mangas = await prisma.manga.findMany({
-    where: { userManga: { some: {} } },
+    where: {
+      userManga: { some: {} },
+      OR: [
+        { status: null },
+        { status: { not: "COMPLETED" } },
+      ],
+    },
     select: { id: true },
   });
 

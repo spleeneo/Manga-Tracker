@@ -27,7 +27,7 @@ This means two users can track the same `Manga` and reuse the same `Source` and 
 - Scheduled update calls `GET /api/cron/update`.
 - Update requests enqueue shared `SyncJob` rows for manga-level work with `userId = null`, so one tracked manga is scraped once even when multiple users track it.
 - Manual routes return after queueing and use Next.js `after(...)` to start best-effort background processing immediately.
-- The daily cron enqueues all manga with at least one `UserManga` row and processes queued jobs as the scheduled sweep and retry safety net.
+- The daily cron enqueues non-completed manga with at least one `UserManga` row and processes queued jobs as the scheduled sweep and retry safety net. Completed manga remain available for manual syncs.
 - Queued jobs are claimed with Postgres row locking and processed with bounded parallelism.
 - `updateSingleManga` loads one manga and each source, scrapes chapters, and creates missing `Chapter` rows.
 - Duplicate detection is per source using `providerChapterId` when available, with chapter number as a fallback.

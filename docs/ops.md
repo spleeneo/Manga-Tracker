@@ -74,7 +74,7 @@ The cron endpoint requires `CRON_SECRET` through one of:
 
 Increase cron frequency only after checking provider rate limits and free-tier usage.
 
-The cron route enqueues all manga tracked by at least one user and processes a bounded batch of shared manga update jobs. Manual single-manga and library update buttons are normal authenticated HTTP requests, so they can run at any time on Vercel Hobby; they enqueue the same shared jobs and start best-effort processing with `after(...)` without waiting for the next daily cron.
+The cron route enqueues all non-completed manga tracked by at least one user and processes a bounded batch of shared manga update jobs. Manga with unknown status remain eligible. Manual single-manga and library update buttons are normal authenticated HTTP requests, so they can run at any time on Vercel Hobby—including for completed manga; they enqueue the same shared jobs and start best-effort processing with `after(...)` without waiting for the next daily cron.
 
 ## Routine Checks
 

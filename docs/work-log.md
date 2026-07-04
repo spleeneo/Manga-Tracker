@@ -28,6 +28,29 @@ Learnings:
 - Link to `docs/learnings.md` entry when this work reveals a reusable lesson.
 ```
 
+## 2026-07-04 - Skip Completed Manga In Daily Sync
+
+Why:
+- Completed manga do not need the same daily chapter polling as ongoing titles.
+
+Plan:
+- Exclude canonical `COMPLETED` manga from the scheduled tracked-manga sweep.
+- Preserve manual sync behavior and daily syncing for titles with unknown status.
+- Add a focused regression test and run update-flow and full verification.
+
+Changed:
+- Filtered `enqueueTrackedMangaSyncJobs` to omit `COMPLETED` manga while retaining null and other statuses.
+- Added regression coverage for the scheduled enqueue query.
+- Updated architecture and operations documentation to describe the policy.
+
+Verification:
+- Ran `npm run test -- tests/lib/sync-jobs.test.ts`: 6 tests passed.
+- Ran `npm run smoke:update`: passed for Hunter x Hunter (Official Colored) through MangaDex; the known MangaPlus `Account Banned` discovery warning remains.
+- Ran `npm run verify`: passed with 8 existing `<img>` warnings, 198 passing tests, and a successful production build.
+
+Outcome:
+- Done. Daily scheduled syncs skip completed manga; manual syncs remain available.
+
 ## 2026-06-20 - Recover Stale Shared Sync Jobs
 
 Why:

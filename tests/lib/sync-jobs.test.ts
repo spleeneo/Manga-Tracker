@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   userMangaUpdateMock,
   userMangaUpdateManyMock,
+  mangaFindManyMock,
   syncJobCreateMock,
   syncJobDeleteManyMock,
   syncJobFindUniqueMock,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
   userMangaUpdateMock: vi.fn(),
   userMangaUpdateManyMock: vi.fn(),
+  mangaFindManyMock: vi.fn(),
   syncJobCreateMock: vi.fn(),
   syncJobDeleteManyMock: vi.fn(),
   syncJobFindUniqueMock: vi.fn(),
@@ -29,6 +31,9 @@ vi.mock("@/lib/db", () => ({
     userManga: {
       update: userMangaUpdateMock,
       updateMany: userMangaUpdateManyMock,
+    },
+    manga: {
+      findMany: mangaFindManyMock,
     },
     syncJob: {
       create: syncJobCreateMock,
@@ -46,7 +51,12 @@ vi.mock("@/lib/manga-updater", () => ({
   updateSingleManga: updateSingleMangaMock,
 }));
 
-import { enqueueMangaSyncJob, processSyncJob, recoverStaleRunningSyncJobs } from "@/lib/sync-jobs";
+import {
+  enqueueMangaSyncJob,
+  enqueueTrackedMangaSyncJobs,
+  processSyncJob,
+  recoverStaleRunningSyncJobs,
+} from "@/lib/sync-jobs";
 
 describe("enqueueMangaSyncJob", () => {
   beforeEach(() => {
@@ -83,6 +93,28 @@ describe("enqueueMangaSyncJob", () => {
           status: "QUEUED",
       }),
     }));
+  });
+
+  it("excludes completed manga from the daily tracked-manga sweep", async () => {
+    mangaFindManyMock.mockResolvedValue([{ id: "ongoing-manga" }]);
+    syncJobFindManyMock.mockResolvedValue([]);
+
+    const result = await enqueueTrackedMangaSyncJobs();
+
+    expect(mangaFindManyMock).toHaveBeenCalledWith({
+      where: {
+        userManga: { some: {} },
+        OR: [
+          { status: null },
+          { status: { not: "COMPLETED" } },
+        ],
+      },
+      select: { id: true },
+    });
+    expect(result).toEqual({
+      enqueued: 1,
+      jobs: [{ id: "created-job" }],
+    });
   });
 
   it("requeues an existing active queued job instead of creating another active job", async () => {
