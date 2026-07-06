@@ -4,20 +4,24 @@ const {
   findManyManga,
   findManyChapter,
   createManyChapter,
+  updateManyChapter,
   updateManga,
   updateSource,
   upsertSource,
   scrapeChapters,
+  supportsInternalReader,
   discoverSingleMangaSiteSources,
   discoverMissingSourcesForManga,
 } = vi.hoisted(() => ({
   findManyManga: vi.fn(),
   findManyChapter: vi.fn(),
   createManyChapter: vi.fn(),
+  updateManyChapter: vi.fn(),
   updateManga: vi.fn(),
   updateSource: vi.fn(),
   upsertSource: vi.fn(),
   scrapeChapters: vi.fn(),
+  supportsInternalReader: vi.fn(),
   discoverSingleMangaSiteSources: vi.fn(),
   discoverMissingSourcesForManga: vi.fn(),
 }));
@@ -25,13 +29,14 @@ const {
 vi.mock("@/lib/db", () => ({
   prisma: {
     manga: { findMany: findManyManga, update: updateManga },
-    chapter: { findMany: findManyChapter, createMany: createManyChapter },
+    chapter: { findMany: findManyChapter, createMany: createManyChapter, updateMany: updateManyChapter },
     source: { update: updateSource, upsert: upsertSource },
   },
 }));
 
 vi.mock("@/lib/scrapers/registry", () => ({
   scrapeChapters,
+  supportsInternalReader,
 }));
 
 vi.mock("@/lib/scrapers/single-manga-sites", () => ({
@@ -61,6 +66,7 @@ describe("checkForUpdates", () => {
     upsertSource.mockResolvedValue({});
     discoverSingleMangaSiteSources.mockResolvedValue([]);
     discoverMissingSourcesForManga.mockResolvedValue([]);
+    supportsInternalReader.mockReturnValue(false);
   });
 
   it("reports manga with no sources", async () => {
@@ -94,6 +100,19 @@ describe("checkForUpdates", () => {
       skipDuplicates: true,
     }));
     expect(updateManga).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes synced chapters visible when the provider supports the internal reader", async () => {
+    findManyManga.mockResolvedValue([{ id: "m1", title: "Berserk", sources: [{ id: "s1", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/x" }] }]);
+    scrapeChapters.mockResolvedValue([{ providerChapterId: "c1", chapterNumber: 1, url: "u1" }]);
+    supportsInternalReader.mockReturnValue(true);
+
+    await checkForUpdates("m1");
+
+    expect(updateManyChapter).toHaveBeenCalledWith({
+      where: { sourceId: "s1", readerStatus: null },
+      data: { readerStatus: "READABLE", readerError: null },
+    });
   });
 
   it("continues when one source fails", async () => {

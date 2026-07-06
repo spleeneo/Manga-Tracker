@@ -16,7 +16,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
   try {
     const upstream = new URL(manga.coverUrl);
-    const response = await fetch(upstream, { headers: { "User-Agent": "Mangateo/1.0", Referer: upstream.origin } });
+    const referer = upstream.hostname.endsWith("readdetectiveconan.com") ? "https://mangapill.com/" : upstream.origin;
+    const response = await fetch(upstream, { headers: { "User-Agent": "Mangateo/1.0", Referer: referer } });
     if (!response.ok) return new Response("Cover unavailable", { status: 502 });
     return new Response(await response.arrayBuffer(), { headers: {
       "Content-Type": response.headers.get("content-type") || "image/jpeg",

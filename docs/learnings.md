@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Chapter Visibility Must Follow Reader Capability
+
+Context:
+- Child chapter payloads correctly hid unverified external links, but synced chapters stayed unclassified until somebody opened them, making almost an entire manga appear empty.
+
+Learning:
+- A provider-level internal-reader contract is sufficient to expose its successfully synced chapters; waiting for per-chapter reads creates a visibility deadlock.
+
+Action:
+- Mark chapters from registered reader-capable providers readable after a successful sync, while continuing to hide external-only providers and recording real reader failures when encountered.
+
 ## 2026-07-06 - Provider Navigation Labels Are Not Tags
 
 Context:

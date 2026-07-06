@@ -1,5 +1,35 @@
 # Work Log
 
+## 2026-07-06 - Restore Berserk Chapters and Child Cover
+
+### Why
+
+- Berserk had synced 1,747 source chapter records, but only the four chapters previously opened by an adult were marked reader-available, so the child-safe chapter API hid the rest.
+- The child cover proxy sent the MangaPill CDN its own origin as the referrer, which the CDN rejected.
+
+### Changes
+
+- Added a scraper-registry capability check for providers that support Mangateo's internal reader.
+- After a successful source sync, mark previously unclassified chapters from reader-capable providers as readable; external-only sources remain hidden from child accounts.
+- Use MangaPill's site origin as the referrer when proxying its CDN covers.
+- Added a regression test for synced chapter visibility.
+
+### Verification
+
+- Focused updater, provider-contract, library, and chapter API suites passed (32 tests).
+- Re-synced Berserk: all 1,747 chapter records across four healthy sources are now reader-available, with no source failures.
+- Confirmed the MangaPill cover CDN returns a 49,952-byte JPEG with the corrected referrer.
+- `npm run verify`: passed with 58 test files and 240 tests, the eight existing image-element warnings, and a successful production build.
+- `npm run smoke:update`: passed; MangaPlus reported the known upstream `Account Banned` response while the update cycle continued successfully.
+
+### Outcome
+
+- Child accounts can see Berserk's synced chapters, and its proxied cover can load instead of rendering as a broken image.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-06---chapter-visibility-must-follow-reader-capability).
+
 ## 2026-07-06 - Prevent Cached Manga Attachments from Sticking in Syncing
 
 ### Why

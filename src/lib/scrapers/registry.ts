@@ -69,6 +69,11 @@ export async function scrapeChapters(url: string, source?: ReaderSourceInput): P
     return scraper.fetchChapters(url, source);
 }
 
+export function supportsInternalReader(url: string) {
+    const scraper = scrapers.find((candidate) => candidate.canHandle(url));
+    return Boolean(scraper?.capabilities?.reader && scraper.fetchReaderPages);
+}
+
 export async function fetchMetadata(url: string): Promise<MangaMetadata> {
     const scraper = scrapers.find(s => s.canHandle(url));
     if (!scraper) {

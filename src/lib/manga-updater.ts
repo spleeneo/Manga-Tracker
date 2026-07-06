@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { scrapeChapters } from "./scrapers/registry";
+import { scrapeChapters, supportsInternalReader } from "./scrapers/registry";
 import { filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
@@ -148,6 +148,13 @@ async function updateMangaRecord(manga: MangaForUpdate) {
                     skipDuplicates: true,
                 });
                 createdCount = created.count;
+            }
+
+            if (supportsInternalReader(source.sourceUrl)) {
+                await prisma.chapter.updateMany({
+                    where: { sourceId: source.id, readerStatus: null },
+                    data: { readerStatus: "READABLE", readerError: null },
+                });
             }
 
             await prisma.source.update({
