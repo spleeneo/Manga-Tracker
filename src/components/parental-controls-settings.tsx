@@ -43,20 +43,29 @@ export function ParentalControlsSettings() {
     setMessage("Title decision saved."); await load();
   };
 
+  const unlinkChild = async (child: Child) => {
+    setMessage("");
+    const response = await fetch("/api/parental-controls", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ linkId: child.id }) });
+    if (!response.ok) { const data = await response.json(); return setMessage(data.error || "Could not remove child link"); }
+    setMessage("Child link removed."); await load();
+  };
+
   return <div className="space-y-6">
     <section className="surface rounded-lg p-5"><h2 className="text-lg font-semibold">Link a child account</h2><p className="mt-1 text-sm text-muted-foreground">Enter the email used by the child&apos;s Google account.</p>
       <form onSubmit={invite} className="mt-4 flex flex-col gap-2 sm:flex-row"><input className="ui-field flex-1" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="child@example.com"/><button className="ui-button ui-button-primary" type="submit">Send invitation</button></form>
       {message && <p className="mt-3 text-sm" role="status">{message}</p>}
     </section>
-    {children.map((child) => <ChildPolicyCard key={child.id} child={child} onSave={savePolicy} onOverride={setOverride} />)}
+    {children.map((child) => <ChildPolicyCard key={child.id} child={child} onSave={savePolicy} onOverride={setOverride} onUnlink={unlinkChild} />)}
   </div>;
 }
 
-function ChildPolicyCard({ child, onSave, onOverride }: { child: Child; onSave: (child: Child, policy: Policy) => void; onOverride: (child: Child, mangaId: string, decision: "ALLOW" | "BLOCK" | null) => void }) {
+function ChildPolicyCard({ child, onSave, onOverride, onUnlink }: { child: Child; onSave: (child: Child, policy: Policy) => void; onOverride: (child: Child, mangaId: string, decision: "ALLOW" | "BLOCK" | null) => void; onUnlink: (child: Child) => Promise<void> }) {
   const [policy, setPolicy] = useState(child.policy);
   const [blockedTags, setBlockedTags] = useState(child.policy.blockedTagNames.join(", "));
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
   const toggleRating = (rating: string) => setPolicy((current) => ({ ...current, allowedContentRatings: current.allowedContentRatings.includes(rating) ? current.allowedContentRatings.filter((item) => item !== rating) : [...current.allowedContentRatings, rating] }));
-  return <section className="surface rounded-lg p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{child.name || child.email}</h2><p className="text-sm text-muted-foreground">{child.status === "ACTIVE" ? "Linked" : "Pending sign-in"}</p></div></div>
+  return <section className="surface rounded-lg p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{child.name || child.email}</h2><p className="text-sm text-muted-foreground">{child.status === "ACTIVE" ? "Linked" : "Pending sign-in"}</p></div>{confirmUnlink ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-muted-foreground">Remove this child link?</span><button className="ui-button ui-button-secondary" type="button" onClick={() => setConfirmUnlink(false)} disabled={unlinking}>Cancel</button><button className="ui-button border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" type="button" disabled={unlinking} onClick={() => { setUnlinking(true); void onUnlink(child).finally(() => setUnlinking(false)); }}>{unlinking ? "Abandoning…" : "Abandon your child"}</button></div> : <button className="ui-button border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" type="button" onClick={() => setConfirmUnlink(true)}>Abandon your child</button>}</div>
     {child.status === "ACTIVE" && <><label className="mt-5 flex items-center gap-2"><input type="checkbox" checked={policy.enabled} onChange={(event) => setPolicy({ ...policy, enabled: event.target.checked })}/>Enable parental controls</label>
       <fieldset className="mt-4"><legend className="text-sm font-semibold">Allowed content ratings</legend><div className="mt-2 flex flex-wrap gap-4">{["safe", "suggestive", "erotica", "pornographic"].map((rating) => <label key={rating} className="flex items-center gap-2 capitalize"><input type="checkbox" checked={policy.allowedContentRatings.includes(rating)} onChange={() => toggleRating(rating)}/>{rating}</label>)}</div></fieldset>
       <label className="mt-4 block text-sm font-semibold">Blocked tags<input className="ui-field mt-2 w-full" value={blockedTags} onChange={(event) => setBlockedTags(event.target.value)} /></label>

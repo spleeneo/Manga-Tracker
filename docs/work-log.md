@@ -1,5 +1,27 @@
 # Work Log
 
+## 2026-07-06 - Parent unlink action
+
+### Why
+
+- Parents could create child links but had no UI action to remove them.
+
+### Changes
+
+- Added an `Abandon your child` action to every active or pending child card with an inline confirmation step, cancellation, progress state, and API feedback.
+- Added regression coverage confirming unlinking removes the link, child policy, and title overrides.
+
+### Verification
+
+- Focused parental-control API suite passed (5 tests), including unlink cleanup behavior.
+- Focused ESLint passed for the settings component and API test.
+- `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- Browser verification was not completed because the in-app browser exposed no controllable tabs; the live fake-family relationship was deliberately not deleted through a blind check.
+
+### Outcome
+
+- Parents can remove an active child or cancel a pending invitation from the settings UI after an explicit confirmation step.
+
 ## 2026-07-06 - Remove the extension-colliding inline theme script
 
 ### Why

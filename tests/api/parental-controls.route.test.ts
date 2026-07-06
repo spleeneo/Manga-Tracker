@@ -1,18 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getCurrentUserId, linkFindUnique, linkFindMany, linkFindFirst, linkCreate, userFindUnique, policyUpsert, overrideUpsert, mangaFindUnique } = vi.hoisted(() => ({
+const { getCurrentUserId, linkFindUnique, linkFindMany, linkFindFirst, linkCreate, linkDelete, userFindUnique, policyUpsert, policyDeleteMany, overrideUpsert, overrideDeleteMany, mangaFindUnique, transaction } = vi.hoisted(() => ({
   getCurrentUserId: vi.fn(), linkFindUnique: vi.fn(), linkFindMany: vi.fn(), linkFindFirst: vi.fn(), linkCreate: vi.fn(),
-  userFindUnique: vi.fn(), policyUpsert: vi.fn(), overrideUpsert: vi.fn(), mangaFindUnique: vi.fn(),
+  linkDelete: vi.fn(), userFindUnique: vi.fn(), policyUpsert: vi.fn(), policyDeleteMany: vi.fn(), overrideUpsert: vi.fn(),
+  overrideDeleteMany: vi.fn(), mangaFindUnique: vi.fn(), transaction: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({ getCurrentUserId }));
 vi.mock("@/lib/db", () => ({ prisma: {
-  parentChildLink: { findUnique: linkFindUnique, findMany: linkFindMany, findFirst: linkFindFirst, create: linkCreate },
-  user: { findUnique: userFindUnique }, childPolicy: { upsert: policyUpsert },
-  childMangaOverride: { upsert: overrideUpsert }, manga: { findUnique: mangaFindUnique },
+  parentChildLink: { findUnique: linkFindUnique, findMany: linkFindMany, findFirst: linkFindFirst, create: linkCreate, delete: linkDelete },
+  user: { findUnique: userFindUnique }, childPolicy: { upsert: policyUpsert, deleteMany: policyDeleteMany },
+  childMangaOverride: { upsert: overrideUpsert, deleteMany: overrideDeleteMany }, manga: { findUnique: mangaFindUnique },
+  $transaction: transaction,
 } }));
 
-import { GET, POST } from "@/app/api/parental-controls/route";
+import { DELETE, GET, POST } from "@/app/api/parental-controls/route";
 import { PUT } from "@/app/api/parental-controls/overrides/route";
 
 describe("parental control APIs", () => {
@@ -46,5 +48,15 @@ describe("parental control APIs", () => {
     const response = await PUT(new Request("http://localhost/api/parental-controls/overrides", { method: "PUT", body: JSON.stringify({ childId: "child-1", mangaId: "m1", decision: "ALLOW" }) }));
     expect(response.status).toBe(404);
     expect(overrideUpsert).not.toHaveBeenCalled();
+  });
+
+  it("removes a linked child and their parental policy", async () => {
+    linkFindFirst.mockResolvedValue({ id: "link-1", childId: "child-1" });
+    transaction.mockResolvedValue([]);
+    const response = await DELETE(new Request("http://localhost/api/parental-controls", { method: "DELETE", body: JSON.stringify({ linkId: "link-1" }) }));
+    expect(response.status).toBe(204);
+    expect(overrideDeleteMany).toHaveBeenCalledWith({ where: { childId: "child-1" } });
+    expect(policyDeleteMany).toHaveBeenCalledWith({ where: { childId: "child-1" } });
+    expect(linkDelete).toHaveBeenCalledWith({ where: { id: "link-1" } });
   });
 });
