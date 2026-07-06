@@ -13,6 +13,7 @@ export function ParentalControlsSettings() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [availableTags, setAvailableTags] = useState<AvailableTag[]>([]);
+  const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const load = async () => {
     const [response, tagResponse] = await Promise.all([
       fetch("/api/parental-controls", { cache: "no-store" }),
@@ -20,7 +21,9 @@ export function ParentalControlsSettings() {
     ]);
     const [data, tagData] = await Promise.all([response.json(), tagResponse.json()]);
     if (!response.ok) throw new Error(data.error || "Could not load parental controls");
-    setChildren(data.children ?? []);
+    const loadedChildren = (data.children ?? []) as Child[];
+    setChildren(loadedChildren);
+    setActiveChildId((current) => loadedChildren.some((child) => child.id === current) ? current : loadedChildren[0]?.id ?? null);
     const tags = [...(data.availableTags ?? []), ...(tagData.tags ?? [])] as AvailableTag[];
     setAvailableTags([...new Map(tags.map((tag) => [canonicalTagKey(tag.name), { ...tag, name: canonicalTagName(tag.name) }])).values()]);
   };
@@ -58,12 +61,24 @@ export function ParentalControlsSettings() {
     setMessage("Child link removed."); await load();
   };
 
+  const moveChildTab = (currentIndex: number, direction: -1 | 1) => {
+    const nextIndex = (currentIndex + direction + children.length) % children.length;
+    const nextChild = children[nextIndex];
+    setActiveChildId(nextChild.id);
+    window.requestAnimationFrame(() => document.getElementById(`child-tab-${nextChild.id}`)?.focus());
+  };
+
   return <div className="space-y-6">
     <section className="surface rounded-lg p-5"><h2 className="text-lg font-semibold">Link a child account</h2><p className="mt-1 text-sm text-muted-foreground">Enter the email used by the child&apos;s Google account.</p>
       <form onSubmit={invite} className="mt-4 flex flex-col gap-2 sm:flex-row"><input className="ui-field flex-1" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="child@example.com"/><button className="ui-button ui-button-primary" type="submit">Send invitation</button></form>
       {message && <p className="mt-3 text-sm" role="status">{message}</p>}
     </section>
-    {children.map((child) => <ChildPolicyCard key={child.id} child={child} availableTags={availableTags} onSave={savePolicy} onOverride={setOverride} onUnlink={unlinkChild} />)}
+    {children.length > 0 && <div>
+      <div className="flex flex-wrap gap-2 border-b" role="tablist" aria-label="Child accounts">
+        {children.map((child, index) => <button key={child.id} id={`child-tab-${child.id}`} type="button" role="tab" aria-selected={activeChildId === child.id} aria-controls={`child-panel-${child.id}`} tabIndex={activeChildId === child.id ? 0 : -1} className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-semibold transition-colors ${activeChildId === child.id ? "bg-card text-foreground" : "bg-muted/40 text-muted-foreground hover:text-foreground"}`} onClick={() => setActiveChildId(child.id)} onKeyDown={(event) => { if (event.key === "ArrowRight") { event.preventDefault(); moveChildTab(index, 1); } else if (event.key === "ArrowLeft") { event.preventDefault(); moveChildTab(index, -1); } }}>{child.name || child.email}</button>)}
+      </div>
+      {children.filter((child) => child.id === activeChildId).map((child) => <div key={child.id} id={`child-panel-${child.id}`} role="tabpanel" aria-labelledby={`child-tab-${child.id}`}><ChildPolicyCard child={child} availableTags={availableTags} onSave={savePolicy} onOverride={setOverride} onUnlink={unlinkChild} /></div>)}
+    </div>}
   </div>;
 }
 
@@ -87,7 +102,7 @@ function ChildPolicyCard({ child, availableTags, onSave, onOverride, onUnlink }:
       <fieldset className="mt-4"><legend className="text-sm font-semibold">Blocked genres and tags</legend><p className="mt-1 text-xs text-muted-foreground">A manga is hidden when any source reports one of the selected tags.</p>
         <input className="ui-field mt-3 w-full" type="search" value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} placeholder="Search genres, themes, formats, and content tags" aria-label="Search genres and tags" />
         {policy.blockedTagNames.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{policy.blockedTagNames.map((tag) => <button key={tag} type="button" className="rounded-full bg-destructive/10 px-3 py-1 text-sm text-destructive" onClick={() => toggleTag(tag)}>{canonicalTagName(tag)} ×</button>)}</div>}
-        <div className="mt-3 max-h-72 space-y-4 overflow-y-auto rounded-md border p-3">{[...groupedTags.entries()].map(([group, tags]) => <div key={group}><h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{group}</h4><div className="mt-2 grid gap-2 sm:grid-cols-2">{tags.map((tag) => <label key={tag.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={blockedKeys.has(canonicalTagKey(tag.name))} onChange={() => toggleTag(tag.name)} />{tag.name}</label>)}</div></div>)}</div>
+        <div className="mt-3 space-y-4 rounded-md border p-3">{[...groupedTags.entries()].map(([group, tags]) => <div key={group}><h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{group}</h4><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{tags.map((tag) => <label key={tag.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={blockedKeys.has(canonicalTagKey(tag.name))} onChange={() => toggleTag(tag.name)} />{tag.name}</label>)}</div></div>)}</div>
       </fieldset>
       <button className="ui-button ui-button-primary mt-4" disabled={!policy.allowedContentRatings.length} onClick={() => void onSave(child, policy)}>Save policy</button>
       {child.titles.length > 0 && <div className="mt-6"><h3 className="font-semibold">Title decisions</h3><div className="mt-3 space-y-3">{child.titles.map((title) => <div key={title.id} className="rounded-md border p-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{title.title}</p><p className="text-xs text-muted-foreground">{title.classificationSource ? `${title.contentRating ?? "unrated"} · ${title.tags.join(", ") || "no tags"}` : "Unclassified"}</p></div><select className="ui-field" value={title.decision ?? ""} onChange={(event) => void onOverride(child, title.id, (event.target.value || null) as "ALLOW" | "BLOCK" | null)}><option value="">Use policy</option><option value="ALLOW">Always allow</option><option value="BLOCK">Always block</option></select></div></div>)}</div></div>}
