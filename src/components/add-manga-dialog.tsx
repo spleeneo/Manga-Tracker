@@ -15,6 +15,9 @@ interface SearchResult {
     status?: string;
     description?: string;
     sources?: SearchSource[];
+    contentRating?: string;
+    classificationSource?: string;
+    tags?: Array<{ id: string; name: string; group?: string }>;
 }
 
 export function AddMangaDialog() {
@@ -58,6 +61,9 @@ export function AddMangaDialog() {
         description: manga.description || "",
         sourceUrl: initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "",
         sources: manga.sources || [],
+        contentRating: manga.contentRating,
+        classificationSource: manga.classificationSource,
+        tags: manga.tags || [],
     });
 
     const handleSearchQueryChange = (value: string) => {

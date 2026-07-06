@@ -1,5 +1,32 @@
 # Work Log
 
+## 2026-07-06 - Safe child manga search
+
+### Why
+
+- Child accounts always received an empty result set from the Track New Manga search, even for content permitted by their policy.
+
+### Plan
+
+- Keep unclassified provider search hidden from children, but serve trusted MangaDex results after the existing policy evaluator filters ratings, tags, and title overrides.
+
+### Changes
+
+- Routed child searches through policy-filtered MangaDex discovery and adapted classified results to the existing tracking dialog format.
+- Preserved MangaDex rating, classification source, and tags in the tracking request so the server can authorize the child import without failing closed as unclassified.
+- Added regression coverage for safe classified child search results.
+
+### Verification
+
+- Focused search and manga-import suites passed (11 tests), and focused ESLint completed with only the existing image-element warning.
+- Live child-session request for `naruto` returned 20 policy-permitted MangaDex results carrying `safe` ratings, `MANGADEX` classification, and tags.
+- `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- The dialog itself was not browser-automated because the in-app browser has not exposed controllable tabs; the live endpoint and payload path were verified directly.
+
+### Outcome
+
+- Child accounts can search for and track classified manga allowed by their parental policy, while unclassified multi-provider search remains adult-only.
+
 ## 2026-07-06 - Parent unlink action
 
 ### Why
