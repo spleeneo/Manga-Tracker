@@ -15,7 +15,7 @@ export async function GET() {
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!await requireParent(userId)) return NextResponse.json({ error: "Child accounts cannot manage parental controls" }, { status: 403 });
-  const children = await prisma.parentChildLink.findMany({
+  const [children, availableTags] = await Promise.all([prisma.parentChildLink.findMany({
     where: { parentId: userId },
     orderBy: { createdAt: "asc" },
     include: {
@@ -25,8 +25,8 @@ export async function GET() {
         childOverrides: { select: { mangaId: true, decision: true } },
       } },
     },
-  });
-  return NextResponse.json({ children: children.map((link) => ({
+  }), prisma.contentTag.findMany({ select: { id: true, name: true, group: true }, orderBy: { name: "asc" } })]);
+  return NextResponse.json({ availableTags, children: children.map((link) => ({
     id: link.id, childId: link.childId, email: link.child?.email ?? link.childEmail,
     name: link.child?.name, status: link.status,
     policy: link.child?.childPolicy ?? { enabled: true, allowedContentRatings: DEFAULT_ALLOWED_CONTENT_RATINGS, blockedTagNames: DEFAULT_BLOCKED_TAG_NAMES },

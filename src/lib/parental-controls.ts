@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { canonicalTagKey } from "@/lib/content-taxonomy";
 
 export const DEFAULT_ALLOWED_CONTENT_RATINGS = ["safe"];
 export const DEFAULT_BLOCKED_TAG_NAMES = ["gore", "sexual violence"];
@@ -16,8 +17,8 @@ export function evaluateMangaAccess(policy: ChildPolicyInput | null, manga: Mang
   if (!manga.contentRating || !manga.classificationSource) return { allowed: false, reason: "unclassified" as const };
   const allowedRatings = new Set(policy.allowedContentRatings.map(normalize));
   if (!allowedRatings.has(normalize(manga.contentRating))) return { allowed: false, reason: "blocked_rating" as const };
-  const blockedTags = new Set(policy.blockedTagNames.map(normalize));
-  if (manga.tags.some((tag) => blockedTags.has(normalize(tag)))) return { allowed: false, reason: "blocked_tag" as const };
+  const blockedTags = new Set(policy.blockedTagNames.map(canonicalTagKey));
+  if (manga.tags.some((tag) => blockedTags.has(canonicalTagKey(tag)))) return { allowed: false, reason: "blocked_tag" as const };
   return { allowed: true, reason: "allowed" as const };
 }
 

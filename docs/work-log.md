@@ -1,5 +1,39 @@
 # Work Log
 
+## 2026-07-06 - Selectable Source-Aligned Parental Tags
+
+### Why
+
+- Parents had to guess and type comma-separated tag names, while providers can use different names for the same genre.
+
+### Plan
+
+- Use one canonical tag vocabulary at provider ingestion and policy enforcement, and populate a searchable selector from MangaDex plus tags observed from every source.
+
+### Changes
+
+- Added shared tag canonicalization and aliases for common provider spelling/format differences such as `Sci-Fi` and `Science Fiction`.
+- Canonicalized merged provider metadata while preferring the richer non-provider tag classification when two sources describe the same tag.
+- Made parental enforcement canonicalize both saved policy tags and manga source tags, preserving compatibility with existing records.
+- Replaced the free-form blocked-tag field with grouped searchable checkboxes and removable selected-tag chips.
+- Added all database-observed provider tags to the parental API; the UI combines those with the complete MangaDex tag catalogue.
+
+### Verification
+
+- Focused classification, policy, and parental API suites passed: 19 tests.
+- `npm run build`: passed, including TypeScript and production route generation.
+- Full `npm run test` reached 246 passing tests and one unrelated concurrent library-route expectation failure.
+- Repository lint was blocked by an unrelated concurrent `prefer-const` error in `src/app/api/manga/route.ts`; eight existing image warnings remain.
+- Browser verification was attempted on an isolated local server, but the development settings route returned the existing 404 shell in that browser session, so the interactive selector flow was not verified.
+
+### Outcome
+
+- Parental tag choices now come from the same source metadata used for enforcement, with aliases closing common provider vocabulary gaps.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-06---canonicalize-provider-tags-at-boundaries).
+
 ## 2026-07-06 - Safe child manga search
 
 ### Why

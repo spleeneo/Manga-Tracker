@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getCurrentUserId, linkFindUnique, linkFindMany, linkFindFirst, linkCreate, linkDelete, userFindUnique, policyUpsert, policyDeleteMany, overrideUpsert, overrideDeleteMany, mangaFindUnique, transaction } = vi.hoisted(() => ({
+const { getCurrentUserId, linkFindUnique, linkFindMany, linkFindFirst, linkCreate, linkDelete, userFindUnique, policyUpsert, policyDeleteMany, overrideUpsert, overrideDeleteMany, mangaFindUnique, contentTagFindMany, transaction } = vi.hoisted(() => ({
   getCurrentUserId: vi.fn(), linkFindUnique: vi.fn(), linkFindMany: vi.fn(), linkFindFirst: vi.fn(), linkCreate: vi.fn(),
   linkDelete: vi.fn(), userFindUnique: vi.fn(), policyUpsert: vi.fn(), policyDeleteMany: vi.fn(), overrideUpsert: vi.fn(),
-  overrideDeleteMany: vi.fn(), mangaFindUnique: vi.fn(), transaction: vi.fn(),
+  overrideDeleteMany: vi.fn(), mangaFindUnique: vi.fn(), contentTagFindMany: vi.fn(), transaction: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({ getCurrentUserId }));
@@ -11,6 +11,7 @@ vi.mock("@/lib/db", () => ({ prisma: {
   parentChildLink: { findUnique: linkFindUnique, findMany: linkFindMany, findFirst: linkFindFirst, create: linkCreate, delete: linkDelete },
   user: { findUnique: userFindUnique }, childPolicy: { upsert: policyUpsert, deleteMany: policyDeleteMany },
   childMangaOverride: { upsert: overrideUpsert, deleteMany: overrideDeleteMany }, manga: { findUnique: mangaFindUnique },
+  contentTag: { findMany: contentTagFindMany },
   $transaction: transaction,
 } }));
 
@@ -41,6 +42,14 @@ describe("parental control APIs", () => {
     const response = await GET();
     expect(response.status).toBe(403);
     expect(linkFindMany).not.toHaveBeenCalled();
+  });
+
+  it("returns the provider tags available to policy selectors", async () => {
+    linkFindMany.mockResolvedValue([]);
+    contentTagFindMany.mockResolvedValue([{ id: "provider:1", name: "Sci-Fi", group: "provider" }]);
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ children: [], availableTags: [{ id: "provider:1", name: "Sci-Fi", group: "provider" }] });
   });
 
   it("prevents unrelated parents from overriding a title", async () => {

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { MangaMetadata } from "@/lib/scrapers/types";
+import { canonicalTagKey, canonicalTagName } from "@/lib/content-taxonomy";
 
 const RATING_RANK: Record<string, number> = { safe: 0, suggestive: 1, erotica: 2, pornographic: 3 };
 const EXPLICIT_TAG_RATINGS: Record<string, string> = {
@@ -33,7 +34,7 @@ export function inferContentRating(tags: string[], explicit?: string | null) {
 }
 
 export function withProviderClassification(provider: string, metadata: MangaMetadata, html: string): MangaMetadata {
-  const names = [...new Set([...(metadata.tags ?? []).map((tag) => tag.name), ...extractClassificationTags(html)])];
+  const names = [...new Map([...(metadata.tags ?? []).map((tag) => tag.name), ...extractClassificationTags(html)].map((name) => [canonicalTagKey(name), canonicalTagName(name)])).values()];
   const tags = names.map((name) => ({ id: providerTagId(provider, name), name, group: "provider" }));
   const contentRating = inferContentRating(names, metadata.contentRating);
   if (!tags.length && !contentRating) return metadata;
@@ -49,7 +50,13 @@ export function mergeClassifications(metadata: MangaMetadata[]) {
   const tagsByName = new Map<string, { id: string; name: string; group?: string }>();
   let contentRating: string | null = null;
   for (const item of classified) {
-    for (const tag of item.tags ?? []) if (!tagsByName.has(tag.name.toLowerCase())) tagsByName.set(tag.name.toLowerCase(), tag);
+    for (const tag of item.tags ?? []) {
+      const name = canonicalTagName(tag.name);
+      const key = canonicalTagKey(name);
+      const normalized = { ...tag, name };
+      const existing = tagsByName.get(key);
+      if (!existing || (existing.group === "provider" && normalized.group !== "provider")) tagsByName.set(key, normalized);
+    }
     const rating = inferContentRating((item.tags ?? []).map((tag) => tag.name), item.contentRating);
     if (rating && (contentRating == null || RATING_RANK[rating] > RATING_RANK[contentRating])) contentRating = rating;
   }

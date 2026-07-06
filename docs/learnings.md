@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Canonicalize Provider Tags at Boundaries
+
+Context:
+- Manga sources use spelling and formatting variants for equivalent genres, while saved parental policies and existing manga already contain raw names.
+
+Learning:
+- Canonicalizing during ingestion and comparison provides a shared taxonomy without requiring a destructive migration of existing records.
+
+Action:
+- Add provider vocabulary aliases to the shared taxonomy and use canonical keys whenever tags are merged or compared.
+
 ## 2026-07-06 - Suppression Cannot Repair Extension-Replaced Script Nodes
 
 Context:

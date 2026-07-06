@@ -15,6 +15,12 @@ describe("provider content classification", () => {
       { title: "A", classificationSource: "MANGAPILL", tags: [{ id: "h", name: "Hentai" }] },
     ])).toEqual({ contentRating: "pornographic", classificationSource: "MANGADEX,MANGAPILL", tags: [{ id: "a", name: "Action" }, { id: "h", name: "Hentai" }] });
   });
+  it("maps provider aliases onto the shared tag taxonomy", () => {
+    expect(mergeClassifications([
+      { title: "A", classificationSource: "MANGADEX", tags: [{ id: "md", name: "Science Fiction", group: "genre" }] },
+      { title: "A", classificationSource: "MANGANATO", tags: [{ id: "provider", name: "Sci-Fi", group: "provider" }] },
+    ]).tags).toEqual([{ id: "md", name: "Science Fiction", group: "genre" }]);
+  });
   it("does not treat providers without classification as safe", () => {
     expect(mergeClassifications([{ title: "A" }])).toEqual({ contentRating: null, classificationSource: null, tags: [] });
   });
