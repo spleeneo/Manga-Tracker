@@ -237,3 +237,14 @@ Learning:
 
 Action:
 - Prefer relative redirects when a flow should remain on the request's current origin.
+
+## 2026-07-06 - Use Explicit Cookie Names For Same-Browser Test Personas
+
+Context:
+- Hostname-based cookie isolation was not dependable enough for simultaneous parent/child testing in every browser surface, and cookies are not isolated by port.
+
+Learning:
+- Multi-persona local testing is more robust when each app instance reads a distinct session-cookie name rather than relying on browser context behavior.
+
+Action:
+- Run each persona on its own port and build directory, with a role-specific Auth.js session cookie.

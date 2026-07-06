@@ -1,13 +1,23 @@
 import { auth, signIn, signOut } from "../../auth";
 import { LogOut } from "lucide-react";
 import { headers } from "next/headers";
-import { devFamilyRoleForHost } from "@/lib/dev-family";
+import { DEV_FAMILY, devFamilyRoleForHost, isDevFamilyEmail } from "@/lib/dev-family";
 
 export async function AuthButton() {
   const session = await auth();
   const isGoogleConfigured = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
   const showDevFamilyLogin = process.env.NODE_ENV === "development";
   const devRole = showDevFamilyLogin ? devFamilyRoleForHost((await headers()).get("host")) : null;
+
+  if (session?.user && devRole && isDevFamilyEmail(session.user.email) && session.user.email !== DEV_FAMILY[devRole].email) {
+    return (
+      <form action="/api/auth/dev-login" method="post">
+        <button className="ui-button ui-button-primary" name="role" value={devRole}>
+          Switch to {devRole}
+        </button>
+      </form>
+    );
+  }
 
   if (!session?.user) {
     if (devRole) {

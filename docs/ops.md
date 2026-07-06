@@ -32,10 +32,9 @@ npm run db:migrate
 npm run dev
 ```
 
-For simultaneous parent/child testing, run `npm run dev:family`, sign the parent in at
-`http://localhost:3000`, and sign the child in at `http://127.0.0.1:3000`. These hostnames
-have separate browser cookies while sharing the same server and database. Register both
-hostnames' `/api/auth/callback/google` URLs with the local Google OAuth client.
+For simultaneous parent/child testing, run `npm run dev:family`, use the fake parent at
+`http://localhost:3000`, and use the fake child at `http://localhost:3001`. The two development
+processes use separate build directories and session-cookie names while sharing the database.
 
 If `DATABASE_URL` is missing, the app shows a database setup screen rather than trying to query Prisma.
 

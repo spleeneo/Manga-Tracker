@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:family": "next dev --hostname 0.0.0.0",
+    "dev:family": "node scripts/start-family-dev.mjs",
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "next start",

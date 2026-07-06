@@ -16,11 +16,21 @@ export function isDevFamilyLoginEnabled() {
   return process.env.NODE_ENV === "development";
 }
 
-export function devFamilyRoleForHost(host: string | null): DevFamilyRole | null {
-  const hostname = host?.split(":")[0]?.toLowerCase();
-  if (hostname === "localhost") return "parent";
-  if (hostname === "127.0.0.1") return "child";
+export function devFamilyRoleForHost(host: string | null, configuredRole: unknown = process.env.DEV_FAMILY_ROLE): DevFamilyRole | null {
+  const role = parseDevFamilyRole(configuredRole);
+  if (role) return role;
+  const normalizedHost = host?.toLowerCase();
+  if (normalizedHost === "localhost:3000") return "parent";
+  if (normalizedHost === "localhost:3001") return "child";
   return null;
+}
+
+export function devFamilySessionCookieName(role: DevFamilyRole | null = parseDevFamilyRole(process.env.DEV_FAMILY_ROLE)) {
+  return role ? `authjs.${role}-session-token` : "authjs.session-token";
+}
+
+export function isDevFamilyEmail(email: string | null | undefined) {
+  return email === DEV_FAMILY.parent.email || email === DEV_FAMILY.child.email;
 }
 
 export async function createDevFamilySession(role: DevFamilyRole) {

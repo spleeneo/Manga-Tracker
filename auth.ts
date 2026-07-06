@@ -2,6 +2,9 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
+import { devFamilySessionCookieName, parseDevFamilyRole } from "@/lib/dev-family";
+
+const devFamilyRole = parseDevFamilyRole(process.env.DEV_FAMILY_ROLE);
 
 function getAllowedEmails() {
   return (process.env.ALLOWED_EMAILS ?? "")
@@ -23,6 +26,14 @@ async function activateChildInvite(user: { id?: string; email?: string | null })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  ...(devFamilyRole ? {
+    cookies: {
+      sessionToken: {
+        name: devFamilySessionCookieName(devFamilyRole),
+        options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: false },
+      },
+    },
+  } : {}),
   providers: [
     Google({
       allowDangerousEmailAccountLinking: false,

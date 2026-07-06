@@ -1,5 +1,54 @@
 # Work Log
 
+## 2026-07-06 - Two-port family development environment
+
+### Why
+
+- Host-based session separation was not dependable in the in-app browser's single browser context.
+
+### Plan
+
+- Run parent and child development instances on separate ports with explicit, role-specific Auth.js cookie names and build directories.
+
+### Changes
+
+- Replaced the single family server with coordinated parent (`localhost:3000`) and child (`localhost:3001`) Next.js processes.
+- Added separate `.next-parent` and `.next-child` build directories and distinct parent/child session cookies.
+- Updated role detection and local testing documentation for the two-port workflow.
+
+### Verification
+
+- Focused role/cookie tests passed and focused ESLint completed without findings.
+- Started both development instances and used one shared cookie jar to sign in on both ports. The jar retained separate `authjs.parent-session-token` and `authjs.child-session-token` cookies; port 3000 rendered `Dev Parent` while port 3001 rendered `Dev Child`.
+- The first full verification run exposed generated `.next-parent` and `.next-child` output to ESLint; added both generated directories to the existing ignore list.
+- Full `npm run verify`: passed on rerun (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+
+### Outcome
+
+- Parent and child can remain authenticated concurrently in one browser without relying on hostname cookie isolation.
+
+## 2026-07-06 - Self-heal stale fake-family roles
+
+### Why
+
+- A child-origin browser that retained the earlier fake parent cookie remained signed in as the parent, even after role-specific buttons were introduced.
+
+### Changes
+
+- Made the development login endpoint derive its role from the request hostname instead of trusting the submitted form value.
+- Added a role-switch action when a fake session does not match its current local origin.
+
+### Verification
+
+- Focused fake-family tests passed and focused ESLint completed without findings.
+- Acceptance-checked a parent session on `127.0.0.1` and confirmed the UI offers `Switch to child`.
+- Submitted a deliberately stale `role=parent` form on `127.0.0.1` and confirmed the hostname-enforced result authenticated as `Dev Child`.
+- Full `npm run verify`: pending.
+
+### Outcome
+
+- Stale or cached local role forms now converge to the identity assigned to their hostname.
+
 ## 2026-07-06 - Keep fake family roles isolated
 
 ### Why

@@ -59,11 +59,11 @@ npm run dev:family
 Then open these two origins, preferably in separate browser windows:
 
 - Parent: [http://localhost:3000](http://localhost:3000)
-- Child: [http://127.0.0.1:3000](http://127.0.0.1:3000)
+- Child: [http://localhost:3001](http://localhost:3001)
 
 In development, use **Test as parent** on the parent origin and **Test as child** on the child origin. These buttons provision a linked fake family in the configured development database and create eight-hour sessions; they are not rendered in production and require no Google accounts.
 
-Although both URLs reach the same app and database, browsers keep their host-based Auth.js cookies separate. Using two `localhost` ports would not isolate the accounts because cookies are not separated by port. You can still use Google instead of the fake accounts: sign in with the parent Google account on `localhost` and the child Google account on `127.0.0.1`.
+The command starts two development processes with separate build directories and separate Auth.js cookie names. Both use the same application database, but the parent and child sessions remain independent even in one browser.
 
 For Google sign-in, add both local callbacks to the OAuth client's authorized redirect URIs:
 
@@ -75,7 +75,7 @@ Include both account emails in `ALLOWED_EMAILS` when the optional allowlist is e
 ## Development Commands
 
 - `npm run dev`: starts the development server at `localhost:3000`.
-- `npm run dev:family`: starts one development server reachable through two cookie-isolated local origins for parent/child testing.
+- `npm run dev:family`: starts parent and child development servers with isolated sessions at ports 3000 and 3001.
 - `npm run build`: builds the application for production.
 - `npm run start`: starts the production server.
 - `npm run lint`: runs the linter to check for code issues.
