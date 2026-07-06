@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { themeInitScript } from "@/lib/theme-init";
 
 describe("themeInitScript", () => {
@@ -14,5 +16,11 @@ describe("themeInitScript", () => {
 
     expect(toggle).toHaveBeenCalledWith("dark", true);
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("tolerates browser extensions mutating the inline script before hydration", () => {
+    const layout = readFileSync(resolve(process.cwd(), "src/app/layout.tsx"), "utf8");
+
+    expect(layout).toMatch(/<script suppressHydrationWarning dangerouslySetInnerHTML=/);
   });
 });

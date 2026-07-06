@@ -314,3 +314,14 @@ Learning:
 
 Action:
 - Run each persona on its own port and build directory, with a role-specific Auth.js session cookie.
+
+## 2026-07-06 - Inline Head Scripts Can Be Mutated Before Hydration
+
+Context:
+- A browser extension added a `src` attribute and changed the contents of the inline theme initialization script before React hydrated the root layout.
+
+Learning:
+- Suppressing hydration warnings on the root element does not cover attribute or content mutations on a descendant script node.
+
+Action:
+- Mark intentional inline head scripts with `suppressHydrationWarning` when extensions may mutate them before hydration, while keeping the suppression scoped to that exact node.

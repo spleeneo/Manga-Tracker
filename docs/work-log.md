@@ -1668,3 +1668,21 @@ Verification:
 
 Outcome:
 - Parents can now inspect a child's tracked manga and manage a clear, reversible per-title block list.
+
+## 2026-07-06 - Tolerate extension mutation of the theme script
+
+Why:
+- A browser extension mutated the root layout's inline theme script before React hydrated it, producing a hydration mismatch on the parental-controls page.
+
+Changed:
+- Scoped `suppressHydrationWarning` to the inline theme initialization script so extension-added attributes or content do not trigger a React mismatch.
+- Added a regression check that keeps the suppression on that script.
+
+Verification:
+- `npm run test -- tests/lib/theme-init.test.ts`: 2 tests passed, including the new layout regression check.
+- Focused ESLint for the layout and theme test passed.
+- Browser-verified a fresh `/settings/parental-controls` load with the extension present: the saved dark theme was restored, the page rendered, and the console contained no errors.
+- `npm run verify`: passed with 242 tests, a successful production build, and the repository's 8 existing `<img>` warnings.
+
+Outcome:
+- Browser extensions can mutate the inline theme script without producing a hydration warning, while early theme restoration remains intact.

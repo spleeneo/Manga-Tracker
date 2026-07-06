@@ -38,7 +38,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="darkreader-lock" />
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ToastProvider>{children}</ToastProvider>
