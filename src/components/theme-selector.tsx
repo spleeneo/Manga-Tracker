@@ -2,17 +2,16 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { THEME_STORAGE_KEY } from "@/lib/theme-init";
 
 type Theme = "light" | "dark";
-
-const storageKey = "mangateo-theme";
 
 function getSystemTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function getStoredTheme(): Theme | null {
-  const storedTheme = localStorage.getItem(storageKey);
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   return storedTheme === "light" || storedTheme === "dark"
     ? storedTheme
     : null;
@@ -48,7 +47,7 @@ export function ThemeSelector() {
   }, []);
 
   const setSelectedTheme = (nextTheme: Theme) => {
-    localStorage.setItem(storageKey, nextTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     setTheme(nextTheme);
     applyTheme(nextTheme);
   };
