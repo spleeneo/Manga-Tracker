@@ -1,5 +1,29 @@
 # Work Log
 
+## 2026-07-06 - Local parent/child test sessions
+
+### Why
+
+- Parental-control testing needs a parent and child account signed in simultaneously without their Auth.js sessions replacing each other.
+
+### Plan
+
+- Expose the local app on both loopback hostnames and document the OAuth and account setup needed for an isolated two-session workflow.
+
+### Changes
+
+- Added `npm run dev:family`, binding the Next.js development server to all local interfaces.
+- Documented `localhost` for the parent and `127.0.0.1` for the child, including both Google OAuth callbacks and allowlist guidance.
+
+### Verification
+
+- Started `npm run dev:family` and confirmed both `http://localhost:3000` and `http://127.0.0.1:3000` returned HTTP 200 from the same development server.
+- `npm run verify`: passed (lint with 8 pre-existing `no-img-element` warnings, full Vitest suite, and production build).
+
+### Outcome
+
+- Developers can keep parent and child Google accounts signed in concurrently on two cookie-isolated local origins while testing the same application data.
+
 Use this file to leave a trace of meaningful work so it can be resumed, reviewed, debugged, and learned from later.
 
 Add or update an entry when starting a feature, bug fix, refactor, investigation, or production-relevant change. Keep entries concise, but include enough context that someone can pick up the work without rereading the whole conversation.

@@ -32,6 +32,11 @@ npm run db:migrate
 npm run dev
 ```
 
+For simultaneous parent/child testing, run `npm run dev:family`, sign the parent in at
+`http://localhost:3000`, and sign the child in at `http://127.0.0.1:3000`. These hostnames
+have separate browser cookies while sharing the same server and database. Register both
+hostnames' `/api/auth/callback/google` URLs with the local Google OAuth client.
+
 If `DATABASE_URL` is missing, the app shows a database setup screen rather than trying to query Prisma.
 
 ## Google OAuth
@@ -39,6 +44,7 @@ If `DATABASE_URL` is missing, the app shows a database setup screen rather than 
 Create a Google OAuth web application and add redirect URIs for each environment:
 
 - `http://localhost:3000/api/auth/callback/google`
+- `http://127.0.0.1:3000/api/auth/callback/google`
 - Production Vercel callback URL, for example `https://<project>.vercel.app/api/auth/callback/google`
 
 For Google app publishing, use the public privacy policy URL:

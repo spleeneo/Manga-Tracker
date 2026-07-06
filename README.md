@@ -48,9 +48,32 @@ A personal manga tracking application that aggregates chapters from multiple fre
     ```
     Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Testing parent and child accounts locally
+
+Use the family test server when both accounts need to stay signed in at the same time:
+
+```bash
+npm run dev:family
+```
+
+Then open these two origins, preferably in separate browser windows:
+
+- Parent: [http://localhost:3000](http://localhost:3000)
+- Child: [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+Although both URLs reach the same app and database, browsers keep their host-based Auth.js cookies separate. Sign in with the parent Google account on `localhost` and the child Google account on `127.0.0.1`. Using two `localhost` ports would not isolate the accounts because cookies are not separated by port.
+
+For Google sign-in, add both local callbacks to the OAuth client's authorized redirect URIs:
+
+- `http://localhost:3000/api/auth/callback/google`
+- `http://127.0.0.1:3000/api/auth/callback/google`
+
+Include both account emails in `ALLOWED_EMAILS` when the optional allowlist is enabled. The parent can then link the child from **Parental controls** using the child's Google email.
+
 ## Development Commands
 
 - `npm run dev`: starts the development server at `localhost:3000`.
+- `npm run dev:family`: starts one development server reachable through two cookie-isolated local origins for parent/child testing.
 - `npm run build`: builds the application for production.
 - `npm run start`: starts the production server.
 - `npm run lint`: runs the linter to check for code issues.
@@ -94,6 +117,7 @@ Manual library and single-manga syncs do not wait for the daily cron. They enque
 1. In Google Cloud Console, create an OAuth 2.0 Client ID for a web application.
 2. Add authorized redirect URIs:
    - `http://localhost:3000/api/auth/callback/google`
+   - `http://127.0.0.1:3000/api/auth/callback/google`
    - `https://manga-tracker-eight.vercel.app/api/auth/callback/google`
 3. Copy the client ID and client secret into local `.env` and Vercel environment variables:
    - `AUTH_GOOGLE_ID`
