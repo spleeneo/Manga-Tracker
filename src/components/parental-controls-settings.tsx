@@ -74,10 +74,10 @@ export function ParentalControlsSettings() {
       {message && <p className="mt-3 text-sm" role="status">{message}</p>}
     </section>
     {children.length > 0 && <div>
-      <div className="flex flex-wrap gap-2 border-b" role="tablist" aria-label="Child accounts">
-        {children.map((child, index) => <button key={child.id} id={`child-tab-${child.id}`} type="button" role="tab" aria-selected={activeChildId === child.id} aria-controls={`child-panel-${child.id}`} tabIndex={activeChildId === child.id ? 0 : -1} className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-semibold transition-colors ${activeChildId === child.id ? "bg-card text-foreground" : "bg-muted/40 text-muted-foreground hover:text-foreground"}`} onClick={() => setActiveChildId(child.id)} onKeyDown={(event) => { if (event.key === "ArrowRight") { event.preventDefault(); moveChildTab(index, 1); } else if (event.key === "ArrowLeft") { event.preventDefault(); moveChildTab(index, -1); } }}>{child.name || child.email}</button>)}
-      </div>
-      {children.filter((child) => child.id === activeChildId).map((child) => <div key={child.id} id={`child-panel-${child.id}`} role="tabpanel" aria-labelledby={`child-tab-${child.id}`}><ChildPolicyCard child={child} availableTags={availableTags} onSave={savePolicy} onOverride={setOverride} onUnlink={unlinkChild} /></div>)}
+      {children.length > 1 && <div className="mb-3 inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Child accounts">
+        {children.map((child, index) => <button key={child.id} id={`child-tab-${child.id}`} type="button" role="tab" aria-selected={activeChildId === child.id} aria-controls={`child-panel-${child.id}`} tabIndex={activeChildId === child.id ? 0 : -1} className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${activeChildId === child.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`} onClick={() => setActiveChildId(child.id)} onKeyDown={(event) => { if (event.key === "ArrowRight") { event.preventDefault(); moveChildTab(index, 1); } else if (event.key === "ArrowLeft") { event.preventDefault(); moveChildTab(index, -1); } }}>{child.name || child.email}</button>)}
+      </div>}
+      {children.filter((child) => child.id === activeChildId).map((child) => <div key={child.id} id={`child-panel-${child.id}`} role={children.length > 1 ? "tabpanel" : undefined} aria-labelledby={children.length > 1 ? `child-tab-${child.id}` : undefined}><ChildPolicyCard child={child} availableTags={availableTags} onSave={savePolicy} onOverride={setOverride} onUnlink={unlinkChild} /></div>)}
     </div>}
   </div>;
 }
