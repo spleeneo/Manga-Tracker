@@ -16,6 +16,13 @@ export function isDevFamilyLoginEnabled() {
   return process.env.NODE_ENV === "development";
 }
 
+export function devFamilyRoleForHost(host: string | null): DevFamilyRole | null {
+  const hostname = host?.split(":")[0]?.toLowerCase();
+  if (hostname === "localhost") return "parent";
+  if (hostname === "127.0.0.1") return "child";
+  return null;
+}
+
 export async function createDevFamilySession(role: DevFamilyRole) {
   if (!isDevFamilyLoginEnabled()) throw new Error("Development family login is disabled");
 
@@ -46,7 +53,7 @@ export async function createDevFamilySession(role: DevFamilyRole) {
     });
 
     const userId = role === "parent" ? parent.id : child.id;
-    await tx.session.deleteMany({ where: { userId } });
+    await tx.session.deleteMany({ where: { userId, expires: { lt: new Date() } } });
     await tx.session.create({ data: { sessionToken, userId, expires } });
   });
 

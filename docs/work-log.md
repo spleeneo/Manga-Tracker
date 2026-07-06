@@ -1,5 +1,27 @@
 # Work Log
 
+## 2026-07-06 - Keep fake family roles isolated
+
+### Why
+
+- Both local origins displayed both role buttons, allowing the child origin to be signed in as the parent, and creating a new test session revoked an existing browser's session.
+
+### Changes
+
+- Made `localhost` expose only the fake parent login and `127.0.0.1` expose only the fake child login.
+- Changed fake login cleanup to remove only expired sessions instead of revoking all sessions for that role.
+
+### Verification
+
+- Focused role-mapping tests passed and focused ESLint completed without findings.
+- Acceptance-checked the rendered forms: `localhost` submits only `parent`, while `127.0.0.1` submits only `child`.
+- Created a second parent session and confirmed both the original parent cookie and the independent child cookie remained authenticated with the correct identities.
+- Full `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+
+### Outcome
+
+- Each origin now has an unambiguous test identity and concurrent fake sessions no longer revoke each other.
+
 ## 2026-07-06 - Fake family accounts for local testing
 
 ### Why
