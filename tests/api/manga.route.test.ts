@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, fetchMetadataMock, getChildPolicyMock, getMangaAccessMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, sourceFindFirst, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, enqueueSharedMangaSyncJobMock, processSyncJobMock, fetchMetadataMock, getChildPolicyMock, getMangaAccessMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, sourceFindFirst, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   enqueueMangaSyncJobMock: vi.fn(),
+  enqueueSharedMangaSyncJobMock: vi.fn(),
   processSyncJobMock: vi.fn(),
   fetchMetadataMock: vi.fn(),
   getChildPolicyMock: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock("@/lib/content-classification", () => ({ refreshMangaClassification: vi.
 
 vi.mock("@/lib/sync-jobs", () => ({
   enqueueMangaSyncJob: enqueueMangaSyncJobMock,
+  enqueueSharedMangaSyncJob: enqueueSharedMangaSyncJobMock,
   processSyncJob: processSyncJobMock,
 }));
 
@@ -99,6 +101,12 @@ describe("POST /api/manga", () => {
     expect(res.status).toBe(200);
     expect(fetchMetadataMock).toHaveBeenCalledWith(`https://mangadex.org/title/${catalogId}`);
     expect(sourceCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ sourceName: "MangaDex", sourceUrl: `https://mangadex.org/title/${catalogId}` }) });
+    expect(userMangaUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      update: expect.objectContaining({ syncStatus: "UPDATED" }),
+      create: expect.objectContaining({ syncStatus: "UPDATED" }),
+    }));
+    expect(enqueueSharedMangaSyncJobMock).toHaveBeenCalledWith("m1");
+    expect(enqueueMangaSyncJobMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 when title and slug are missing", async () => {

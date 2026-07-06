@@ -5,7 +5,7 @@ import { fetchMetadata } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
 import { inferSourceName } from "@/lib/source-name";
 import { normalizeMangaStatus } from "@/lib/manga-status";
-import { enqueueMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
+import { enqueueMangaSyncJob, enqueueSharedMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 import { evaluateMangaAccess, getChildPolicy, getMangaAccess, parentalControlError } from "@/lib/parental-controls";
@@ -230,10 +230,11 @@ export async function POST(request: Request) {
             }
         }
 
-        const shouldScrape = hasSources && (!existingManga || existingManga._count.chapters === 0 || addedSource);
-        const syncStartedAt = shouldScrape ? new Date() : null;
-        const syncFinishedAt = hasSources && !shouldScrape ? new Date() : null;
-        const syncStatus = hasSources ? (shouldScrape ? "SYNCING" : "UPDATED") : "IDLE";
+        const needsInitialSync = hasSources && (!existingManga || existingManga._count.chapters === 0);
+        const shouldRefresh = needsInitialSync || addedSource;
+        const syncStartedAt = needsInitialSync ? new Date() : null;
+        const syncFinishedAt = hasSources && !needsInitialSync ? new Date() : null;
+        const syncStatus = hasSources ? (needsInitialSync ? "SYNCING" : "UPDATED") : "IDLE";
 
         await prisma.userManga.upsert({
             where: {
@@ -259,8 +260,10 @@ export async function POST(request: Request) {
             },
         });
 
-        const job = shouldScrape ? await enqueueMangaSyncJob(userId, mangaId) : null;
-        if (shouldScrape) after(async () => {
+        const job = needsInitialSync
+            ? await enqueueMangaSyncJob(userId, mangaId)
+            : shouldRefresh ? await enqueueSharedMangaSyncJob(mangaId) : null;
+        if (shouldRefresh) after(async () => {
             if (job) await processSyncJob(job.id);
             await refreshMangaClassification(mangaId);
         });

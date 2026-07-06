@@ -1,5 +1,31 @@
 # Work Log
 
+## 2026-07-06 - Prevent Cached Manga Attachments from Sticking in Syncing
+
+### Why
+
+- Attaching the child account to the already-populated Berserk record added a source and queued a background refresh; the shared enqueue helper then incorrectly forced the child's library row into `SYNCING`, where it remained when the request-local worker did not run.
+
+### Changes
+
+- Split initial sync state from optional background source refreshes during tracking.
+- Existing manga with chapters now attach as `UPDATED`; a newly added source may still receive a shared background refresh without marking the user as waiting.
+- Kept genuinely new or empty manga in `SYNCING` until their initial job finishes.
+- Added regression coverage that a classified child attachment to cached manga uses a shared refresh and returns an updated user-library state.
+
+### Verification
+
+- Focused manga-route and sync-job suites passed (14 tests).
+- Focused ESLint passed.
+- Processed the child's stuck Berserk job successfully; the persisted state is now `UPDATED` with no sync error and 1,747 shared chapters.
+- Live child library API reports Berserk as `UPDATED`; four currently verified-readable chapters are visible to the child.
+- `npm run verify`: passed with the full test suite, the eight existing image-element warnings, and a successful production build.
+- `npm run smoke:update`: completed successfully; MangaPlus reported the known upstream `Account Banned` response while the update cycle continued.
+
+### Outcome
+
+- Reusing a populated manga no longer leaves the attaching child behind a false syncing state while a nonessential source refresh waits in the background.
+
 ## 2026-07-06 - Restore Unfiltered Child Search, Covers, and Imports
 
 ### Why
