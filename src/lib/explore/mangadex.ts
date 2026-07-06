@@ -142,6 +142,8 @@ function buildExploreUrl(query: ExploreQuery) {
   search.append("includes[]", "cover_art");
   search.append("contentRating[]", "safe");
   search.append("contentRating[]", "suggestive");
+  search.append("contentRating[]", "erotica");
+  search.append("contentRating[]", "pornographic");
   search.append("availableTranslatedLanguage[]", "en");
 
   if (query.q?.trim()) {

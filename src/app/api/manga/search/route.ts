@@ -3,7 +3,7 @@ import { searchScrapers } from "@/lib/scrapers/registry";
 import { getCurrentUserId } from "@/lib/session";
 import { getChildPolicy } from "@/lib/parental-controls";
 import { getExploreManga } from "@/lib/explore/mangadex";
-import { createChildCatalogSource } from "@/lib/child-safety";
+import { childCatalogCoverUrl, createChildCatalogSource } from "@/lib/child-safety";
 
 const SEARCH_CACHE_TTL_MS = 60_000;
 const searchCache = new Map<string, { expiresAt: number; results: Awaited<ReturnType<typeof searchScrapers>> }>();
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ results: results.map((manga) => ({
                 title: manga.title,
                 description: manga.description,
-                coverUrl: undefined,
+                coverUrl: childCatalogCoverUrl(manga.id, manga.coverUrl),
                 status: manga.status,
                 contentRating: manga.contentRating,
                 classificationSource: undefined,

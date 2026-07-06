@@ -1,5 +1,31 @@
 # Work Log
 
+## 2026-07-06 - Restore Unfiltered Child Search, Covers, and Imports
+
+### Why
+
+- After parental controls became tag-only, child discovery still excluded higher MangaDex rating buckets, stripped all covers, and rejected valid child catalog imports because the dialog duplicated an opaque source reference and cached manga were authorized before their trusted classification was refreshed.
+
+### Changes
+
+- Added all MangaDex content-rating buckets to discovery so empty blocked tags truly allow every classified result, including exact Berserk search results.
+- Added policy-checked internal catalog cover URLs and taught the tracking dialog to render internal images without routing them through the external image proxy.
+- Removed the legacy duplicate `sourceUrl` field for opaque child catalog imports.
+- Persist trusted MangaDex classification on an existing cached manga before evaluating its child access, while retaining title overrides and tag policy enforcement.
+- Added focused coverage for all-rating discovery, internal child cover URLs, opaque tracking payload normalization, and classification-before-access ordering.
+
+### Verification
+
+- Focused child safety, search, Explore, and manga import suites passed (20 tests).
+- Focused ESLint passed with the existing add-dialog image-element warning.
+- Live child search returned exact `Berserk` first with an internal cover URL; the cover loaded at 256×364 and the UI successfully reported `Berserk is tracked`.
+- `npm run verify`: passed with the full test suite, the eight existing image-element warnings, and a successful production build.
+- `npm run smoke:update`: completed successfully; MangaPlus reported the known upstream `Account Banned` response while the update cycle continued.
+
+### Outcome
+
+- With no blocked tags, child accounts can discover and track any classified MangaDex title, see its cover, and reuse cached manga without a false parental-control denial.
+
 ## 2026-07-06 - Fix Exclusion Styling and Provider Tag Noise
 
 ### Why

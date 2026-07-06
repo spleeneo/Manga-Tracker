@@ -84,6 +84,13 @@ describe("POST /api/manga", () => {
     sourceFindUnique.mockResolvedValue(null);
     sourceCreate.mockResolvedValue({ id: "s1" });
     userMangaUpsert.mockResolvedValue({});
+    getMangaAccessMock.mockImplementation(async () => {
+      expect(mangaUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "m1" },
+        data: expect.objectContaining({ classificationSource: "MANGADEX" }),
+      }));
+      return { allowed: true, isChild: true, reason: "allowed" };
+    });
     const catalogId = "12345678-1234-1234-1234-123456789abc";
     const res = await POST(new Request("http://localhost/api/manga", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
       title: "Forged title", contentRating: "safe", classificationSource: "MANGADEX",

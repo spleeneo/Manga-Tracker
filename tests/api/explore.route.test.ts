@@ -99,6 +99,8 @@ describe("GET /api/explore", () => {
     expect(calledUrl).toContain("includedTags%5B%5D=tag1");
     expect(calledUrl).toContain("publicationDemographic%5B%5D=shounen");
     expect(calledUrl).toContain("status%5B%5D=ongoing");
+    expect(calledUrl).toContain("contentRating%5B%5D=erotica");
+    expect(calledUrl).toContain("contentRating%5B%5D=pornographic");
   });
 
   it("returns a readable error when MangaDex fails", async () => {

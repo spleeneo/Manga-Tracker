@@ -156,6 +156,19 @@ export async function POST(request: Request) {
             }
         }
 
+        if (existingManga && classificationSource === "MANGADEX" && typeof contentRating === "string") {
+            await prisma.manga.update({
+                where: { id: existingManga.id },
+                data: {
+                    contentRating: contentRating.toLowerCase(), classificationSource: "MANGADEX", classifiedAt: new Date(),
+                    tags: normalizedTags.length ? {
+                        deleteMany: {},
+                        create: normalizedTags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })),
+                    } : undefined,
+                },
+            });
+        }
+
         if (existingManga && childPolicy) {
             const existingAccess = await getMangaAccess(userId, existingManga.id);
             if (!existingAccess.allowed) return parentalControlError(existingAccess.reason);
@@ -174,19 +187,6 @@ export async function POST(request: Request) {
                 tags: normalizedTags.length ? { create: normalizedTags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })) } : undefined,
             }
         })).id;
-
-        if (existingManga && classificationSource === "MANGADEX" && typeof contentRating === "string") {
-            await prisma.manga.update({
-                where: { id: mangaId },
-                data: {
-                    contentRating: contentRating.toLowerCase(), classificationSource: "MANGADEX", classifiedAt: new Date(),
-                    tags: normalizedTags.length ? {
-                        deleteMany: {},
-                        create: normalizedTags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })),
-                    } : undefined,
-                },
-            });
-        }
 
         // Process all sources
         const hasSources = sourcesToProcess.length > 0;

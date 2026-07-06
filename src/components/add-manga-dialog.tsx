@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2, Sparkles, Image as ImageIcon, Search } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { legacySourceUrlForTracking } from "@/lib/child-safety";
 
 interface SearchSource {
     name: string;
@@ -53,18 +54,21 @@ export function AddMangaDialog() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const getMangaFormData = (manga: SearchResult, initialSourceUrl?: string) => ({
+    const getMangaFormData = (manga: SearchResult, initialSourceUrl?: string) => {
+      const sourceUrl = initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "";
+      return ({
         title: manga.title,
         slug: manga.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         coverUrl: manga.coverUrl || "",
         status: manga.status || "ONGOING",
         description: manga.description || "",
-        sourceUrl: initialSourceUrl || (manga.sources && manga.sources[0]?.url) || "",
+        sourceUrl: legacySourceUrlForTracking(sourceUrl),
         sources: manga.sources || [],
         contentRating: manga.contentRating,
         classificationSource: manga.classificationSource,
         tags: manga.tags || [],
-    });
+      });
+    };
 
     const handleSearchQueryChange = (value: string) => {
         setSearchQuery(value);
@@ -215,7 +219,7 @@ export function AddMangaDialog() {
                                     >
                                         <div className="h-28 w-[72px] shrink-0 overflow-hidden rounded-md border bg-muted sm:w-20">
                                             {manga.coverUrl ? (
-                                                <img src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                <img src={manga.coverUrl.startsWith("/") ? manga.coverUrl : `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-8 w-8 opacity-20" /></div>
                                             )}
