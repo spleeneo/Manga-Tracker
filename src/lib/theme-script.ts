@@ -1,4 +1,4 @@
-const themeScript = `
+export const themeScript = `
 (() => {
   try {
     const stored = localStorage.getItem("mangateo-theme");
@@ -12,7 +12,3 @@ const themeScript = `
   }
 })();
 `;
-
-export function ThemeScript() {
-  return <script dangerouslySetInnerHTML={{ __html: themeScript }} />;
-}

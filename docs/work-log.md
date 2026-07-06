@@ -1,5 +1,26 @@
 # Work Log
 
+## 2026-07-06 - Use Next.js-managed pre-hydration theme script
+
+### Why
+
+- React 19 warned that a raw script tag returned from a React component would not execute during client rendering.
+
+### Changes
+
+- Replaced the raw `ThemeScript` component with an inline `next/script` entry in the root layout using a stable ID and `beforeInteractive` strategy.
+
+### Verification
+
+- Focused ESLint passed for the root layout and theme script module.
+- Both local instances rendered the tracked `mangateo-theme` script in their initial HTML.
+- `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- Direct overlay verification remains manual because the in-app browser exposed no controllable tab during this work.
+
+### Outcome
+
+- Theme initialization now uses Next.js's supported pre-hydration script path instead of returning a raw script element from a React component.
+
 ## 2026-07-06 - Prevent Dark Reader hydration mismatches
 
 ### Why
