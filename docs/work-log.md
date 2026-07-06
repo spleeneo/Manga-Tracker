@@ -1,5 +1,27 @@
 # Work Log
 
+## 2026-07-06 - Refine Child Policy Switcher
+
+### Why
+
+- The first tab treatment looked disconnected from the policy card and duplicated the child name for single-child families.
+
+### Changes
+
+- Hide the switcher when only one child is linked and use the card heading as the sole child label.
+- Restyled the multi-child switcher as a compact segmented control separated from the policy card.
+- Removed the duplicate selected-tag chip list above the checkbox catalogue.
+
+### Verification
+
+- Browser-verified the single-child page no longer renders a redundant tab while retaining the child policy card.
+- Browser-verified saved selections remain checked in the catalogue without rendering duplicate chips.
+- `npm run verify`: passed with 57 test files and 236 tests; lint retained the eight existing image-element warnings, and the production build passed.
+
+### Outcome
+
+- Single-child families get a clean card, while multi-child families retain a visually intentional account switcher.
+
 ## 2026-07-06 - Child-safe navigation and provider privacy
 
 ### Why
