@@ -58,9 +58,9 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const link = await prisma.parentChildLink.findFirst({ where: { id: body.linkId, parentId: userId } });
   if (!link?.childId) return NextResponse.json({ error: "Active linked child not found" }, { status: 404 });
-  const allowedContentRatings = normalizeList(body.allowedContentRatings);
   const blockedTagNames = normalizeList(body.blockedTagNames);
-  if (!allowedContentRatings?.length || !blockedTagNames) return NextResponse.json({ error: "Invalid policy" }, { status: 400 });
+  if (!blockedTagNames) return NextResponse.json({ error: "Invalid policy" }, { status: 400 });
+  const allowedContentRatings = DEFAULT_ALLOWED_CONTENT_RATINGS;
   const policy = await prisma.childPolicy.upsert({
     where: { childId: link.childId },
     update: { enabled: body.enabled !== false, allowedContentRatings, blockedTagNames },

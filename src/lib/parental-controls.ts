@@ -1,22 +1,18 @@
 import { prisma } from "@/lib/db";
 import { canonicalTagKey } from "@/lib/content-taxonomy";
 
-export const DEFAULT_ALLOWED_CONTENT_RATINGS = ["safe"];
+export const DEFAULT_ALLOWED_CONTENT_RATINGS = ["safe", "suggestive", "erotica", "pornographic"];
 export const DEFAULT_BLOCKED_TAG_NAMES = ["gore", "sexual violence"];
 
 export type MangaAccessReason = "allowed" | "blocked_rating" | "blocked_tag" | "unclassified" | "title_blocked";
 export interface MangaClassification { contentRating: string | null; classificationSource: string | null; tags: string[]; }
-export interface ChildPolicyInput { enabled: boolean; allowedContentRatings: string[]; blockedTagNames: string[]; }
-
-const normalize = (value: string) => value.trim().toLowerCase();
+export interface ChildPolicyInput { enabled: boolean; allowedContentRatings?: string[]; blockedTagNames: string[]; }
 
 export function evaluateMangaAccess(policy: ChildPolicyInput | null, manga: MangaClassification, override?: "ALLOW" | "BLOCK" | null) {
   if (!policy?.enabled) return { allowed: true, reason: "allowed" as const };
   if (override === "BLOCK") return { allowed: false, reason: "title_blocked" as const };
   if (override === "ALLOW") return { allowed: true, reason: "allowed" as const };
   if (!manga.contentRating || !manga.classificationSource) return { allowed: false, reason: "unclassified" as const };
-  const allowedRatings = new Set(policy.allowedContentRatings.map(normalize));
-  if (!allowedRatings.has(normalize(manga.contentRating))) return { allowed: false, reason: "blocked_rating" as const };
   const blockedTags = new Set(policy.blockedTagNames.map(canonicalTagKey));
   if (manga.tags.some((tag) => blockedTags.has(canonicalTagKey(tag)))) return { allowed: false, reason: "blocked_tag" as const };
   return { allowed: true, reason: "allowed" as const };

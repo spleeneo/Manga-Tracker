@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { canonicalTagKey, canonicalTagName } from "@/lib/content-taxonomy";
 
-type Policy = { enabled: boolean; allowedContentRatings: string[]; blockedTagNames: string[] };
+type Policy = { enabled: boolean; blockedTagNames: string[] };
 type Title = { id: string; title: string; contentRating: string | null; classificationSource: string | null; tags: string[]; decision: string | null };
 type Child = { id: string; childId: string | null; email: string; name?: string | null; status: string; policy: Policy; titles: Title[] };
 type AvailableTag = { id: string; name: string; group: string | null };
@@ -87,7 +87,6 @@ function ChildPolicyCard({ child, availableTags, onSave, onOverride, onUnlink }:
   const [tagQuery, setTagQuery] = useState("");
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
-  const toggleRating = (rating: string) => setPolicy((current) => ({ ...current, allowedContentRatings: current.allowedContentRatings.includes(rating) ? current.allowedContentRatings.filter((item) => item !== rating) : [...current.allowedContentRatings, rating] }));
   const blockedKeys = new Set(policy.blockedTagNames.map(canonicalTagKey));
   const toggleTag = (name: string) => setPolicy((current) => ({ ...current, blockedTagNames: blockedKeys.has(canonicalTagKey(name)) ? current.blockedTagNames.filter((tag) => canonicalTagKey(tag) !== canonicalTagKey(name)) : [...current.blockedTagNames, canonicalTagName(name)] }));
   const visibleTags = availableTags.filter((tag) => tag.name.toLowerCase().includes(tagQuery.trim().toLowerCase()));
@@ -98,12 +97,11 @@ function ChildPolicyCard({ child, availableTags, onSave, onOverride, onUnlink }:
   }, new Map<string, AvailableTag[]>());
   return <section className="surface rounded-lg p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{child.name || child.email}</h2><p className="text-sm text-muted-foreground">{child.status === "ACTIVE" ? "Linked" : "Pending sign-in"}</p></div>{confirmUnlink ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-muted-foreground">Remove this child link?</span><button className="ui-button ui-button-secondary" type="button" onClick={() => setConfirmUnlink(false)} disabled={unlinking}>Cancel</button><button className="ui-button border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90" type="button" disabled={unlinking} onClick={() => { setUnlinking(true); void onUnlink(child).finally(() => setUnlinking(false)); }}>{unlinking ? "Abandoning…" : "Abandon your child"}</button></div> : <button className="ui-button border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90" type="button" onClick={() => setConfirmUnlink(true)}>Abandon your child</button>}</div>
     {child.status === "ACTIVE" && <><label className="mt-5 flex items-center gap-2"><input type="checkbox" checked={policy.enabled} onChange={(event) => setPolicy({ ...policy, enabled: event.target.checked })}/>Enable parental controls</label>
-      <fieldset className="mt-4"><legend className="text-sm font-semibold">Allowed content ratings</legend><div className="mt-2 flex flex-wrap gap-4">{["safe", "suggestive", "erotica", "pornographic"].map((rating) => <label key={rating} className="flex items-center gap-2 capitalize"><input type="checkbox" checked={policy.allowedContentRatings.includes(rating)} onChange={() => toggleRating(rating)}/>{rating}</label>)}</div></fieldset>
       <fieldset className="mt-4"><legend className="text-sm font-semibold">Blocked genres and tags</legend><p className="mt-1 text-xs text-muted-foreground">A manga is hidden when any source reports one of the selected tags.</p>
         <input className="ui-field mt-3 w-full" type="search" value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} placeholder="Search genres, themes, formats, and content tags" aria-label="Search genres and tags" />
         <div className="mt-3 space-y-4 rounded-md border p-3">{[...groupedTags.entries()].map(([group, tags]) => <div key={group}><h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{group}</h4><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{tags.map((tag) => <label key={tag.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={blockedKeys.has(canonicalTagKey(tag.name))} onChange={() => toggleTag(tag.name)} />{tag.name}</label>)}</div></div>)}</div>
       </fieldset>
-      <button className="ui-button ui-button-primary mt-4" disabled={!policy.allowedContentRatings.length} onClick={() => void onSave(child, policy)}>Save policy</button>
+      <button className="ui-button ui-button-primary mt-4" onClick={() => void onSave(child, policy)}>Save policy</button>
       {child.titles.length > 0 && <div className="mt-6"><h3 className="font-semibold">Title decisions</h3><div className="mt-3 space-y-3">{child.titles.map((title) => <div key={title.id} className="rounded-md border p-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{title.title}</p><p className="text-xs text-muted-foreground">{title.classificationSource ? `${title.contentRating ?? "unrated"} · ${title.tags.join(", ") || "no tags"}` : "Unclassified"}</p></div><select className="ui-field" value={title.decision ?? ""} onChange={(event) => void onOverride(child, title.id, (event.target.value || null) as "ALLOW" | "BLOCK" | null)}><option value="">Use policy</option><option value="ALLOW">Always allow</option><option value="BLOCK">Always block</option></select></div></div>)}</div></div>}
     </>}
   </section>;

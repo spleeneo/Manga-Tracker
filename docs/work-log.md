@@ -1,5 +1,28 @@
 # Work Log
 
+## 2026-07-06 - Use Tags as the Sole Parental Content Rule
+
+### Why
+
+- Separate rating and tag controls overlapped and made it difficult to predict why a manga would be blocked.
+
+### Changes
+
+- Removed content-rating controls from the parental settings UI.
+- Stopped legacy rating selections from affecting manga access; normalized tags are now the only configurable content rule.
+- Kept the conservative rule that manga without trusted classification remain unavailable to children.
+- Kept the legacy database field populated with all ratings for backward-compatible storage and API responses.
+
+### Verification
+
+- Focused parental policy and API suites passed (14 tests).
+- Browser-verified that only the tag controls remain and saving is available without rating selections.
+- `npm run verify`: passed with 57 test files and 236 tests; lint retained the eight existing image-element warnings, and the production build passed.
+
+### Outcome
+
+- Parents now manage one understandable source-aligned tag policy instead of two overlapping classification systems.
+
 ## 2026-07-06 - Refine Child Policy Switcher
 
 ### Why
