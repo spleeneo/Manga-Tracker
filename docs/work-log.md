@@ -1,5 +1,26 @@
 # Work Log
 
+## 2026-07-06 - Remove the extension-colliding inline theme script
+
+### Why
+
+- The in-app browser extension replaced the root layout's inline script node before hydration, even when it used `next/script` and Dark Reader's lock metadata.
+
+### Changes
+
+- Removed pre-hydration theme JavaScript from the document head. The existing client-side theme selector now applies the stored or system theme immediately after hydration.
+
+### Verification
+
+- Focused layout/theme-selector ESLint passed.
+- Confirmed neither local instance emits the custom `mangateo-theme` head script.
+- `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- The in-app browser overlay still requires a manual reload because no controllable tab was exposed.
+
+### Outcome
+
+- The extension no longer has an application-owned head script node to replace during hydration.
+
 ## 2026-07-06 - Use Next.js-managed pre-hydration theme script
 
 ### Why

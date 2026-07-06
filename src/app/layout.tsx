@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
-import { themeScript } from "@/lib/theme-script";
 import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 
@@ -39,9 +37,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="darkreader-lock" />
-        <Script id="mangateo-theme" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ToastProvider>{children}</ToastProvider>

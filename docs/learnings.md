@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Suppression Cannot Repair Extension-Replaced Script Nodes
+
+Context:
+- An in-app browser extension replaced an application-owned head script before hydration; both raw React scripts and `next/script` produced the same mismatch.
+
+Learning:
+- When an extension replaces a DOM node rather than merely adding attributes, hydration suppression and script wrappers do not make the server/client trees equivalent.
+
+Action:
+- Avoid a pre-hydration inline script when the browser surface is known to replace it; initialize nonessential preferences after hydration instead.
+
 ## 2026-07-06 - Theme Extensions Can Cause Hydration Mismatches
 
 Context:
