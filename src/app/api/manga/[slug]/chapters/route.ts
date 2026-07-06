@@ -100,9 +100,11 @@ export async function GET(
         sourceRanks,
         lastReadChapterNumber: tracked.lastReadChapterNumber,
         target,
+        readableOnly: access.isChild,
       });
 
-      return NextResponse.json({ chapter, mode, sortDirection });
+      const safeChapter = access.isChild && chapter ? { ...chapter, url: `/manga/${manga.slug}/chapter/${chapter.id}`, sourceName: undefined, sourceId: null } : chapter;
+      return NextResponse.json({ chapter: safeChapter, mode, sortDirection });
     }
 
     const page = await getMangaChapterPage({
@@ -113,9 +115,11 @@ export async function GET(
       sourceIds: sourceId ? undefined : sourceIds,
       lastReadChapterNumber: tracked.lastReadChapterNumber,
       sortDirection,
+      readableOnly: access.isChild,
     });
 
-    return NextResponse.json({ ...page, mode, sortDirection });
+    const safePage = access.isChild ? { ...page, chapters: page.chapters.map((chapter) => ({ ...chapter, url: `/manga/${manga.slug}/chapter/${chapter.id}`, sourceName: undefined, sourceId: null })) } : page;
+    return NextResponse.json({ ...safePage, mode, sortDirection });
   } catch (error) {
     console.error("Error fetching chapter page:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

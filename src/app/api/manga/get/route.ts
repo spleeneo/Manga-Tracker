@@ -48,8 +48,10 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             ...manga,
-            chapters: manga.chapters.map((chapter) => ({
+            sources: access.isChild ? [] : manga.sources,
+            chapters: manga.chapters.filter((chapter) => !access.isChild || chapter.readerStatus === "READABLE").map((chapter) => ({
                 ...chapter,
+                ...(access.isChild ? { url: `/manga/${manga.slug}/chapter/${chapter.id}`, sourceId: null, providerChapterId: null } : {}),
                 isRead: tracked.lastReadChapterNumber != null && chapter.chapterNumber <= tracked.lastReadChapterNumber,
             })),
         });

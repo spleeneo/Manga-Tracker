@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExploreManga } from "@/lib/explore/mangadex";
 import { getCurrentUserId } from "@/lib/session";
+import { getChildPolicy } from "@/lib/parental-controls";
+import { createChildCatalogSource } from "@/lib/child-safety";
 
 export async function GET(request: NextRequest) {
   const userId = await getCurrentUserId();
@@ -20,6 +22,12 @@ export async function GET(request: NextRequest) {
       offset: params.get("offset"),
     });
 
+    if (await getChildPolicy(userId)) {
+      return NextResponse.json({
+        ...data,
+        results: data.results.map((manga) => ({ ...manga, coverUrl: undefined, classificationSource: undefined, source: createChildCatalogSource(manga.id) })),
+      });
+    }
     return NextResponse.json(data);
   } catch (error) {
     console.error("Explore API error:", error);

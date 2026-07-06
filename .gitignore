@@ -17,6 +17,7 @@
 /.next/
 /.next-parent/
 /.next-child/
+/.next-*/
 /out/
 
 # production

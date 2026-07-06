@@ -59,7 +59,7 @@ describe("GET /api/manga/library", () => {
 
     expect(res.status).toBe(200);
     expect(body.mangas).toEqual([{ id: "m1", slug: "one-piece" }]);
-    expect(getLibraryMangaSummariesMock).toHaveBeenCalledWith("u1");
+    expect(getLibraryMangaSummariesMock).toHaveBeenCalledWith("u1", false);
   });
 });
 

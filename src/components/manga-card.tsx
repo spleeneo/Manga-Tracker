@@ -246,7 +246,7 @@ export function MangaCard({
             >
                 {manga.coverUrl ? (
                     <img
-                        src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                        src={manga.coverUrl.startsWith("/") ? manga.coverUrl : `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                         alt={manga.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -349,7 +349,7 @@ export function MangaCard({
                 >
                     {manga.coverUrl ? (
                         <img
-                            src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                            src={manga.coverUrl.startsWith("/") ? manga.coverUrl : `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
                             alt={manga.title}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />

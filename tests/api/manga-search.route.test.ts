@@ -50,16 +50,16 @@ describe("GET /api/manga/search", () => {
 
   it("returns policy-filtered MangaDex search results to child accounts", async () => {
     getChildPolicy.mockResolvedValue({ enabled: true, allowedContentRatings: ["safe"], blockedTagNames: ["gore"] });
-    getExploreManga.mockResolvedValue({ results: [{
-      title: "Naruto", description: "Ninja manga", coverUrl: "cover.jpg", status: "COMPLETED",
-      contentRating: "safe", classificationSource: "MANGADEX", tags: [{ id: "tag-1", name: "Action" }],
+    getExploreManga.mockResolvedValue({ results: [{ id: "12345678-1234-1234-1234-123456789abc",
+      title: "Naruto", description: "Ninja manga", status: "COMPLETED",
+      contentRating: "safe", tags: [{ id: "tag-1", name: "Action" }],
       source: { name: "MangaDex", url: "https://mangadex.org/title/naruto" },
     }], nextOffset: null });
     const res = await GET(mockNextRequest("http://localhost/api/manga/search?q=one+piece"));
     expect(await res.json()).toEqual({ results: [{
-      title: "Naruto", description: "Ninja manga", coverUrl: "cover.jpg", status: "COMPLETED",
-      contentRating: "safe", classificationSource: "MANGADEX", tags: [{ id: "tag-1", name: "Action" }],
-      sources: [{ name: "MangaDex", url: "https://mangadex.org/title/naruto" }],
+      title: "Naruto", description: "Ninja manga", status: "COMPLETED",
+      contentRating: "safe", tags: [{ id: "tag-1", name: "Action" }],
+      sources: [{ name: "Mangateo", url: "mangateo:catalog:12345678-1234-1234-1234-123456789abc" }],
     }] });
     expect(getExploreManga).toHaveBeenCalledWith("u1", { q: "one piece", limit: "24", sort: "trending" });
     expect(searchScrapers).not.toHaveBeenCalled();

@@ -6,6 +6,7 @@ const {
   chapterUpdateMock,
   fetchReaderPagesMock,
   getCurrentUserIdMock,
+  getMangaAccessMock,
   mangaFindUniqueMock,
   userMangaFindUniqueMock,
 } = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const {
   chapterUpdateMock: vi.fn(),
   fetchReaderPagesMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
+  getMangaAccessMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
 }));
@@ -21,6 +23,7 @@ const {
 vi.mock("@/lib/session", () => ({
   getCurrentUserId: getCurrentUserIdMock,
 }));
+vi.mock("@/lib/parental-controls", () => ({ getMangaAccess: getMangaAccessMock, parentalControlError: vi.fn() }));
 
 vi.mock("@/lib/scrapers/registry", () => ({
   fetchReaderPages: fetchReaderPagesMock,
@@ -48,6 +51,7 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
+    getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: false, reason: "allowed" });
     mangaFindUniqueMock.mockResolvedValue({ id: "m1" });
     userMangaFindUniqueMock.mockResolvedValue({ id: "um1", disabledSources: [], sourcePreferences: [] });
     chapterFindFirstMock.mockResolvedValue({
@@ -69,6 +73,17 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/reader", () => {
     });
     chapterFindManyMock.mockResolvedValue([]);
     chapterUpdateMock.mockResolvedValue({});
+  });
+
+  it("does not reveal external reader details to children", async () => {
+    getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: true, reason: "allowed" });
+    fetchReaderPagesMock.mockResolvedValue({ status: "EXTERNAL_ONLY", pages: [], externalUrl: "https://secret.example/chapter" });
+    const res = await GET(new Request("http://localhost") as never, { params: Promise.resolve({ slug: "one-piece", chapterId: "c1" }) });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toEqual({ error: "Chapter unavailable in Mangateo" });
+    expect(JSON.stringify(body)).not.toContain("secret.example");
+    expect(JSON.stringify(body)).not.toContain("MangaDex");
   });
 
   it("requires authentication", async () => {

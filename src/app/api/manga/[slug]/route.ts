@@ -30,6 +30,11 @@ export async function GET(
         const access = await getMangaAccess(userId, manga.id);
         if (!access.allowed) return parentalControlError(access.reason);
 
+        if (access.isChild) return NextResponse.json({
+            ...manga,
+            sources: [],
+            chapters: manga.chapters.filter((chapter) => chapter.readerStatus === "READABLE").map((chapter) => ({ ...chapter, url: `/manga/${manga.slug}/chapter/${chapter.id}`, sourceId: null, providerChapterId: null })),
+        });
         return NextResponse.json(manga);
     } catch (error) {
         console.error("Error fetching manga:", error);

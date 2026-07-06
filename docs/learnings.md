@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Provider Privacy Must Be Enforced In Payloads
+
+Context:
+- Hiding a source list still left provider names and URLs in discovery results, chapter payloads, library read targets, cover URLs, and direct reader fallbacks.
+
+Learning:
+- UI hiding is not a privacy boundary. Child-safe provider privacy requires opaque discovery references, trusted server-side resolution, internal media/read routes, and filtering at every payload and direct entry point.
+
+Action:
+- Keep child provider identities server-only and add regression assertions that child JSON does not contain upstream names or URLs.
+
 ## 2026-07-06 - Canonicalize Provider Tags at Boundaries
 
 Context:

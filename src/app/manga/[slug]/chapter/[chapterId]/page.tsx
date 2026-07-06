@@ -52,6 +52,7 @@ export default async function ReaderPage({ params }: PageProps) {
       title: true,
       url: true,
       sourceId: true,
+      readerStatus: true,
       source: {
         select: {
           sourceName: true,
@@ -60,8 +61,9 @@ export default async function ReaderPage({ params }: PageProps) {
     },
   });
   if (!chapter) notFound();
+  if (access.isChild && chapter.readerStatus !== "READABLE") notFound();
 
-  if (isExternalReaderSource(chapter.source?.sourceName)) {
+  if (!access.isChild && isExternalReaderSource(chapter.source?.sourceName)) {
     redirect(chapter.url);
   }
 
@@ -71,6 +73,7 @@ export default async function ReaderPage({ params }: PageProps) {
         mangaId: manga.id,
         ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
         chapterNumber: { lt: chapter.chapterNumber },
+        ...(access.isChild ? { readerStatus: "READABLE" } : {}),
       },
       orderBy: { chapterNumber: "desc" },
       select: { id: true, chapterNumber: true, title: true },
@@ -80,6 +83,7 @@ export default async function ReaderPage({ params }: PageProps) {
         mangaId: manga.id,
         ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
         chapterNumber: { gt: chapter.chapterNumber },
+        ...(access.isChild ? { readerStatus: "READABLE" } : {}),
       },
       orderBy: { chapterNumber: "asc" },
       take: 1,
@@ -106,16 +110,16 @@ export default async function ReaderPage({ params }: PageProps) {
         id: chapter.id,
         chapterNumber: chapter.chapterNumber,
         title: chapter.title,
-        url: chapter.url,
-        sourceName: chapter.source?.sourceName ?? null,
+        url: access.isChild ? `/manga/${manga.slug}/chapter/${chapter.id}` : chapter.url,
+        sourceName: access.isChild ? null : chapter.source?.sourceName ?? null,
       }}
       previousChapter={previousChapter}
       nextChapters={nextChapters.map((nextChapter) => ({
         id: nextChapter.id,
         chapterNumber: nextChapter.chapterNumber,
         title: nextChapter.title,
-        url: nextChapter.url,
-        sourceName: nextChapter.source?.sourceName ?? null,
+        url: access.isChild ? `/manga/${manga.slug}/chapter/${nextChapter.id}` : nextChapter.url,
+        sourceName: access.isChild ? null : nextChapter.source?.sourceName ?? null,
       }))}
     />
   );

@@ -35,6 +35,7 @@ export async function PUT(
     }
     const access = await getMangaAccess(userId, manga.id);
     if (!access.allowed) return parentalControlError(access.reason);
+    if (access.isChild) return NextResponse.json({ error: "Source management unavailable" }, { status: 404 });
 
     const tracked = await prisma.userManga.findUnique({
       where: {

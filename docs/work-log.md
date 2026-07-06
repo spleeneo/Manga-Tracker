@@ -1,5 +1,62 @@
 # Work Log
 
+## 2026-07-06 - Child-safe navigation and provider privacy
+
+### Why
+
+- Child accounts do not manage parental settings and should neither leave Mangateo for chapters nor learn which external chapter providers back the service.
+
+### Plan
+
+- Remove child-only navigation and source-management UI, then enforce provider privacy and Mangateo-readable chapter selection in server payloads and direct entry points.
+
+### Changes
+
+- Hid the Parental controls navigation item for active children and made the settings route return not found for them.
+- Removed source-management UI from child manga pages and denied child access to source preference/toggle endpoints.
+- Replaced child discovery provider URLs/names with opaque `mangateo:catalog:` references; child imports now resolve the reference and re-fetch trusted classification server-side.
+- Removed provider classification labels and external cover URLs from child discovery; tracked child covers now use an authenticated internal cover endpoint.
+- Restricted child library summaries, chapter lists, progress targets, reader pages, and next-chapter streams to chapters already verified as `READABLE` in Mangateo.
+- Replaced child chapter URLs with internal Mangateo routes, removed source IDs/names, stripped reader external URLs, and return a generic not-found response for non-readable chapters.
+- Added focused coverage for opaque catalog references, trusted import resolution, readable-only queries, anonymized chapter payloads, and external-reader denial.
+- Generalized lint/git ignores for generated `.next-*` development output after the first verification run found an additional test build directory.
+
+### Verification
+
+- Focused child-safety, search, explore, import, library, chapters, reader, next-chapter, and progress suites passed (56 tests in the final focused run).
+- Focused ESLint passed for the changed security and navigation paths (existing image-element warnings remain in image-rendering components).
+- Live child requests confirmed the parent navigation remains visible, child navigation omits Parental controls, direct child settings returns 404, and child search/explore payloads contain neither `mangadex` nor provider URLs.
+- `npm run verify`: passed after updating the generated-output ignore and one library-route expectation (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- Browser automation was unavailable because the in-app browser exposed no controllable tabs; live authenticated HTTP responses were verified instead.
+
+### Outcome
+
+- Child accounts remain inside Mangateo for readable chapters and no longer receive chapter-provider identities or external chapter destinations through the covered UI/API paths.
+
+## 2026-07-06 - Child Policy Tabs and Page-Level Tag Scrolling
+
+### Why
+
+- The blocked-tag catalogue used a cramped nested scroll area, and rendering every child policy in one long page would become unwieldy for families with several children.
+
+### Changes
+
+- Removed the tag catalogue's fixed height and internal overflow so the document owns vertical scrolling.
+- Added one tab per linked or pending child and render only the selected child's policy panel.
+- Added tab semantics, focus management, and left/right arrow navigation.
+- Expanded the tag grid to three columns on large screens to use the available page width.
+
+### Verification
+
+- Focused ESLint passed for the settings component.
+- `npm run verify`: passed with 57 test files and 236 tests; lint retained the repository's eight existing image-element warnings, and the production build passed.
+- Browser-verified the authenticated parental-control page: one selected child tab and one tab panel render, the tag catalogue has no overflow container, and the body owns vertical scrolling.
+- The local test family contains one child, so switching between two real child tabs was not exercised in the browser.
+
+### Outcome
+
+- Long tag catalogues now scroll naturally with the page, while each child policy has its own compact tabbed workspace.
+
 ## 2026-07-06 - Selectable Source-Aligned Parental Tags
 
 ### Why

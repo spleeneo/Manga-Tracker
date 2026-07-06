@@ -10,12 +10,12 @@ const navItems = [
   { href: "/settings/parental-controls", label: "Parental controls", icon: Shield },
 ];
 
-export function AppNav() {
+export function AppNav({ isChild = false }: { isChild?: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav className="app-nav" aria-label="Primary navigation">
-      {navItems.map((item) => {
+      {navItems.filter((item) => !isChild || item.href !== "/settings/parental-controls").map((item) => {
         const Icon = item.icon;
         const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 

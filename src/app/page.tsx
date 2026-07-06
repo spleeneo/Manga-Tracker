@@ -8,11 +8,13 @@ import { LibraryHome } from "@/components/library-home";
 import { ThemeSelector } from "@/components/theme-selector";
 import { UpdateLibraryButton } from "@/components/update-library-button";
 import { auth } from "../../auth";
+import { getChildPolicy } from "@/lib/parental-controls";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const session = await auth();
+  const isChild = session?.user?.id ? Boolean(await getChildPolicy(session.user.id)) : false;
 
   if (!isDatabaseConfigured) {
     return (
@@ -45,7 +47,7 @@ export default async function Home() {
         <div className="page-wrap app-header-row">
           <div className="contents md:flex md:min-w-0 md:items-center md:gap-3">
             <BrandLink />
-            {session?.user && <AppNav />}
+            {session?.user && <AppNav isChild={isChild} />}
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {session?.user && <AddMangaDialog />}

@@ -49,14 +49,16 @@ async function resolveProgressChapterNumber({
   sourceIds,
   currentProgress,
   chapterNumber,
+  readableOnly = false,
 }: {
   action: ProgressAction;
   mangaId: string;
   sourceIds?: string[];
   currentProgress: number | null;
   chapterNumber?: unknown;
+  readableOnly?: boolean;
 }) {
-  const sourceFilter = sourceIds ? { sourceId: { in: sourceIds } } : {};
+  const sourceFilter = { ...(sourceIds ? { sourceId: { in: sourceIds } } : {}), ...(readableOnly ? { readerStatus: "READABLE" } : {}) };
 
   if (action === "set") {
     if (typeof chapterNumber !== "number" || !Number.isFinite(chapterNumber)) {
@@ -143,6 +145,7 @@ export async function POST(
         : undefined,
       currentProgress: result.tracked.lastReadChapterNumber,
       chapterNumber: body?.chapterNumber,
+      readableOnly: access.isChild,
     });
     if ("error" in progress) {
       return NextResponse.json({ error: progress.error }, { status: progress.status });
@@ -165,7 +168,7 @@ export async function POST(
       },
     });
 
-    const summary = await getLibraryMangaSummary(userId, result.manga.id);
+    const summary = await getLibraryMangaSummary(userId, result.manga.id, access.isChild);
 
     return NextResponse.json({
       lastReadChapterNumber: updated.lastReadChapterNumber,

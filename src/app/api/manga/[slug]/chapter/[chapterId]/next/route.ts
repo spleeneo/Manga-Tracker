@@ -64,6 +64,7 @@ export async function GET(
         mangaId: manga.id,
         ...(chapter.sourceId ? { sourceId: chapter.sourceId } : {}),
         chapterNumber: { gt: chapter.chapterNumber },
+        ...(access.isChild ? { readerStatus: "READABLE" } : {}),
       },
       orderBy: [
         { chapterNumber: "asc" },
@@ -91,8 +92,8 @@ export async function GET(
         id: nextChapter.id,
         chapterNumber: nextChapter.chapterNumber,
         title: nextChapter.title,
-        url: nextChapter.url,
-        sourceName: nextChapter.source?.sourceName ?? null,
+        url: access.isChild ? `/manga/${slug}/chapter/${nextChapter.id}` : nextChapter.url,
+        sourceName: access.isChild ? null : nextChapter.source?.sourceName ?? null,
       })),
       hasMore: chapters.length > limit,
     });

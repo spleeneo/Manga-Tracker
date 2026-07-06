@@ -143,7 +143,7 @@ const SOURCE_RANK_SQL = Prisma.sql`
   END
 `;
 
-async function getSummaryRows(userId: string, mangaId?: string) {
+async function getSummaryRows(userId: string, mangaId?: string, readableOnly = false) {
   return prisma.$queryRaw<SummaryRow[]>`
     SELECT
       m."id" AS "mangaId",
@@ -188,6 +188,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         ON usp."userMangaId" = um."id"
         AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
+        AND (${readableOnly} = false OR c."readerStatus" = 'READABLE')
         AND NOT EXISTS (
           SELECT 1
           FROM "UserMangaDisabledSource" disabled_source
@@ -209,6 +210,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         ON usp."userMangaId" = um."id"
         AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
+        AND (${readableOnly} = false OR c."readerStatus" = 'READABLE')
         AND NOT EXISTS (
           SELECT 1
           FROM "UserMangaDisabledSource" disabled_source
@@ -233,6 +235,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
           ON usp."userMangaId" = um."id"
           AND usp."sourceId" = s."id"
         WHERE c."mangaId" = m."id"
+          AND (${readableOnly} = false OR c."readerStatus" = 'READABLE')
           AND c."releaseDate" IS NOT NULL
           AND c."releaseDate" <= now()
           AND NOT EXISTS (
@@ -286,6 +289,7 @@ async function getSummaryRows(userId: string, mangaId?: string) {
         ON usp."userMangaId" = um."id"
         AND usp."sourceId" = s."id"
       WHERE c."mangaId" = m."id"
+        AND (${readableOnly} = false OR c."readerStatus" = 'READABLE')
         AND (um."lastReadChapterNumber" IS NULL OR c."chapterNumber" > um."lastReadChapterNumber")
         AND NOT EXISTS (
           SELECT 1
@@ -306,12 +310,23 @@ async function getSummaryRows(userId: string, mangaId?: string) {
   `;
 }
 
-export async function getLibraryMangaSummaries(userId: string): Promise<LibraryMangaSummary[]> {
-  const rows = await getSummaryRows(userId);
-  return rows.map(buildSummaryFromRow);
+export async function getLibraryMangaSummaries(userId: string, readableOnly = false): Promise<LibraryMangaSummary[]> {
+  const rows = await getSummaryRows(userId, undefined, readableOnly);
+  return rows.map(buildSummaryFromRow).map((summary) => readableOnly ? sanitizeChildSummary(summary) : summary);
 }
 
-export async function getLibraryMangaSummary(userId: string, mangaId: string) {
-  const [row] = await getSummaryRows(userId, mangaId);
-  return row ? buildSummaryFromRow(row) : null;
+export async function getLibraryMangaSummary(userId: string, mangaId: string, readableOnly = false) {
+  const [row] = await getSummaryRows(userId, mangaId, readableOnly);
+  if (!row) return null;
+  const summary = buildSummaryFromRow(row);
+  return readableOnly ? sanitizeChildSummary(summary) : summary;
+}
+
+function sanitizeChildSummary(summary: LibraryMangaSummary): LibraryMangaSummary {
+  const safeChapter = (chapter: SummaryChapter | null) => chapter ? {
+    ...chapter,
+    url: `/manga/${summary.slug}/chapter/${chapter.id}`,
+    sourceName: null,
+  } : null;
+  return { ...summary, coverUrl: summary.coverUrl ? `/api/manga/${summary.slug}/cover` : null, latestChapter: safeChapter(summary.latestChapter), nextUnreadChapter: safeChapter(summary.nextUnreadChapter) };
 }

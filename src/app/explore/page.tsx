@@ -8,6 +8,7 @@ import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
 import { UpdateLibraryButton } from "@/components/update-library-button";
 import { auth } from "../../../auth";
+import { getChildPolicy } from "@/lib/parental-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function Page() {
   if (!session?.user?.id) {
     notFound();
   }
+  const isChild = Boolean(await getChildPolicy(session.user.id));
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,7 +25,7 @@ export default async function Page() {
         <div className="page-wrap app-header-row">
           <div className="contents md:flex md:min-w-0 md:items-center md:gap-3">
             <BrandLink />
-            <AppNav />
+            <AppNav isChild={isChild} />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <AddMangaDialog />

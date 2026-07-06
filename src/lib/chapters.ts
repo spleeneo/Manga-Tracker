@@ -53,6 +53,7 @@ export async function getMangaChapterPage({
   sourceIds,
   lastReadChapterNumber,
   sortDirection = "desc",
+  readableOnly = false,
 }: {
   mangaId: string;
   cursor?: string;
@@ -61,6 +62,7 @@ export async function getMangaChapterPage({
   sourceIds?: string[];
   lastReadChapterNumber?: number | null;
   sortDirection?: ChapterSortDirection;
+  readableOnly?: boolean;
 }) {
   const pageSize = Math.min(Math.max(limit, 1), 100);
   const parsedCursor = parseChapterCursor(cursor);
@@ -68,6 +70,7 @@ export async function getMangaChapterPage({
   const chapters = await prisma.chapter.findMany({
     where: {
       mangaId,
+      ...(readableOnly ? { readerStatus: "READABLE" } : {}),
       ...(sourceId ? { sourceId } : sourceIds ? { sourceId: { in: sourceIds } } : {}),
     },
     ...(parsedCursor ? { cursor: { id: parsedCursor.id }, skip: 1 } : {}),
@@ -122,6 +125,7 @@ export async function getMangaChapterTarget({
   sourceRanks,
   lastReadChapterNumber,
   target,
+  readableOnly = false,
 }: {
   mangaId: string;
   mangaSlug?: string | null;
@@ -130,6 +134,7 @@ export async function getMangaChapterTarget({
   sourceRanks?: Record<string, number>;
   lastReadChapterNumber?: number | null;
   target: ChapterTarget;
+  readableOnly?: boolean;
 }) {
   const sourceFilter = sourceId ? { sourceId } : sourceIds ? { sourceId: { in: sourceIds } } : {};
   const chapterNumberFilter = target === "next-unread" && lastReadChapterNumber != null
@@ -140,6 +145,7 @@ export async function getMangaChapterTarget({
   const boundaryChapter = await prisma.chapter.findFirst({
     where: {
       mangaId,
+      ...(readableOnly ? { readerStatus: "READABLE" } : {}),
       ...sourceFilter,
       ...chapterNumberFilter,
     },
@@ -159,6 +165,7 @@ export async function getMangaChapterTarget({
   const candidates = await prisma.chapter.findMany({
     where: {
       mangaId,
+      ...(readableOnly ? { readerStatus: "READABLE" } : {}),
       ...sourceFilter,
       chapterNumber: boundaryChapter.chapterNumber,
     },

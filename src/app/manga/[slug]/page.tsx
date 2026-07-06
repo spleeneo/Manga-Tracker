@@ -113,10 +113,11 @@ export default async function MangaPage({ params }: PageProps) {
         return <RestrictedMangaPage />;
     }
 
-    const summary = await getLibraryMangaSummary(session.user.id, manga.id);
+    const summary = await getLibraryMangaSummary(session.user.id, manga.id, access.isChild);
     const primaryReadTarget = summary?.nextUnreadChapter ?? summary?.latestChapter;
     const primaryReadOpensExternally = isExternalReaderSource(primaryReadTarget?.sourceName);
     const latestOpensExternally = isExternalReaderSource(summary?.latestChapter?.sourceName);
+    const coverImageUrl = access.isChild ? `/api/manga/${manga.slug}/cover` : manga.coverUrl ? `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}` : null;
 
     return (
         <div className="min-h-screen bg-background pb-12">
@@ -124,7 +125,7 @@ export default async function MangaPage({ params }: PageProps) {
                 {manga.coverUrl && (
                     <div
                         className="absolute inset-0 hidden bg-cover bg-center opacity-25 md:block"
-                        style={{ backgroundImage: `url(/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)})` }}
+                        style={{ backgroundImage: `url(${coverImageUrl})` }}
                     />
                 )}
                 <div className="absolute inset-0 hidden bg-gradient-to-t from-background via-background/70 to-background/20 md:block" />
@@ -142,7 +143,7 @@ export default async function MangaPage({ params }: PageProps) {
                             </Link>
                             <BrandLink />
                         </div>
-                        <AppNav />
+                        <AppNav isChild={access.isChild} />
                     </div>
                     <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                         <ThemeSelector />
@@ -157,7 +158,7 @@ export default async function MangaPage({ params }: PageProps) {
                         <div className="surface relative mx-auto hidden aspect-[2/3] w-full max-w-[220px] overflow-hidden rounded-lg md:block md:max-w-none">
                             {manga.coverUrl ? (
                                 <img
-                                    src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                                    src={coverImageUrl ?? undefined}
                                     alt={manga.title}
                                     className="h-full w-full object-contain"
                                 />
@@ -168,10 +169,10 @@ export default async function MangaPage({ params }: PageProps) {
                             )}
                         </div>
 
-                        <div className="surface rounded-lg p-4">
+                        {!access.isChild && <div className="surface rounded-lg p-4">
                             <h3 className="mb-3 font-semibold">Sources</h3>
                             <MangaSourceList slug={manga.slug} sources={manga.sources} />
-                        </div>
+                        </div>}
                     </div>
 
                     <div className="order-1 min-w-0 space-y-5 md:order-2 md:pt-28">
@@ -179,7 +180,7 @@ export default async function MangaPage({ params }: PageProps) {
                             {manga.coverUrl && (
                                 <div className="surface relative hidden aspect-[2/3] overflow-hidden rounded-lg min-[560px]:block md:hidden">
                                     <img
-                                        src={`/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                                        src={coverImageUrl ?? undefined}
                                         alt={manga.title}
                                         className="h-full w-full object-contain"
                                     />
@@ -258,7 +259,7 @@ export default async function MangaPage({ params }: PageProps) {
                             <ChapterList
                                 mangaId={manga.id}
                                 slug={manga.slug}
-                                initialSources={manga.enabledSources}
+                                initialSources={access.isChild ? [] : manga.enabledSources}
                                 initialChapters={[]}
                                 initialNextCursor={null}
                                 initialLastReadChapterNumber={manga.lastReadChapterNumber}

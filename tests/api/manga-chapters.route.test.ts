@@ -4,6 +4,7 @@ const {
   chapterFindFirstMock,
   chapterFindManyMock,
   getCurrentUserIdMock,
+  getMangaAccessMock,
   mangaFindUniqueMock,
   sourceFindFirstMock,
   userMangaFindUniqueMock,
@@ -11,6 +12,7 @@ const {
   chapterFindFirstMock: vi.fn(),
   chapterFindManyMock: vi.fn(),
   getCurrentUserIdMock: vi.fn(),
+  getMangaAccessMock: vi.fn(),
   mangaFindUniqueMock: vi.fn(),
   sourceFindFirstMock: vi.fn(),
   userMangaFindUniqueMock: vi.fn(),
@@ -19,6 +21,7 @@ const {
 vi.mock("@/lib/session", () => ({
   getCurrentUserId: getCurrentUserIdMock,
 }));
+vi.mock("@/lib/parental-controls", () => ({ getMangaAccess: getMangaAccessMock, parentalControlError: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -35,6 +38,7 @@ describe("GET /api/manga/[slug]/chapters", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
+    getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: false, reason: "allowed" });
     mangaFindUniqueMock.mockResolvedValue({
       id: "m1",
       slug: "one-piece",
@@ -43,6 +47,21 @@ describe("GET /api/manga/[slug]/chapters", () => {
     });
     userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: 1, disabledSources: [], sourcePreferences: [] });
     sourceFindFirstMock.mockResolvedValue({ id: "s1" });
+  });
+
+  it("returns only anonymized Mangateo-readable chapters to children", async () => {
+    getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: true, reason: "allowed" });
+    chapterFindManyMock.mockResolvedValue([
+      { id: "c1", chapterNumber: 2, title: "Two", url: "https://provider.example/c1", releaseDate: null, sourceId: "s1", readerStatus: "READABLE", source: { sourceName: "Secret Provider" } },
+    ]);
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters") };
+    const res = await GET(req as never, { params: Promise.resolve({ slug: "one-piece" }) });
+    const body = await res.json();
+    expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ readerStatus: "READABLE" }) }));
+    expect(body.chapters[0]).toEqual(expect.objectContaining({ url: "/manga/one-piece/chapter/c1", sourceId: null }));
+    expect(body.chapters[0].sourceName).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("provider.example");
+    expect(JSON.stringify(body)).not.toContain("Secret Provider");
   });
 
   it("requires ownership before returning chapter pages", async () => {

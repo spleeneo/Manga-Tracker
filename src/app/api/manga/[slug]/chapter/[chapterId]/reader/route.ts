@@ -180,14 +180,19 @@ export async function GET(
       }
     }
 
+    if (access.isChild && result.status !== "READABLE") {
+      return NextResponse.json({ error: "Chapter unavailable in Mangateo" }, { status: 404 });
+    }
+
     return NextResponse.json({
       ...result,
+      externalUrl: access.isChild ? null : result.externalUrl,
       usedAlternative,
       chapter: {
         id: activeChapter.id,
         chapterNumber: activeChapter.chapterNumber,
         title: activeChapter.title,
-        sourceName: activeChapter.source?.sourceName ?? null,
+        sourceName: access.isChild ? null : activeChapter.source?.sourceName ?? null,
       },
     });
   } catch (error) {

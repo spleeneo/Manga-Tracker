@@ -10,6 +10,7 @@ import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } fro
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
 import { evaluateMangaAccess, getChildPolicy, getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 import { refreshMangaClassification } from "@/lib/content-classification";
+import { parseChildCatalogSource } from "@/lib/child-safety";
 
 export async function POST(request: Request) {
     try {
@@ -19,10 +20,25 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { title, slug, coverUrl, status, description, sourceUrl, sources = [], contentRating, classificationSource, tags = [] } = body;
-        const normalizedTags = Array.isArray(tags) ? tags.filter((tag): tag is { id: string; name: string; group?: string } => Boolean(tag && typeof tag.id === "string" && typeof tag.name === "string")) : [];
+        let { title, slug, coverUrl, status, description, sources = [], contentRating, classificationSource, tags = [] } = body;
+        const { sourceUrl } = body;
+        let normalizedTags = Array.isArray(tags) ? tags.filter((tag): tag is { id: string; name: string; group?: string } => Boolean(tag && typeof tag.id === "string" && typeof tag.name === "string")) : [];
         const childPolicy = await getChildPolicy(userId);
         if (childPolicy) {
+            const catalogId = parseChildCatalogSource(sources[0]?.url);
+            if (!catalogId || sources.length !== 1 || sourceUrl) return parentalControlError("unclassified");
+            const trustedSourceUrl = `https://mangadex.org/title/${catalogId}`;
+            const trustedMetadata = await fetchMetadata(trustedSourceUrl);
+            title = trustedMetadata.title;
+            slug = trustedMetadata.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            coverUrl = trustedMetadata.coverUrl;
+            status = trustedMetadata.status;
+            description = trustedMetadata.description;
+            contentRating = trustedMetadata.contentRating;
+            classificationSource = trustedMetadata.classificationSource;
+            tags = trustedMetadata.tags ?? [];
+            normalizedTags = tags.filter((tag: { id?: unknown; name?: unknown }): tag is { id: string; name: string; group?: string } => typeof tag.id === "string" && typeof tag.name === "string");
+            sources = [{ name: "MangaDex", url: trustedSourceUrl }];
             const access = evaluateMangaAccess(childPolicy, {
                 contentRating: typeof contentRating === "string" ? contentRating : null,
                 classificationSource: classificationSource === "MANGADEX" ? classificationSource : null,

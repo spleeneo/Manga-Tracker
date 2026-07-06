@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, sourceFindFirst, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
+const { afterMock, enqueueMangaSyncJobMock, processSyncJobMock, fetchMetadataMock, getChildPolicyMock, getMangaAccessMock, mangaFindUnique, mangaFindFirst, mangaCreate, mangaUpdate, sourceCreate, sourceFindUnique, sourceFindFirst, userMangaUpsert, userMangaUpdate } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   enqueueMangaSyncJobMock: vi.fn(),
   processSyncJobMock: vi.fn(),
+  fetchMetadataMock: vi.fn(),
+  getChildPolicyMock: vi.fn(),
+  getMangaAccessMock: vi.fn(),
   mangaFindUnique: vi.fn(),
   mangaFindFirst: vi.fn(),
   mangaCreate: vi.fn(),
@@ -44,7 +47,13 @@ vi.mock("next/server", async (importOriginal) => {
 });
 
 vi.mock("@/lib/scrapers/registry", () => ({
-  fetchMetadata: vi.fn(),
+  fetchMetadata: fetchMetadataMock,
+}));
+vi.mock("@/lib/parental-controls", () => ({
+  getChildPolicy: getChildPolicyMock,
+  getMangaAccess: getMangaAccessMock,
+  evaluateMangaAccess: vi.fn(() => ({ allowed: true, reason: "allowed" })),
+  parentalControlError: (reason: string) => Response.json({ error: "Unavailable under parental controls", code: reason }, { status: 403 }),
 }));
 vi.mock("@/lib/content-classification", () => ({ refreshMangaClassification: vi.fn() }));
 
@@ -64,6 +73,25 @@ describe("POST /api/manga", () => {
     vi.clearAllMocks();
     mangaFindFirst.mockResolvedValue(null);
     sourceFindFirst.mockResolvedValue(null);
+    getChildPolicyMock.mockResolvedValue(null);
+    getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: false, reason: "allowed" });
+  });
+
+  it("resolves an opaque child catalog reference server-side", async () => {
+    getChildPolicyMock.mockResolvedValue({ enabled: true, allowedContentRatings: ["safe"], blockedTagNames: [] });
+    fetchMetadataMock.mockResolvedValue({ title: "Naruto", status: "COMPLETED", contentRating: "safe", classificationSource: "MANGADEX", tags: [{ id: "tag-1", name: "Action" }] });
+    mangaFindUnique.mockResolvedValue({ id: "m1", title: "Naruto", slug: "naruto", _count: { chapters: 1 } });
+    sourceFindUnique.mockResolvedValue(null);
+    sourceCreate.mockResolvedValue({ id: "s1" });
+    userMangaUpsert.mockResolvedValue({});
+    const catalogId = "12345678-1234-1234-1234-123456789abc";
+    const res = await POST(new Request("http://localhost/api/manga", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+      title: "Forged title", contentRating: "safe", classificationSource: "MANGADEX",
+      sources: [{ name: "Mangateo", url: `mangateo:catalog:${catalogId}` }],
+    }) }));
+    expect(res.status).toBe(200);
+    expect(fetchMetadataMock).toHaveBeenCalledWith(`https://mangadex.org/title/${catalogId}`);
+    expect(sourceCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ sourceName: "MangaDex", sourceUrl: `https://mangadex.org/title/${catalogId}` }) });
   });
 
   it("returns 400 when title and slug are missing", async () => {
