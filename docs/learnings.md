@@ -226,3 +226,14 @@ Learning:
 
 Action:
 - Refresh the shared classification after source discovery and update cycles; infer ratings only from explicit adult-content labels and retain the last known classification when no provider returns usable metadata.
+
+## 2026-07-06 - Bind Addresses Are Not Browser Redirect Origins
+
+Context:
+- A development server bound to `0.0.0.0` serves both `localhost` and `127.0.0.1`, but constructing a redirect from the server-normalized request URL produced an unusable `0.0.0.0` browser destination.
+
+Learning:
+- A network bind address is not necessarily a valid user-facing origin, especially in multi-origin local testing.
+
+Action:
+- Prefer relative redirects when a flow should remain on the request's current origin.

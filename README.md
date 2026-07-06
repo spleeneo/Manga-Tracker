@@ -61,7 +61,9 @@ Then open these two origins, preferably in separate browser windows:
 - Parent: [http://localhost:3000](http://localhost:3000)
 - Child: [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
-Although both URLs reach the same app and database, browsers keep their host-based Auth.js cookies separate. Sign in with the parent Google account on `localhost` and the child Google account on `127.0.0.1`. Using two `localhost` ports would not isolate the accounts because cookies are not separated by port.
+In development, use **Test as parent** on the parent origin and **Test as child** on the child origin. These buttons provision a linked fake family in the configured development database and create eight-hour sessions; they are not rendered in production and require no Google accounts.
+
+Although both URLs reach the same app and database, browsers keep their host-based Auth.js cookies separate. Using two `localhost` ports would not isolate the accounts because cookies are not separated by port. You can still use Google instead of the fake accounts: sign in with the parent Google account on `localhost` and the child Google account on `127.0.0.1`.
 
 For Google sign-in, add both local callbacks to the OAuth client's authorized redirect URIs:
 

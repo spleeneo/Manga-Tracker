@@ -1,5 +1,32 @@
 # Work Log
 
+## 2026-07-06 - Fake family accounts for local testing
+
+### Why
+
+- The two-origin workflow still required two real Google accounts, which makes parental-control development unnecessarily cumbersome.
+
+### Plan
+
+- Add development-only parent and child sign-in choices that use normal database sessions and automatically provision an active family link.
+
+### Changes
+
+- Added development-only fake parent/child account provisioning with eight-hour Auth.js database sessions.
+- Added local test-role buttons to the signed-out header; production continues to expose only the configured Google flow.
+- Documented the no-Google-account family testing workflow.
+
+### Verification
+
+- Focused `dev-family` unit test passed and focused ESLint completed without findings.
+- Acceptance-checked both origins with independent cookie jars: parent login on `localhost` returned HTTP 200 and rendered `Dev Parent`; child login on `127.0.0.1` returned HTTP 200 and rendered `Dev Child`.
+- During acceptance testing, fixed the development login redirect to remain relative instead of incorrectly sending users to the `0.0.0.0` bind address.
+- Full `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+
+### Outcome
+
+- Fake parent and child accounts can exercise the real linked-account policy paths without Google accounts.
+
 ## 2026-07-06 - Local parent/child test sessions
 
 ### Why

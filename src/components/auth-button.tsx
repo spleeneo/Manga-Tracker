@@ -4,8 +4,26 @@ import { LogOut } from "lucide-react";
 export async function AuthButton() {
   const session = await auth();
   const isGoogleConfigured = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+  const showDevFamilyLogin = process.env.NODE_ENV === "development";
 
   if (!session?.user) {
+    if (showDevFamilyLogin) {
+      return (
+        <div className="flex items-center gap-2">
+          <form action="/api/auth/dev-login" method="post">
+            <button className="ui-button ui-button-secondary" name="role" value="parent">
+              Test as parent
+            </button>
+          </form>
+          <form action="/api/auth/dev-login" method="post">
+            <button className="ui-button ui-button-primary" name="role" value="child">
+              Test as child
+            </button>
+          </form>
+        </div>
+      );
+    }
+
     if (!isGoogleConfigured) {
       return (
         <span className="rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground">
