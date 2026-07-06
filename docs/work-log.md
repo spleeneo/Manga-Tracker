@@ -1,5 +1,26 @@
 # Work Log
 
+## 2026-07-06 - Show Blocked Tags as Red Exclusions
+
+### Why
+
+- Native checked boxes suggest inclusion, while selected parental tags actually mean that matching manga are excluded.
+
+### Changes
+
+- Replaced the visible native tag checkbox with an accessible custom indicator that shows a red X when the tag is blocked.
+- Kept the underlying checkbox semantics and keyboard focus behavior; the main parental-controls enable checkbox remains unchanged.
+
+### Verification
+
+- Focused ESLint passed for the settings component.
+- Browser-verified two saved blocked tags render two red indicators with X icons, while native tag checkboxes remain visually hidden.
+- `npm run verify`: passed with 57 test files and 236 tests; lint retained the eight existing image-element warnings, and the production build passed.
+
+### Outcome
+
+- Selected tags now visually communicate exclusion rather than inclusion.
+
 ## 2026-07-06 - Use Tags as the Sole Parental Content Rule
 
 ### Why
