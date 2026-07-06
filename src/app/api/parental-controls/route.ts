@@ -21,7 +21,10 @@ export async function GET() {
     include: {
       child: { select: {
         name: true, email: true, childPolicy: true,
-        library: { select: { manga: { select: { id: true, title: true, contentRating: true, classificationSource: true, tags: { select: { tag: { select: { name: true } } } } } } } },
+        library: { select: { manga: { select: {
+          id: true, slug: true, title: true, coverUrl: true, author: true, status: true, description: true,
+          contentRating: true, classificationSource: true, tags: { select: { tag: { select: { name: true } } } },
+        } } } },
         childOverrides: { select: { mangaId: true, decision: true } },
       } },
     },

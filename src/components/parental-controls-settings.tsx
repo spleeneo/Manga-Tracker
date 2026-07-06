@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { X } from "lucide-react";
+import Link from "next/link";
 import { canonicalTagKey, canonicalTagName, isMeaningfulTagName } from "@/lib/content-taxonomy";
 
 type Policy = { enabled: boolean; blockedTagNames: string[] };
-type Title = { id: string; title: string; contentRating: string | null; classificationSource: string | null; tags: string[]; decision: string | null };
+type Title = { id: string; slug: string; title: string; coverUrl: string | null; author: string | null; status: string | null; description: string | null; contentRating: string | null; classificationSource: string | null; tags: string[]; decision: string | null };
 type Child = { id: string; childId: string | null; email: string; name?: string | null; status: string; policy: Policy; titles: Title[] };
 type AvailableTag = { id: string; name: string; group: string | null };
 
@@ -96,6 +97,8 @@ function ChildPolicyCard({ child, availableTags, onSave, onOverride, onUnlink }:
     groups.set(group, [...(groups.get(group) ?? []), tag]);
     return groups;
   }, new Map<string, AvailableTag[]>());
+  const trackedTitles = child.titles.filter((title) => title.decision !== "BLOCK");
+  const blockedTitles = child.titles.filter((title) => title.decision === "BLOCK");
   return <section className="surface rounded-lg p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{child.name || child.email}</h2><p className="text-sm text-muted-foreground">{child.status === "ACTIVE" ? "Linked" : "Pending sign-in"}</p></div>{confirmUnlink ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-muted-foreground">Are you sure you want to abandon your child?</span><button className="ui-button ui-button-secondary" type="button" onClick={() => setConfirmUnlink(false)} disabled={unlinking}>Cancel</button><button className="ui-button border-red-600 bg-red-600 text-white hover:bg-red-700" type="button" disabled={unlinking} onClick={() => { setUnlinking(true); void onUnlink(child).finally(() => setUnlinking(false)); }}>{unlinking ? "Abandoning…" : "Abandon your child"}</button></div> : <button className="ui-button border-red-600 bg-red-600 text-white hover:bg-red-700" type="button" onClick={() => setConfirmUnlink(true)}>Abandon your child</button>}</div>
     {child.status === "ACTIVE" && <><label className="mt-5 flex items-center gap-2"><input type="checkbox" checked={policy.enabled} onChange={(event) => setPolicy({ ...policy, enabled: event.target.checked })}/>Enable parental controls</label>
       <fieldset className="mt-4"><legend className="text-sm font-semibold">Blocked genres and tags</legend><p className="mt-1 text-xs text-muted-foreground">A manga is hidden when any source reports one of the selected tags.</p>
@@ -103,7 +106,16 @@ function ChildPolicyCard({ child, availableTags, onSave, onOverride, onUnlink }:
         <div className="mt-3 space-y-4 rounded-md border p-3">{[...groupedTags.entries()].map(([group, tags]) => <div key={group}><h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{group}</h4><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{tags.map((tag) => { const blocked = blockedKeys.has(canonicalTagKey(tag.name)); return <label key={tag.id} className="flex cursor-pointer items-center gap-2 text-sm"><input className="peer sr-only" type="checkbox" checked={blocked} onChange={() => toggleTag(tag.name)} /><span aria-hidden="true" className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border peer-focus-visible:ring-2 peer-focus-visible:ring-red-500 peer-focus-visible:ring-offset-2 ${blocked ? "border-red-600 bg-red-600 text-white dark:border-red-500 dark:bg-red-500" : "border-input bg-background"}`}>{blocked && <X className="h-3 w-3" strokeWidth={3} />}</span>{tag.name}</label>; })}</div></div>)}</div>
       </fieldset>
       <button className="ui-button ui-button-primary mt-4" onClick={() => void onSave(child, policy)}>Save policy</button>
-      {child.titles.length > 0 && <div className="mt-6"><h3 className="font-semibold">Title decisions</h3><div className="mt-3 space-y-3">{child.titles.map((title) => <div key={title.id} className="rounded-md border p-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{title.title}</p><p className="text-xs text-muted-foreground">{title.classificationSource ? `${title.contentRating ?? "unrated"} · ${title.tags.join(", ") || "no tags"}` : "Unclassified"}</p></div><select className="ui-field" value={title.decision ?? ""} onChange={(event) => void onOverride(child, title.id, (event.target.value || null) as "ALLOW" | "BLOCK" | null)}><option value="">Use policy</option><option value="ALLOW">Always allow</option><option value="BLOCK">Always block</option></select></div></div>)}</div></div>}
+      <div className="mt-6"><h3 className="font-semibold">Tracked manga</h3><p className="mt-1 text-sm text-muted-foreground">Manga currently in this child&apos;s library.</p>
+        {trackedTitles.length > 0 ? <div className="mt-3 space-y-3">{trackedTitles.map((title) => <MangaDecisionCard key={title.id} title={title} action={<div className="flex flex-wrap gap-2">{title.decision === "ALLOW" && <button className="ui-button ui-button-secondary" type="button" onClick={() => void onOverride(child, title.id, null)}>Use policy</button>}<button className="ui-button border-red-600 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30" type="button" onClick={() => void onOverride(child, title.id, "BLOCK")}>Block</button></div>} />)}</div> : <p className="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">No unblocked manga are being tracked.</p>}
+      </div>
+      <div className="mt-6"><h3 className="font-semibold">Blocked manga</h3><p className="mt-1 text-sm text-muted-foreground">Titles explicitly blocked for this child.</p>
+        {blockedTitles.length > 0 ? <div className="mt-3 space-y-3">{blockedTitles.map((title) => <MangaDecisionCard key={title.id} title={title} action={<button className="ui-button ui-button-secondary" type="button" onClick={() => void onOverride(child, title.id, null)}>Unblock</button>} />)}</div> : <p className="mt-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">No manga have been explicitly blocked.</p>}
+      </div>
     </>}
   </section>;
+}
+
+function MangaDecisionCard({ title, action }: { title: Title; action: React.ReactNode }) {
+  return <article className="rounded-md border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><Link href={`/manga/${title.slug}`} className="font-semibold hover:underline">{title.title}</Link><p className="mt-1 text-sm text-muted-foreground">{[title.author, title.status].filter(Boolean).join(" · ") || "Author and status unavailable"}</p>{title.description && <p className="mt-2 line-clamp-2 text-sm">{title.description}</p>}<div className="mt-3 flex flex-wrap gap-1.5">{title.tags.length > 0 ? title.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-2 py-1 text-xs">{tag}</span>) : <span className="text-xs text-muted-foreground">No tags available</span>}</div><p className="mt-2 text-xs text-muted-foreground">{title.classificationSource ? `Rating: ${title.contentRating ?? "unrated"}` : "Classification unavailable"}{title.decision === "ALLOW" ? " · Always allowed" : ""}</p></div><div className="shrink-0">{action}</div></div></article>;
 }

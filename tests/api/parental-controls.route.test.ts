@@ -52,6 +52,31 @@ describe("parental control APIs", () => {
     expect(await response.json()).toEqual({ children: [], availableTags: [{ id: "provider:1", name: "Sci-Fi", group: "provider" }] });
   });
 
+  it("returns a child's tracked manga with metadata and block decisions", async () => {
+    linkFindMany.mockResolvedValue([{
+      id: "link-1", childId: "child-1", childEmail: "child@example.com", status: "ACTIVE", createdAt: new Date(),
+      child: {
+        name: "Kid", email: "child@example.com", childPolicy: null,
+        library: [{ manga: {
+          id: "m1", slug: "witch-hat-atelier", title: "Witch Hat Atelier", coverUrl: "/cover.jpg",
+          author: "Kamome Shirahama", status: "Ongoing", description: "A magical apprenticeship.",
+          contentRating: "safe", classificationSource: "mangadex", tags: [{ tag: { name: "Fantasy" } }],
+        } }],
+        childOverrides: [{ mangaId: "m1", decision: "BLOCK" }],
+      },
+    }]);
+    contentTagFindMany.mockResolvedValue([]);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).children[0].titles).toEqual([{
+      id: "m1", slug: "witch-hat-atelier", title: "Witch Hat Atelier", coverUrl: "/cover.jpg",
+      author: "Kamome Shirahama", status: "Ongoing", description: "A magical apprenticeship.",
+      contentRating: "safe", classificationSource: "mangadex", tags: ["Fantasy"], decision: "BLOCK",
+    }]);
+  });
+
   it("prevents unrelated parents from overriding a title", async () => {
     linkFindFirst.mockResolvedValue(null);
     const response = await PUT(new Request("http://localhost/api/parental-controls/overrides", { method: "PUT", body: JSON.stringify({ childId: "child-1", mangaId: "m1", decision: "ALLOW" }) }));

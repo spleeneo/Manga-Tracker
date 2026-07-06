@@ -1607,3 +1607,64 @@ Verification:
 
 Outcome:
 - Chapter release-date metadata is now consistently visible when available, while missing or invalid provider dates are disclosed instead of silently omitted.
+
+## 2026-07-06 - Clarify child unlink warning
+
+Why:
+- The destructive child-unlink action needs unmistakable styling and an explicit confirmation question before it runs.
+
+Changed:
+- Made both stages of the `Abandon your child` action explicitly red.
+- Changed the inline confirmation prompt to `Are you sure you want to abandon your child?`.
+
+Verification:
+- `npx eslint src/components/parental-controls-settings.tsx`: passed.
+- `npm run verify`: passed with 240 tests, a successful production build, and the repository's 8 existing `<img>` warnings.
+- Browser-verified the signed-in parental-controls flow: the action rendered with a red background and white text, clicking it displayed `Are you sure you want to abandon your child?`, Cancel dismissed the prompt, and the browser console had no errors.
+
+Outcome:
+- Parents now receive a clearer destructive-action warning before a child link can be removed.
+
+## 2026-07-06 - Preserve the selected theme in the chapter reader
+
+Why:
+- Opening a chapter as a fresh document skipped theme restoration because that logic only ran inside the theme selector, which the reader does not render.
+
+Changed:
+- Added a root-document initialization script that restores the saved theme, or the system preference when none is saved, before route content renders.
+- Shared the theme storage key between initialization and the theme selector.
+- Added regression coverage for restoring a saved dark theme on a fresh route load.
+
+Verification:
+- Focused theme initialization test passed.
+- Focused ESLint passed.
+- `npm run verify`: passed with 240 tests, a successful production build, and the repository's eight existing image-element warnings.
+- Browser verification was attempted, but a duplicate local dev server produced an error overlay before a chapter could be opened; the reader flow was not counted as manually verified.
+
+Outcome:
+- Fresh route loads now restore the selected theme before the chapter reader renders.
+
+## 2026-07-06 - Manage tracked and blocked manga per child
+
+Why:
+- Parents need to inspect each child's tracked manga, understand its metadata and tags, and explicitly block or unblock individual titles.
+
+Plan:
+- Extend the parental-controls response with the manga details needed by the parent view.
+- Separate tracked and explicitly blocked manga into clear lists with direct Block and Unblock actions.
+- Cover the response contract with an API test and verify the complete interaction in the browser.
+
+Changed:
+- Added slug, cover, author, status, and description fields to each child's tracked-title response alongside classification, tags, and title decisions.
+- Replaced the generic title-decision selector with detailed tracked-manga cards and a dedicated blocked-manga list.
+- Added direct Block and Unblock actions while retaining a way to return previously always-allowed titles to the normal policy.
+
+Verification:
+- `npm run test -- tests/api/parental-controls.route.test.ts`: 7 tests passed.
+- Focused ESLint for the component, parental API, and API test passed.
+- Browser-verified the parent view for Dev Child: Berserk displayed its status, rating, and tags; Block moved it to the blocked list; Unblock returned it to tracked manga; both actions showed the success status and the browser console had no errors.
+- `npm run verify`: lint completed with the repository's 8 existing `<img>` warnings, all 241 tests passed, and the production build completed; the command wrapper reached its 120-second ceiling immediately after Next printed the completed route manifest.
+- `npm run build`: passed separately with a clean exit.
+
+Outcome:
+- Parents can now inspect a child's tracked manga and manage a clear, reversible per-title block list.
