@@ -24,3 +24,9 @@ export function canonicalTagName(value: string) {
 export function canonicalTagKey(value: string) {
   return normalizeTagKey(canonicalTagName(value));
 }
+
+const GENERIC_TAG_LABELS = new Set(["category", "categories", "genre", "genres", "tag", "tags"]);
+
+export function isMeaningfulTagName(value: string) {
+  return !GENERIC_TAG_LABELS.has(normalizeTagKey(value));
+}

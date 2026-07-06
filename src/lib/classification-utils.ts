@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { MangaMetadata } from "@/lib/scrapers/types";
-import { canonicalTagKey, canonicalTagName } from "@/lib/content-taxonomy";
+import { canonicalTagKey, canonicalTagName, isMeaningfulTagName } from "@/lib/content-taxonomy";
 
 const RATING_RANK: Record<string, number> = { safe: 0, suggestive: 1, erotica: 2, pornographic: 3 };
 const EXPLICIT_TAG_RATINGS: Record<string, string> = {
@@ -16,10 +16,10 @@ export function extractClassificationTags(html: string) {
   const tags = new Set<string>();
   for (const match of html.matchAll(/<a\b[^>]*href=["'][^"']*\/(?:genre|genres|tag|tags)\/?[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const name = decodeHtml(match[1]);
-    if (name && name.length <= 60 && !/^(genres?|tags?)$/i.test(name)) tags.add(name);
+    if (name && name.length <= 60 && isMeaningfulTagName(name)) tags.add(name);
   }
   for (const match of html.matchAll(/(?:genre|genres|tags?)\s*:\s*<\/[^>]+>\s*([^<]{2,240})/gi)) {
-    decodeHtml(match[1]).split(/[,|/]/).map((item) => item.trim()).filter(Boolean).forEach((item) => tags.add(item));
+    decodeHtml(match[1]).split(/[,|/]/).map((item) => item.trim()).filter(isMeaningfulTagName).forEach((item) => tags.add(item));
   }
   return [...tags];
 }

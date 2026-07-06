@@ -1,5 +1,32 @@
 # Work Log
 
+## 2026-07-06 - Fix Exclusion Styling and Provider Tag Noise
+
+### Why
+
+- Blocked-tag indicators inherited a non-red theme color and clicking produced an oversized label outline; the provider scraper also exposed `Categories` as though it were a real tag.
+
+### Changes
+
+- Switched blocked indicators to explicit red styling and moved keyboard focus indication onto the small indicator instead of the full label.
+- Renamed the internal `provider` group to the user-facing `Other source tags` label.
+- Added a shared meaningful-tag check so generic navigation labels such as Category, Categories, Genre, and Tags are rejected during extraction and hidden from existing selector data.
+
+### Verification
+
+- Provider classification regression suite passed (6 tests), including the new generic-label case.
+- Focused ESLint passed for the changed taxonomy, classification, and settings files.
+- Browser-verified the indicator computes to red, `Categories` and `Provider` are absent, and the full-label focus ring class is gone.
+- `npm run verify`: passed with 57 test files and 237 tests; lint retained the eight existing image-element warnings, and the production build passed.
+
+### Outcome
+
+- Exclusions look explicitly red without the unwanted click border, and source-derived tags no longer expose scraper navigation noise.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-06---provider-navigation-labels-are-not-tags).
+
 ## 2026-07-06 - Show Blocked Tags as Red Exclusions
 
 ### Why

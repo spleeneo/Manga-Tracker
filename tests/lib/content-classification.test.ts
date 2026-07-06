@@ -5,6 +5,9 @@ describe("provider content classification", () => {
   it("extracts linked provider genres and tags", () => {
     expect(extractClassificationTags('<a href="/genres/action">Action</a><a href="/tag/hentai">Hentai</a>')).toEqual(["Action", "Hentai"]);
   });
+  it("ignores provider navigation labels that are not real tags", () => {
+    expect(extractClassificationTags('<a href="/genre/categories">Categories</a><a href="/genre/action">Action</a>')).toEqual(["Action"]);
+  });
   it("infers conservative ratings from explicit adult tags", () => {
     expect(inferContentRating(["Romance", "Hentai"])).toBe("pornographic");
     expect(inferContentRating(["Ecchi"])).toBe("suggestive");

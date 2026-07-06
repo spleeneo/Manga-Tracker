@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Provider Navigation Labels Are Not Tags
+
+Context:
+- Genre links scraped from provider pages included generic navigation entries such as `Categories` in the parental-control taxonomy.
+
+Learning:
+- URL shape alone does not prove linked text is classification metadata; generic section labels must be rejected at ingestion and presentation boundaries.
+
+Action:
+- Use the shared meaningful-tag predicate whenever provider tags are extracted or presented.
+
 ## 2026-07-06 - Provider Privacy Must Be Enforced In Payloads
 
 Context:
