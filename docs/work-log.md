@@ -36,6 +36,7 @@
 ### Changes
 
 - Added an `Abandon your child` action to every active or pending child card with an inline confirmation step, cancellation, progress state, and API feedback.
+- Styled the destructive action with a solid red background in both its initial and confirmation states.
 - Added regression coverage confirming unlinking removes the link, child policy, and title overrides.
 
 ### Verification
