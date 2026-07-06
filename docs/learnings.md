@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-06 - Theme Extensions Can Cause Hydration Mismatches
+
+Context:
+- Dark Reader injected a replacement script plus inline attributes into server-rendered images and SVGs before React hydration.
+
+Learning:
+- An application-owned theme system can conflict with browser-side recoloring extensions and create noisy development-only hydration overlays even when the application markup is deterministic.
+
+Action:
+- Use Dark Reader's page-level lock metadata when the application already owns theme switching.
+
 Use this file to capture reusable lessons from development, debugging, production issues, and AI-assisted work. Keep entries short and practical.
 
 Add a note when:

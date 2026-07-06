@@ -37,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="darkreader-lock" />
         <ThemeScript />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>

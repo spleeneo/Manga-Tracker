@@ -1,5 +1,26 @@
 # Work Log
 
+## 2026-07-06 - Prevent Dark Reader hydration mismatches
+
+### Why
+
+- The in-app browser's Dark Reader extension modified the theme script, images, and SVG attributes before React hydrated, producing a development error overlay.
+
+### Changes
+
+- Added Dark Reader's page-level lock metadata. Mangateo keeps its built-in light/dark theme control while the extension no longer rewrites server-rendered markup.
+
+### Verification
+
+- Confirmed both local server responses include `<meta name="darkreader-lock">`.
+- Focused ESLint passed for the root layout.
+- `npm run verify`: passed (lint with 8 existing `no-img-element` warnings, full Vitest suite, and production build).
+- Direct in-app browser verification was unavailable because no controllable tab was exposed; a manual reload remains required to confirm the extension clears the overlay.
+
+### Outcome
+
+- Dark Reader is instructed not to mutate Mangateo's server-rendered markup, removing the identified source of the hydration mismatch while preserving the app's own theme selector.
+
 ## 2026-07-06 - Two-port family development environment
 
 ### Why
