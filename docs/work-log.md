@@ -1720,3 +1720,32 @@ Outcome:
 ### Learnings
 
 - See [learnings.md](learnings.md#2026-07-08---audit-schema-before-resolving-migration-drift).
+## 2026-07-08 - Add the administrator dashboard
+
+### Why
+
+- Administrators had a persisted role but no protected application surface for operational visibility.
+
+### Plan
+
+- Enforce administrator access on the server.
+- Add useful system and account summaries.
+- Expose the page in navigation only for administrators and verify the flow locally.
+
+### Changes
+
+- Added a reusable admin-role predicate with focused authorization coverage.
+- Added a protected `/admin` dashboard with user, manga, chapter, source, and active-sync totals.
+- Added an account overview containing roles, library sizes, and active session counts.
+- Added an admin-only primary-navigation item.
+
+### Verification
+
+- Focused admin authorization tests passed (2 tests).
+- Focused ESLint passed without findings.
+- Local browser verification confirmed the admin-only navigation item, dashboard metrics, and all 11 account rows using an isolated development admin session.
+- `npm run verify` passed: ESLint completed with the 8 existing `no-img-element` warnings, all tests passed, and the production build completed.
+
+### Outcome
+
+- Administrators have a useful, server-protected operational dashboard; regular and unauthenticated users fail the shared role check.

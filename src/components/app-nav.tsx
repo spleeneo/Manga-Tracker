@@ -1,21 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { BookMarked, Compass, Shield } from "lucide-react";
+import { BookMarked, Compass, Shield, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Library", icon: BookMarked },
   { href: "/explore", label: "Explore", icon: Compass },
   { href: "/settings/parental-controls", label: "Parental controls", icon: Shield },
+  { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
 ];
 
-export function AppNav({ isChild = false }: { isChild?: boolean }) {
+export function AppNav({ isChild = false, isAdmin = false }: { isChild?: boolean; isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav className="app-nav" aria-label="Primary navigation">
-      {navItems.filter((item) => !isChild || item.href !== "/settings/parental-controls").map((item) => {
+      {navItems.filter((item) => (!isChild || item.href !== "/settings/parental-controls") && (!item.adminOnly || isAdmin)).map((item) => {
         const Icon = item.icon;
         const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
