@@ -1783,3 +1783,39 @@ Outcome:
 ### Learnings
 
 - See [learnings.md](learnings.md#2026-07-08---clean-interrupted-nextjs-development-artifacts).
+## 2026-07-08 - Refine admin account support and diagnostics
+
+### Why
+
+- Account pages exposed raw totals but did not explain health, reveal actionable support problems, or provide guarded recovery controls.
+
+### Plan
+
+- Centralize health, staleness, activity, and ordering rules.
+- Add protected role, session, sync-retry, and family-unlink operations.
+- Refine the dashboard and account view around support decisions, explicit activity, and child-access diagnostics.
+
+### Changes
+
+- Added attention-first account search and role/health filters with unread and last-read signals.
+- Rebuilt account details around an account-health summary plus Library, Activity & sync, and Family & access tabs.
+- Reused the user-facing library summary for unread/progress data and separated explicit user activity from background timestamps.
+- Added preferred-source failures, title access reasons, relevant shared/user-attributed jobs, child policy details, and guarded management controls.
+- Added admin APIs for role changes, session revocation, eligible sync retries, and family unlinking, including self-lockout and final-admin protection.
+
+### Verification
+
+- Focused admin logic and route suites passed (12 tests).
+- Focused ESLint and the production build passed.
+- Browser verification covered account search, healthy and attention states, every tab, parent/child policy views, current-admin control protection, and a 390px mobile viewport without page-level horizontal overflow.
+- Destructive browser actions were intentionally not submitted; route tests cover their server behavior.
+- `npm run verify` passed: ESLint completed with the 8 existing `no-img-element` warnings, all tests passed, and the production build completed.
+- `npm run smoke:update` passed; MangaPlus reported the known upstream `Account Banned` response while the update cycle continued successfully.
+
+### Outcome
+
+- Administrators can understand account health, diagnose reading and sync problems, inspect family access, and perform narrowly guarded recovery and account-management actions.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-08---compute-time-sensitive-diagnostics-on-the-server).

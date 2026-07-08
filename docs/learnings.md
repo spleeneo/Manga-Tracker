@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-08 - Compute Time-Sensitive Diagnostics On The Server
+
+Context:
+- React's purity rules rejected a client render that called `Date.now()` to decide whether a synchronization was stale.
+
+Learning:
+- Support diagnostics should be computed once on the server and passed as explicit state; this keeps hydration deterministic and ensures API eligibility rules and UI presentation share the same clock-based policy.
+
+Action:
+- Use the shared `isRetryableSync` helper server-side and send a `retryable` flag to interactive components.
+
 ## 2026-07-08 - Clean Interrupted Next.js Development Artifacts
 
 Context:

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Activity, BookOpen, Database, Library, Server, Users } from "lucide-react";
 import { auth } from "../../../auth";
@@ -10,6 +9,9 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLink } from "@/components/brand-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
+import { AdminAccountsTable } from "@/components/admin-accounts-table";
+import { accountHealth, sortAdminAccounts } from "@/lib/admin";
+import { getLibraryMangaSummaries } from "@/lib/library-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +39,19 @@ export default async function AdminPage() {
         name: true,
         email: true,
         role: true,
-        _count: { select: { library: true, sessions: true } },
+        library: { select: { syncStatus: true, syncStartedAt: true, lastReadAt: true } },
+        parentLinks: { select: { status: true } }, childLink: { select: { status: true } },
+        _count: { select: { sessions: true } },
       },
     }),
   ]);
+
+  const accountRows = await Promise.all(users.map(async (user) => {
+    const summaries = await getLibraryMangaSummaries(user.id);
+    const health = accountHealth({ library: user.library, familyStatuses: [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])] });
+    const lastReadAt = user.library.map((item) => item.lastReadAt).filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    return { id: user.id, name: user.name || "Unnamed user", email: user.email || "No email", role: user.role, health: health.level, issues: health.issues, libraryCount: summaries.length, unreadCount: summaries.reduce((sum, item) => sum + item.unreadChapters, 0), lastReadAt, sessions: user._count.sessions };
+  }));
 
   const stats = [
     { label: "Users", value: userCount, icon: Users },
@@ -86,43 +97,7 @@ export default async function AdminPage() {
           ))}
         </section>
 
-        <section className="surface mt-8 overflow-hidden rounded-lg">
-          <div className="border-b border-border px-5 py-4">
-            <h2 className="text-lg font-semibold">Accounts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Up to 50 accounts, with access and activity at a glance.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3 font-semibold">User</th>
-                  <th className="px-5 py-3 font-semibold">Role</th>
-                  <th className="px-5 py-3 text-right font-semibold">Library</th>
-                  <th className="px-5 py-3 text-right font-semibold">Sessions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-5 py-4">
-                      <Link href={`/admin/users/${user.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                        {user.name || "Unnamed user"}
-                      </Link>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{user.email || "No email"}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${user.role === "ADMIN" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        {user.role === "ADMIN" ? "Admin" : "User"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right tabular-nums">{user._count.library}</td>
-                    <td className="px-5 py-4 text-right tabular-nums">{user._count.sessions}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <AdminAccountsTable accounts={sortAdminAccounts(accountRows).map((account) => ({ ...account, lastReadAt: account.lastReadAt?.toISOString() ?? null }))} />
       </main>
       <LegalFooter />
     </div>
