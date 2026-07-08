@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-08 - Audit Schema Before Resolving Migration Drift
+
+Context:
+- The production parental-control schema existed, but its migration was absent from Prisma's applied history, so a later deploy stopped on a duplicate column.
+
+Learning:
+- A failed migration can be marked applied only after a schema diff confirms every object it owns is already present; table presence alone is not sufficient evidence.
+
+Action:
+- Before resolving an already-provisioned migration, compare the live database with the Prisma schema and preserve any unrelated drift for separate work.
+
 ## 2026-07-06 - Chapter Visibility Must Follow Reader Capability
 
 Context:

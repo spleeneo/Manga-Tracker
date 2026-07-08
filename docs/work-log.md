@@ -1686,3 +1686,37 @@ Verification:
 
 Outcome:
 - Browser extensions can mutate the inline theme script without producing a hydration warning, while early theme restoration remains intact.
+## 2026-07-08 - Add the initial administrator role
+
+### Why
+
+- The application had no first-class authorization role for administrative functionality.
+- Promote Matéo's existing account so future admin-only capabilities have a stable identity to authorize.
+
+### Plan
+
+- Add explicit `USER` and `ADMIN` roles with safe defaults.
+- Include the persisted role in Auth.js sessions.
+- Promote the existing Matéo account during migration and verify the repository gate.
+
+### Changes
+
+- Added the `UserRole` Prisma enum and a required `User.role` field defaulting to `USER`.
+- Added a data migration that promotes `mateo.parache@gmail.com` to `ADMIN`.
+- Exposed the role on the typed authenticated session user.
+
+### Verification
+
+- `npm run verify` passed: ESLint completed with 8 pre-existing `no-img-element` warnings, all tests passed, and the production build completed.
+- Prisma Client generation completed successfully.
+- A live schema diff confirmed the previously unrecorded parental-control migration was already fully represented before its history was resolved.
+- `prisma migrate deploy` applied the user-role migration successfully.
+- A direct database read confirmed Matéo's account has role `ADMIN`.
+
+### Outcome
+
+- The role model and authenticated-session plumbing are verified, the database migration is live, and Matéo is an administrator.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-08---audit-schema-before-resolving-migration-drift).
