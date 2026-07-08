@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-08 - Clean Interrupted Next.js Development Artifacts
+
+Context:
+- Stopping the local development server during UI verification left `.next/dev/types/routes.d.ts` partially written, causing the next production type-check to fail on malformed generated code.
+
+Learning:
+- A syntax error inside generated `.next/dev` route types after an interrupted dev server can be stale build output rather than a source regression.
+
+Action:
+- Confirm the error is confined to `.next`, remove only that generated cache, and rerun the full verification gate from a clean build state.
+
 ## 2026-07-08 - Audit Schema Before Resolving Migration Drift
 
 Context:

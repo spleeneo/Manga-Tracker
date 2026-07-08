@@ -1749,3 +1749,37 @@ Outcome:
 ### Outcome
 
 - Administrators have a useful, server-protected operational dashboard; regular and unauthenticated users fail the shared role check.
+## 2026-07-08 - Add administrator account detail views
+
+### Why
+
+- The admin dashboard summarized accounts but did not let an administrator inspect an individual account's activity or library.
+
+### Plan
+
+- Link dashboard account rows to protected detail pages.
+- Show account metadata, activity, family relationships, and reading state without exposing authentication secrets.
+- Verify normal and family-linked accounts in the browser.
+
+### Changes
+
+- Added `/admin/users/[id]`, protected by the existing server-side administrator check.
+- Added identity, role, provider, email-verification, session, reading, chat, and sync summaries.
+- Added navigable parent/child relationships and a full library table with reading progress, preferred source, sync state, and last-read date.
+- Linked account names on the admin dashboard to their detail pages.
+
+### Verification
+
+- Focused ESLint passed without findings.
+- Focused administrator authorization tests passed (2 tests).
+- Production build passed and included the dynamic `/admin/users/[id]` route.
+- Local browser verification covered a regular account with library data and a child account with a navigable parent connection.
+- `npm run verify` passed from a clean generated cache: ESLint completed with the 8 existing `no-img-element` warnings, all tests passed, and the production build completed.
+
+### Outcome
+
+- Administrators can inspect each account from the dashboard without exposing provider account identifiers, session tokens, or other credentials.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-08---clean-interrupted-nextjs-development-artifacts).

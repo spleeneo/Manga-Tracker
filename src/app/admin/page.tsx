@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Activity, BookOpen, Database, Library, Server, Users } from "lucide-react";
 import { auth } from "../../../auth";
@@ -104,7 +105,9 @@ export default async function AdminPage() {
                 {users.map((user) => (
                   <tr key={user.id}>
                     <td className="px-5 py-4">
-                      <p className="font-medium">{user.name || "Unnamed user"}</p>
+                      <Link href={`/admin/users/${user.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                        {user.name || "Unnamed user"}
+                      </Link>
                       <p className="mt-0.5 text-xs text-muted-foreground">{user.email || "No email"}</p>
                     </td>
                     <td className="px-5 py-4">
