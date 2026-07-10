@@ -2028,3 +2028,40 @@ Outcome:
 ### Outcome
 
 - Discovery now opens on MangaPill content. MangaDex-derived tags/source badges only appear after explicitly switching into filtered catalog browsing.
+
+## 2026-07-10 - Expand MangaPill Discovery Filters
+
+### Why
+
+- MangaPill Discovery still behaved like a homepage strip: only 10 suggestions loaded, MangaPill browse filters were missing, and mature category requests could not apply to MangaPill suggestions.
+
+### Plan
+
+- Use MangaPill catalog/search pages instead of only the homepage trending section.
+- Add MangaPill category, type, status, and paging parameters to the Discovery API and UI.
+- Add mature category aliases that map onto MangaPill's real available genres.
+- Verify parsing against tests and live MangaPill markup.
+
+### Changes
+
+- Added MangaPill search URL building for catalog, newly added, category, type, status, limit, and offset inputs.
+- Added MangaPill category controls to Discovery, including Porn, Hentai, Erotica aliases, Ecchi, Doujinshi, Yaoi, Yuri, and the full verified MangaPill genre set.
+- Changed MangaPill browse to fetch multiple catalog pages up to the requested window, enabling the same Load more flow that MangaDex browse had.
+- Parsed MangaPill genre chips from search result cards while avoiding alternate titles being treated as tags.
+- Preserved MangaDex filtered catalog mode as the explicit fallback for MangaDex-specific browsing.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-mangapill.test.ts`: passed (2 tests).
+- Focused ESLint for Explore, MangaPill explore, and the MangaPill explore API passed with the existing Explore `no-img-element` warnings.
+- Live MangaPill provider check for the Hentai alias built `https://mangapill.com/search?q=&genre=Ecchi`, returned HTTP 200, parsed 50 MangaPill cards, and parsed real tags such as Comedy, Ecchi, Romance, and Seinen.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 264 tests passed, and the production build completed.
+- Browser opened `http://localhost:3010/explore`, but the local app returned the auth-protected 404 because the in-app browser had no signed-in session; authenticated visual verification was not completed in-browser.
+
+### Outcome
+
+- MangaPill Discovery now uses provider catalog pages with filters and pagination instead of being capped by MangaPill's 10-card homepage strip.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-10---mangapill-search-filters-are-conjunctive).

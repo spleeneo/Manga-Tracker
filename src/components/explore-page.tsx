@@ -24,9 +24,65 @@ const sortOptions: Array<{ value: ExploreSort; label: string }> = [
   { value: "updated", label: "Recently updated" },
   { value: "new", label: "Newly added" },
 ];
+const mangaPillSortOptions: Array<{ value: ExploreSort; label: string }> = [
+  { value: "trending", label: "Catalog" },
+  { value: "new", label: "Newly added" },
+];
 
 const demographicOptions = ["shounen", "seinen", "shoujo", "josei"];
 const statusOptions = ["ongoing", "completed", "hiatus", "cancelled"];
+const mangaPillTypeOptions = ["manga", "novel", "one-shot", "doujinshi", "manhua", "oel"];
+const mangaPillCategoryOptions = [
+  { value: "adult-erotic", label: "Erotic / adult" },
+  { value: "adult-hentai", label: "Hentai" },
+  { value: "adult-erotica", label: "Erotica" },
+  { value: "adult-porn", label: "Porn" },
+  { value: "Ecchi", label: "Ecchi" },
+  { value: "Doujinshi", label: "Doujinshi" },
+  { value: "Yaoi", label: "Yaoi" },
+  { value: "Yuri", label: "Yuri" },
+  { value: "Action", label: "Action" },
+  { value: "Adventure", label: "Adventure" },
+  { value: "Cars", label: "Cars" },
+  { value: "Comedy", label: "Comedy" },
+  { value: "Dementia", label: "Dementia" },
+  { value: "Demons", label: "Demons" },
+  { value: "Drama", label: "Drama" },
+  { value: "Fantasy", label: "Fantasy" },
+  { value: "Game", label: "Game" },
+  { value: "Gender Bender", label: "Gender Bender" },
+  { value: "Harem", label: "Harem" },
+  { value: "Horror", label: "Horror" },
+  { value: "Isekai", label: "Isekai" },
+  { value: "Josei", label: "Josei" },
+  { value: "Kids", label: "Kids" },
+  { value: "Magic", label: "Magic" },
+  { value: "Martial Arts", label: "Martial Arts" },
+  { value: "Mecha", label: "Mecha" },
+  { value: "Military", label: "Military" },
+  { value: "Music", label: "Music" },
+  { value: "Mystery", label: "Mystery" },
+  { value: "Parody", label: "Parody" },
+  { value: "Police", label: "Police" },
+  { value: "Psychological", label: "Psychological" },
+  { value: "Romance", label: "Romance" },
+  { value: "Samurai", label: "Samurai" },
+  { value: "School", label: "School" },
+  { value: "Sci-Fi", label: "Sci-Fi" },
+  { value: "Seinen", label: "Seinen" },
+  { value: "Shoujo", label: "Shoujo" },
+  { value: "Shoujo Ai", label: "Shoujo Ai" },
+  { value: "Shounen", label: "Shounen" },
+  { value: "Shounen Ai", label: "Shounen Ai" },
+  { value: "Slice of Life", label: "Slice of Life" },
+  { value: "Space", label: "Space" },
+  { value: "Sports", label: "Sports" },
+  { value: "Super Power", label: "Super Power" },
+  { value: "Supernatural", label: "Supernatural" },
+  { value: "Thriller", label: "Thriller" },
+  { value: "Tragedy", label: "Tragedy" },
+  { value: "Vampire", label: "Vampire" },
+];
 
 function buildQuery(params: {
   sort: ExploreSort;
@@ -88,6 +144,7 @@ export function ExplorePage() {
   const hasSubmittedSearch = activeSearchQuery.length > 0;
   const isSearchMode = activeSearchQuery.length >= 3;
   const isMangaDexBrowse = !hasSubmittedSearch && browseSource === "mangadex";
+  const isMangaPillBrowse = !hasSubmittedSearch && browseSource === "mangapill";
 
   const popularTags = useMemo(() => {
     const preferred = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Slice of Life", "Sports", "Mystery", "Sci-Fi"];
@@ -121,17 +178,21 @@ export function ExplorePage() {
 
       const params = browseSource === "mangadex"
         ? buildQuery({
-            sort,
-            q: "",
-            tagId,
-            demographic,
-            status,
-            offset,
-          })
+          sort,
+          q: "",
+          tagId,
+          demographic,
+          status,
+          offset,
+        })
         : new URLSearchParams({
-            limit: "24",
-            offset: String(offset),
-          });
+          sort,
+          limit: "24",
+          offset: String(offset),
+          ...(tagId ? { genre: tagId } : {}),
+          ...(demographic ? { type: demographic } : {}),
+          ...(status ? { status } : {}),
+        });
       const res = await fetch(`${browseSource === "mangadex" ? "/api/explore" : "/api/explore/mangapill"}?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load explore results");
@@ -183,6 +244,7 @@ export function ExplorePage() {
     setTagId("");
     setDemographic("");
     setStatus("");
+    if (source === "mangapill" && sort === "updated") setSort("trending");
     setNextOffset(null);
   };
 
@@ -270,7 +332,7 @@ export function ExplorePage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold">Searching all registered sources</p>
                 <p className="text-xs font-medium leading-5 text-muted-foreground">
-                  MangaPill results and metadata are prioritized; catalog filters are available in MangaDex browse mode.
+                  MangaPill results and metadata are prioritized; filters are available in browse modes.
                 </p>
               </div>
               <button type="button" className="ui-button ui-button-secondary shrink-0" onClick={clearSearch}>
@@ -297,6 +359,56 @@ export function ExplorePage() {
                 Filtered catalog
               </button>
             </div>
+          ) : null}
+
+          {isMangaPillBrowse ? (
+            <>
+              <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                {mangaPillSortOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSort(option.value)}
+                    className={`ui-tab shrink-0 ${sort === option.value ? "ui-tab-active" : ""}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <label className="relative">
+                  <span className="sr-only">MangaPill category</span>
+                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setTagId(event.target.value)}>
+                    <option value="">All categories</option>
+                    {mangaPillCategoryOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </label>
+
+                <label>
+                  <span className="sr-only">MangaPill type</span>
+                  <select className="ui-field h-10" value={demographic} onChange={(event) => setDemographic(event.target.value)}>
+                    <option value="">All types</option>
+                    {mangaPillTypeOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="sr-only">MangaPill status</span>
+                  <select className="ui-field h-10" value={status} onChange={(event) => setStatus(event.target.value)}>
+                    <option value="">All statuses</option>
+                    {statusOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </>
           ) : null}
 
           {isMangaDexBrowse ? (
@@ -351,7 +463,7 @@ export function ExplorePage() {
 
           {!hasSubmittedSearch && browseSource === "mangapill" ? (
             <p className="text-xs font-medium leading-5 text-muted-foreground">
-              Showing MangaPill homepage picks. Catalog tags and filters stay hidden until filtered catalog mode is selected.
+              Showing MangaPill browse results. Mature options use available MangaPill genres: Ecchi, Doujinshi, Yaoi, and Yuri.
             </p>
           ) : null}
         </div>

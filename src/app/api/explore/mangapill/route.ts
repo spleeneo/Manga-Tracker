@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(await getMangaPillExploreManga(userId, {
+      sort: params.get("sort"),
+      genre: params.get("genre"),
+      type: params.get("type"),
+      status: params.get("status"),
       limit: params.get("limit"),
       offset: params.get("offset"),
     }));

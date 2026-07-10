@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMangaPillExploreHtml } from "@/lib/explore/mangapill";
+import { buildMangaPillExploreUrl, parseMangaPillExploreHtml } from "@/lib/explore/mangapill";
 
 describe("MangaPill explore", () => {
   it("extracts trending MangaPill cards without MangaDex tags", () => {
@@ -19,6 +19,10 @@ describe("MangaPill explore", () => {
             <div class="text-xs leading-5 font-semibold bg-card rounded p-1">manga</div>
             <div class="text-xs leading-5 font-semibold bg-card rounded p-1">1989</div>
             <div class="text-xs leading-5 font-semibold bg-card rounded p-1">publishing</div>
+          </div>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <div class="text-xs leading-5 bg-card rounded px-1.5">Action</div>
+            <div class="text-xs leading-5 bg-card rounded px-1.5">Horror</div>
           </div>
         </div>
       </div>
@@ -47,7 +51,10 @@ describe("MangaPill explore", () => {
         coverUrl: "https://cdn.readdetectiveconan.com/file/mangapill/i/1.jpeg",
         status: "ONGOING",
         year: 1989,
-        tags: [],
+        tags: [
+          { id: "mangapill:action", name: "Action" },
+          { id: "mangapill:horror", name: "Horror" },
+        ],
         source: { name: "MangaPill", url: "https://mangapill.com/manga/1/berserk" },
       },
       {
@@ -61,5 +68,18 @@ describe("MangaPill explore", () => {
         source: { name: "MangaPill", url: "https://mangapill.com/manga/2/one-piece" },
       },
     ]);
+  });
+
+  it("builds MangaPill filter URLs including mature category aliases", () => {
+    expect(buildMangaPillExploreUrl({
+      sort: "trending",
+      genre: "adult-erotic",
+      type: "doujinshi",
+      status: "completed",
+    }, 2)).toBe("https://mangapill.com/search?q=&type=doujinshi&status=finished&genre=Ecchi&page=2");
+
+    expect(buildMangaPillExploreUrl({ sort: "new" }, 3)).toBe("https://mangapill.com/mangas/new?page=3");
+    expect(buildMangaPillExploreUrl({ sort: "new", genre: "Ecchi" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
+    expect(buildMangaPillExploreUrl({ genre: "adult-hentai" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
   });
 });

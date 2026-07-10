@@ -402,3 +402,15 @@ Learning:
 
 Action:
 - Mark intentional inline head scripts with `suppressHydrationWarning` when extensions may mutate them before hydration, while keeping the suppression scoped to that exact node.
+
+## 2026-07-10 - MangaPill Search Filters Are Conjunctive
+
+Context:
+- MangaPill search accepts repeated `genre` parameters, but live checks showed repeated genres are treated as an all-of filter and can return no catalog cards.
+- MangaPill search result cards also include alternate-title text with `text-xs` classes that should not be parsed as genre chips.
+
+Learning:
+- MangaPill category aliases should resolve to one concrete provider genre unless the user explicitly wants an intersection, and card parsing should target rounded chip elements rather than every small-text element.
+
+Action:
+- Keep broad adult aliases mapped to `Ecchi`, expose Doujinshi/Yaoi/Yuri as separate categories, and parse MangaPill chips from rounded badge markup only.
