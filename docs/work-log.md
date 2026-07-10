@@ -1996,3 +1996,35 @@ Outcome:
 ### Outcome
 
 - Discovery search now favors MangaPill without removing the MangaDex catalog browsing path that powers sort, category, demographic, and status filters.
+
+## 2026-07-10 - Make Discovery Default To MangaPill
+
+### Why
+
+- The Discovery page still opened on MangaDex browse cards, so users saw MangaDex source badges and MangaDex-derived tags before searching.
+
+### Plan
+
+- Add a MangaPill browse feed for the default Discovery grid.
+- Keep filtered catalog browsing available as an explicit alternate mode.
+- Verify the default page no longer shows MangaDex source/tag pills.
+
+### Changes
+
+- Added a MangaPill explore parser and `/api/explore/mangapill`, using MangaPill homepage trending cards.
+- Changed the Discovery client to default to MangaPill browse mode and hide catalog filters unless the filtered catalog mode is selected.
+- Removed visible MangaDex wording from the default Discovery controls and helper copy.
+- Generalized browse result normalization so MangaPill and catalog browse results share the card renderer.
+- Added a parser regression test proving MangaPill browse cards carry MangaPill sources and no MangaDex tags.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-mangapill.test.ts`: passed (1 test).
+- `npm run test -- tests/api/explore.route.test.ts tests/api/manga-search.route.test.ts tests/scrapers/registry.test.ts`: passed (12 tests).
+- Focused ESLint passed with only the existing Explore image warnings.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all tests passed, and the production build completed.
+- Browser-verified `http://localhost:3010/explore`: default grid loaded 10 MangaPill cards, no visible `MANGADEX` or `MangaDex` text appeared, and page-level horizontal overflow was absent.
+
+### Outcome
+
+- Discovery now opens on MangaPill content. MangaDex-derived tags/source badges only appear after explicitly switching into filtered catalog browsing.

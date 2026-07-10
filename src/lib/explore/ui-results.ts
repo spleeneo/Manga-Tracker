@@ -8,7 +8,7 @@ export interface ExploreTagSummary {
   name: string;
 }
 
-export interface MangaDexExploreResult {
+export interface BrowseExploreResult {
   id: string;
   title: string;
   slug: string;
@@ -56,7 +56,7 @@ export function slugifyExploreTitle(title: string) {
     .slice(0, 80);
 }
 
-export function normalizeBrowseExploreResult(manga: MangaDexExploreResult): ExploreDisplayManga {
+export function normalizeBrowseExploreResult(manga: BrowseExploreResult): ExploreDisplayManga {
   return {
     ...manga,
     sources: [manga.source],

@@ -4,13 +4,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookOpen, Check, Compass, ExternalLink, Image as ImageIcon, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import {
+  type BrowseExploreResult,
   type ExploreDisplayManga,
-  type MangaDexExploreResult,
   normalizeBrowseExploreResult,
   normalizeSearchExploreResult,
 } from "@/lib/explore/ui-results";
 
 type ExploreSort = "trending" | "updated" | "new";
+type BrowseSource = "mangapill" | "mangadex";
 
 interface ExploreTag {
   id: string;
@@ -68,6 +69,7 @@ function ExploreSkeleton() {
 }
 
 export function ExplorePage() {
+  const [browseSource, setBrowseSource] = useState<BrowseSource>("mangapill");
   const [sort, setSort] = useState<ExploreSort>("trending");
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -85,6 +87,7 @@ export function ExplorePage() {
   const activeSearchQuery = submittedQuery.trim();
   const hasSubmittedSearch = activeSearchQuery.length > 0;
   const isSearchMode = activeSearchQuery.length >= 3;
+  const isMangaDexBrowse = !hasSubmittedSearch && browseSource === "mangadex";
 
   const popularTags = useMemo(() => {
     const preferred = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Slice of Life", "Sports", "Mystery", "Sci-Fi"];
@@ -116,18 +119,23 @@ export function ExplorePage() {
         return;
       }
 
-      const params = buildQuery({
-        sort,
-        q: "",
-        tagId,
-        demographic,
-        status,
-        offset,
-      });
-      const res = await fetch(`/api/explore?${params.toString()}`);
+      const params = browseSource === "mangadex"
+        ? buildQuery({
+            sort,
+            q: "",
+            tagId,
+            demographic,
+            status,
+            offset,
+          })
+        : new URLSearchParams({
+            limit: "24",
+            offset: String(offset),
+          });
+      const res = await fetch(`${browseSource === "mangadex" ? "/api/explore" : "/api/explore/mangapill"}?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load explore results");
-      const normalized = (data.results ?? []).map((manga: MangaDexExploreResult) => normalizeBrowseExploreResult(manga));
+      const normalized = (data.results ?? []).map((manga: BrowseExploreResult) => normalizeBrowseExploreResult(manga));
       setResults((current) => append ? [...current, ...normalized] : normalized);
       setNextOffset(data.nextOffset ?? null);
     } catch (loadError) {
@@ -158,7 +166,7 @@ export function ExplorePage() {
     }, 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, submittedQuery, tagId, demographic, status]);
+  }, [browseSource, sort, submittedQuery, tagId, demographic, status]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -168,6 +176,14 @@ export function ExplorePage() {
   const clearSearch = () => {
     setQuery("");
     setSubmittedQuery("");
+  };
+
+  const switchBrowseSource = (source: BrowseSource) => {
+    setBrowseSource(source);
+    setTagId("");
+    setDemographic("");
+    setStatus("");
+    setNextOffset(null);
   };
 
   const trackManga = async (manga: ExploreDisplayManga) => {
@@ -228,7 +244,7 @@ export function ExplorePage() {
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover manga</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted-foreground">
-              Search MangaPill first across registered sources, with MangaDex catalog browsing available for filtered discovery.
+              Browse MangaPill picks first, search across registered sources, or switch to filtered catalog browsing when needed.
             </p>
           </div>
 
@@ -264,52 +280,80 @@ export function ExplorePage() {
             </div>
           ) : null}
 
-          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" aria-disabled={hasSubmittedSearch}>
-            {sortOptions.map((option) => (
+          {!hasSubmittedSearch ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
               <button
-                key={option.value}
                 type="button"
-                onClick={() => setSort(option.value)}
-                disabled={hasSubmittedSearch}
-                className={`ui-tab shrink-0 ${sort === option.value ? "ui-tab-active" : ""}`}
+                onClick={() => switchBrowseSource("mangapill")}
+                className={`ui-tab shrink-0 ${browseSource === "mangapill" ? "ui-tab-active" : ""}`}
               >
-                {option.label}
+                MangaPill
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                onClick={() => switchBrowseSource("mangadex")}
+                className={`ui-tab shrink-0 ${browseSource === "mangadex" ? "ui-tab-active" : ""}`}
+              >
+                Filtered catalog
+              </button>
+            </div>
+          ) : null}
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <label className="relative">
-              <span className="sr-only">Category</span>
-              <select className="ui-field h-10 pl-9 disabled:opacity-50" value={tagId} onChange={(event) => setTagId(event.target.value)} disabled={hasSubmittedSearch}>
-                <option value="">All categories</option>
-                {popularTags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+          {isMangaDexBrowse ? (
+            <>
+              <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                {sortOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSort(option.value)}
+                    className={`ui-tab shrink-0 ${sort === option.value ? "ui-tab-active" : ""}`}
+                  >
+                    {option.label}
+                  </button>
                 ))}
-              </select>
-              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </label>
+              </div>
 
-            <label>
-              <span className="sr-only">Demographic</span>
-              <select className="ui-field h-10 disabled:opacity-50" value={demographic} onChange={(event) => setDemographic(event.target.value)} disabled={hasSubmittedSearch}>
-                <option value="">All demographics</option>
-                {demographicOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <label className="relative">
+                  <span className="sr-only">Category</span>
+                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setTagId(event.target.value)}>
+                    <option value="">All categories</option>
+                    {popularTags.map((tag) => (
+                      <option key={tag.id} value={tag.id}>{tag.name}</option>
+                    ))}
+                  </select>
+                  <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </label>
 
-            <label>
-              <span className="sr-only">Status</span>
-              <select className="ui-field h-10 disabled:opacity-50" value={status} onChange={(event) => setStatus(event.target.value)} disabled={hasSubmittedSearch}>
-                <option value="">All statuses</option>
-                {statusOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-          </div>
+                <label>
+                  <span className="sr-only">Demographic</span>
+                  <select className="ui-field h-10" value={demographic} onChange={(event) => setDemographic(event.target.value)}>
+                    <option value="">All demographics</option>
+                    {demographicOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="sr-only">Status</span>
+                  <select className="ui-field h-10" value={status} onChange={(event) => setStatus(event.target.value)}>
+                    <option value="">All statuses</option>
+                    {statusOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </>
+          ) : null}
+
+          {!hasSubmittedSearch && browseSource === "mangapill" ? (
+            <p className="text-xs font-medium leading-5 text-muted-foreground">
+              Showing MangaPill homepage picks. Catalog tags and filters stay hidden until filtered catalog mode is selected.
+            </p>
+          ) : null}
         </div>
       </section>
 
