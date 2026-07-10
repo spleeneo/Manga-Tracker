@@ -2155,3 +2155,33 @@ Outcome:
 ### Outcome
 
 - Discover is now a single MangaPill-prioritized mixed-source browse page with the filtered catalog controls folded into the same experience.
+
+## 2026-07-10 - Interleave Discovery Sources
+
+### Why
+
+- The unified Discover page fetched both MangaPill and MangaDex, but MangaPill's full page appeared first, making the visible grid still look MangaPill-only.
+
+### Plan
+
+- Interleave provider result groups instead of appending MangaDex after MangaPill.
+- Keep duplicate-title merging so shared titles still show multiple sources on one card.
+- Cover the ordering behavior with a focused unit test.
+
+### Changes
+
+- Moved browse result merging into the shared Explore UI result helper.
+- Changed merged browse ordering to round-robin result groups, keeping MangaPill first while surfacing MangaDex immediately.
+- Kept duplicate slugs merged with unique sources/tags and tracked state preserved.
+- Updated Discover helper copy to describe interleaved MangaPill and catalog results.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-ui-results.test.ts`: passed (3 tests).
+- Focused ESLint for Explore, UI result helpers, and the Explore UI result test passed with the existing Explore `no-img-element` warnings.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 265 tests passed, and the production build completed.
+- Browser-verified `http://localhost:3000/explore` with dev parent login: default browse loaded 48 cards, the first 12 cards alternated MangaPill and MangaDex sources, the old filtered-catalog toggle was absent, no empty state appeared, and page-level horizontal overflow was absent.
+
+### Outcome
+
+- Mixed Discover results now show more than MangaPill in the first visible result sequence.

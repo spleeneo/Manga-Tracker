@@ -6,6 +6,7 @@ import { useToast } from "@/components/toast-provider";
 import {
   type BrowseExploreResult,
   type ExploreDisplayManga,
+  mergeBrowseDisplayResults,
   normalizeBrowseExploreResult,
   normalizeSearchExploreResult,
 } from "@/lib/explore/ui-results";
@@ -112,44 +113,6 @@ function buildQuery(params: {
 
 function statusLabel(value?: string) {
   return value ? value.replaceAll("_", " ") : "Unknown";
-}
-
-function mergeBrowseResults(primary: ExploreDisplayManga[], secondary: ExploreDisplayManga[]) {
-  const bySlug = new Map<string, ExploreDisplayManga>();
-
-  for (const manga of [...primary, ...secondary]) {
-    const existing = bySlug.get(manga.slug);
-    if (!existing) {
-      bySlug.set(manga.slug, manga);
-      continue;
-    }
-
-    const sourceUrls = new Set(existing.sources.map((source) => source.url));
-    const sources = [
-      ...existing.sources,
-      ...manga.sources.filter((source) => !sourceUrls.has(source.url)),
-    ];
-    const tagIds = new Set(existing.tags.map((tag) => tag.id));
-    const tags = [
-      ...existing.tags,
-      ...manga.tags.filter((tag) => !tagIds.has(tag.id)),
-    ];
-
-    bySlug.set(manga.slug, {
-      ...existing,
-      description: existing.description || manga.description,
-      coverUrl: existing.coverUrl || manga.coverUrl,
-      status: existing.status || manga.status,
-      year: existing.year || manga.year,
-      contentRating: existing.contentRating || manga.contentRating,
-      classificationSource: existing.classificationSource || manga.classificationSource,
-      isTracked: existing.isTracked || manga.isTracked,
-      sources,
-      tags,
-    });
-  }
-
-  return Array.from(bySlug.values());
 }
 
 function ExploreSkeleton() {
@@ -287,7 +250,7 @@ export function ExplorePage() {
       const mangaDexResults = mangaDexRes?.ok
         ? (mangaDexData.results ?? []).map((manga: BrowseExploreResult) => normalizeBrowseExploreResult(manga))
         : [];
-      const normalized = mergeBrowseResults(mangaPillResults, mangaDexResults);
+      const normalized = mergeBrowseDisplayResults(mangaPillResults, mangaDexResults);
       setResults((current) => append ? [...current, ...normalized] : normalized);
       setNextOffset(mangaPillData.nextOffset ?? mangaDexData.nextOffset ?? null);
     } catch (loadError) {
@@ -392,7 +355,7 @@ export function ExplorePage() {
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover manga</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted-foreground">
-              Browse MangaPill-first suggestions merged with the filtered catalog, or search across registered sources.
+              Browse interleaved MangaPill and catalog suggestions, or search across registered sources.
             </p>
           </div>
 
@@ -480,7 +443,7 @@ export function ExplorePage() {
 
           {!hasSubmittedSearch ? (
             <p className="text-xs font-medium leading-5 text-muted-foreground">
-              Showing MangaPill-first results merged with the filtered catalog. Filters apply to every source where the provider exposes an equivalent.
+              Showing interleaved MangaPill and catalog results. Filters apply to every source where the provider exposes an equivalent.
             </p>
           ) : null}
         </div>

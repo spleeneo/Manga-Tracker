@@ -82,3 +82,46 @@ export function normalizeSearchExploreResult(manga: AggregatedExploreSearchResul
     resultKind: "search",
   };
 }
+
+function mergeDisplayManga(existing: ExploreDisplayManga, manga: ExploreDisplayManga): ExploreDisplayManga {
+  const sourceUrls = new Set(existing.sources.map((source) => source.url));
+  const sources = [
+    ...existing.sources,
+    ...manga.sources.filter((source) => !sourceUrls.has(source.url)),
+  ];
+  const tagIds = new Set(existing.tags.map((tag) => tag.id));
+  const tags = [
+    ...existing.tags,
+    ...manga.tags.filter((tag) => !tagIds.has(tag.id)),
+  ];
+
+  return {
+    ...existing,
+    description: existing.description || manga.description,
+    coverUrl: existing.coverUrl || manga.coverUrl,
+    status: existing.status || manga.status,
+    year: existing.year || manga.year,
+    contentRating: existing.contentRating || manga.contentRating,
+    classificationSource: existing.classificationSource || manga.classificationSource,
+    isTracked: existing.isTracked || manga.isTracked,
+    sources,
+    tags,
+  };
+}
+
+export function mergeBrowseDisplayResults(...resultGroups: ExploreDisplayManga[][]) {
+  const mergedBySlug = new Map<string, ExploreDisplayManga>();
+  const maxLength = Math.max(0, ...resultGroups.map((group) => group.length));
+
+  for (let index = 0; index < maxLength; index += 1) {
+    for (const group of resultGroups) {
+      const manga = group[index];
+      if (!manga) continue;
+
+      const existing = mergedBySlug.get(manga.slug);
+      mergedBySlug.set(manga.slug, existing ? mergeDisplayManga(existing, manga) : manga);
+    }
+  }
+
+  return Array.from(mergedBySlug.values());
+}
