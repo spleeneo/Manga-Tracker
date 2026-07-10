@@ -109,7 +109,7 @@ export function ExplorePage() {
           return;
         }
 
-        const res = await fetch(`/api/manga/search?q=${encodeURIComponent(activeSearchQuery)}`);
+        const res = await fetch(`/api/search/manga?q=${encodeURIComponent(activeSearchQuery)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to search sources");
         setResults((data.results ?? []).map(normalizeSearchExploreResult));
@@ -228,7 +228,7 @@ export function ExplorePage() {
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover manga</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted-foreground">
-              Browse popular MangaDex titles, or search across every registered source before deciding what to track.
+              Search MangaPill first across registered sources, with MangaDex catalog browsing available for filtered discovery.
             </p>
           </div>
 
@@ -237,7 +237,7 @@ export function ExplorePage() {
               className="ui-field h-11 pl-11 pr-24"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search titles"
+              placeholder="Search MangaPill first"
             />
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <button type="submit" className="ui-button ui-button-primary absolute right-1 top-1 h-9 min-h-0 px-3">
@@ -254,7 +254,7 @@ export function ExplorePage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold">Searching all registered sources</p>
                 <p className="text-xs font-medium leading-5 text-muted-foreground">
-                  Sort, category, demographic, and status filters apply to MangaDex browsing only.
+                  MangaPill results and metadata are prioritized; catalog filters are available in MangaDex browse mode.
                 </p>
               </div>
               <button type="button" className="ui-button ui-button-secondary shrink-0" onClick={clearSearch}>

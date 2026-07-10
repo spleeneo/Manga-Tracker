@@ -64,4 +64,47 @@ describe("scraper search aggregation", () => {
       ],
     }));
   });
+
+  it("prioritizes MangaPill in aggregated discovery results", async () => {
+    const providers = getRegisteredScrapers();
+    providers.forEach((provider) => {
+      vi.spyOn(provider, "search").mockResolvedValue([]);
+    });
+
+    const mangaDex = providers.find((provider) => provider.name === "MangaDex");
+    const mangaPill = providers.find((provider) => provider.name === "MangaPill");
+    const manganato = providers.find((provider) => provider.name === "Manganato");
+    expect(mangaDex).toBeDefined();
+    expect(mangaPill).toBeDefined();
+    expect(manganato).toBeDefined();
+
+    vi.mocked(mangaDex!.search).mockResolvedValue([{
+      title: "One Piece",
+      sourceName: "MangaDex",
+      sourceUrl: "https://mangadex.org/title/one-piece",
+      coverUrl: "https://uploads.mangadex.org/covers/one-piece.jpg",
+    }]);
+    vi.mocked(mangaPill!.search).mockResolvedValue([{
+      title: "One Piece",
+      sourceName: "MangaPill",
+      sourceUrl: "https://mangapill.com/manga/2/one-piece",
+      coverUrl: "https://cdn.readdetectiveconan.com/file/mangapill/i/2.webp",
+    }]);
+    vi.mocked(manganato!.search).mockResolvedValue([{
+      title: "Lower Priority Match",
+      sourceName: "Manganato",
+      sourceUrl: "https://manganato.com/manga/example",
+    }]);
+
+    const results = await searchScrapers("one piece");
+
+    expect(results[0]).toEqual(expect.objectContaining({
+      title: "One Piece",
+      coverUrl: "https://cdn.readdetectiveconan.com/file/mangapill/i/2.webp",
+      sources: [
+        { name: "MangaPill", url: "https://mangapill.com/manga/2/one-piece" },
+        { name: "MangaDex", url: "https://mangadex.org/title/one-piece" },
+      ],
+    }));
+  });
 });

@@ -15,6 +15,7 @@ import { SingleMangaSiteScraper } from "./single-manga-sites";
 import { AtsumaruScraper } from "./atsumaru";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
 import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
+import { getPreferredSourceRank } from "@/lib/source-preference";
 
 const scrapers: Scraper[] = [
     new SingleMangaSiteScraper(),
@@ -102,11 +103,13 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
 
     const aggregated: Map<string, AggregatedSearchResult> = new Map();
     const sourceUrlToKey: Map<string, string> = new Map();
+    const metadataRankByKey: Map<string, number> = new Map();
 
     for (const result of flatResults) {
         const key = getCanonicalSearchTitle(result.title);
         const existingKey = sourceUrlToKey.get(result.sourceUrl) ?? key;
         const existing = aggregated.get(existingKey);
+        const resultRank = getPreferredSourceRank(result.sourceName, result.title);
 
         if (existing) {
             // Add source to existing entry if not already present
@@ -117,11 +120,13 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                 });
             }
             sourceUrlToKey.set(result.sourceUrl, existingKey);
-            // Prefer more complete metadata if available
-            if (!existing.description && result.description) existing.description = result.description;
-            if (!existing.coverUrl && result.coverUrl) existing.coverUrl = result.coverUrl;
-            if (!existing.status && result.status) existing.status = result.status;
-            if (!existing.author && result.author) existing.author = result.author;
+            const metadataRank = metadataRankByKey.get(existingKey) ?? 0;
+            const preferIncomingMetadata = resultRank > metadataRank;
+            if ((!existing.description || preferIncomingMetadata) && result.description) existing.description = result.description;
+            if ((!existing.coverUrl || preferIncomingMetadata) && result.coverUrl) existing.coverUrl = result.coverUrl;
+            if ((!existing.status || preferIncomingMetadata) && result.status) existing.status = result.status;
+            if ((!existing.author || preferIncomingMetadata) && result.author) existing.author = result.author;
+            if (preferIncomingMetadata) metadataRankByKey.set(existingKey, resultRank);
         } else {
             const canonicalTitle = getCanonicalMangaTitle(result.title);
             aggregated.set(key, {
@@ -136,14 +141,23 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                 }]
             });
             sourceUrlToKey.set(result.sourceUrl, key);
+            metadataRankByKey.set(key, resultRank);
         }
     }
 
-    return Array.from(aggregated.values()).map((result) => ({
-        ...result,
-        sources: applySourceOverrideToInputSources(
+    return Array.from(aggregated.values()).map((result) => {
+        const sources = applySourceOverrideToInputSources(
             { title: result.title },
             result.sources.map((source) => ({ name: source.name, url: source.url })),
-        ),
-    }));
+        ).sort((a, b) => getPreferredSourceRank(b.name, result.title) - getPreferredSourceRank(a.name, result.title));
+
+        return {
+            ...result,
+            sources,
+        };
+    }).sort((a, b) => {
+        const aRank = Math.max(0, ...a.sources.map((source) => getPreferredSourceRank(source.name, a.title)));
+        const bRank = Math.max(0, ...b.sources.map((source) => getPreferredSourceRank(source.name, b.title)));
+        return bRank - aRank;
+    });
 }

@@ -1963,3 +1963,36 @@ Outcome:
 ### Learnings
 
 - See [learnings.md](learnings.md#2026-07-08---compute-time-sensitive-diagnostics-on-the-server).
+
+## 2026-07-10 - Prioritize MangaPill on Discovery
+
+### Why
+
+- Discovery search could feel MangaDex-centered even though MangaPill is the preferred provider for tracking and reading.
+
+### Plan
+
+- Keep MangaDex browse filters where its catalog API is still required.
+- Prioritize MangaPill within cross-source search results.
+- Update Discovery page language so the provider split is clear.
+
+### Changes
+
+- Ranked aggregated search sources and result ordering with the existing source-preference table, putting MangaPill ahead of MangaDex when both match.
+- Preferred higher-ranked provider metadata during merged search aggregation when that provider supplies cover, description, status, or author data.
+- Updated Discovery page copy and search placeholder to present MangaPill-first search while identifying MangaDex-only catalog filters.
+- Added `/api/search/manga` as the Discovery search endpoint to avoid the contested `/api/manga/[slug]` route neighborhood returning HTML 404s for search requests in the running app.
+- Added a registry aggregation regression test for MangaPill-first result/source ordering.
+
+### Verification
+
+- `npm run test -- tests/scrapers/registry.test.ts`: passed (3 tests).
+- `npm run test -- tests/api/explore.route.test.ts tests/api/manga-search.route.test.ts`: passed (9 tests).
+- `npm run test -- tests/scrapers/registry.test.ts tests/api/explore.route.test.ts tests/api/manga-search.route.test.ts`: passed (12 tests) after adding the search endpoint alias.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all tests passed, and the production build completed.
+- Browser-verified `/explore` on `http://localhost:3010`: new MangaPill-first copy and search placeholder rendered, MangaDex browse results loaded, and page-level horizontal overflow was absent.
+- Browser check found `/api/manga/search` returned an HTML 404 in the running dev app; `/api/search/manga` returned JSON (`401` when called without a browser session), so Discovery was moved to the JSON endpoint.
+
+### Outcome
+
+- Discovery search now favors MangaPill without removing the MangaDex catalog browsing path that powers sort, category, demographic, and status filters.
