@@ -25,8 +25,7 @@ const sortOptions: Array<{ value: ExploreSort; label: string }> = [
   { value: "new", label: "Newly added" },
 ];
 const mangaPillSortOptions: Array<{ value: ExploreSort; label: string }> = [
-  { value: "trending", label: "Catalog" },
-  { value: "new", label: "Newly added" },
+  { value: "trending", label: "Latest" },
 ];
 
 const demographicOptions = ["shounen", "seinen", "shoujo", "josei"];

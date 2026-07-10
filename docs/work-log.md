@@ -2094,3 +2094,31 @@ Outcome:
 ### Outcome
 
 - Category selection no longer gets emptied by the incompatible Doujinshi type intersection.
+
+## 2026-07-10 - Fix Empty MangaPill Default Browse
+
+### Why
+
+- MangaPill Browse could still show an empty grid with All categories, All types, and All statuses selected.
+
+### Plan
+
+- Verify the unfiltered provider URL used by the default feed.
+- Point the default feed at a MangaPill listing page that actually returns paginated cards.
+- Keep category/type/status filters on MangaPill search.
+
+### Changes
+
+- Changed the no-filter MangaPill browse URL from `/search?q=` to `/mangas/new`.
+- Removed the duplicate MangaPill sort tab so the default browse control reflects the one reliable unfiltered listing.
+- Added a regression assertion for the all-filters-empty URL.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-mangapill.test.ts`: passed (2 tests).
+- Focused ESLint for Explore and MangaPill explore passed with the existing Explore `no-img-element` warnings.
+- Live MangaPill provider check for `{ sort: "trending", limit: "24", offset: "0" }` built `https://mangapill.com/mangas/new`, returned HTTP 200, and parsed 50 cards.
+
+### Outcome
+
+- The default MangaPill Discover view no longer points at MangaPill's empty unfiltered search page.

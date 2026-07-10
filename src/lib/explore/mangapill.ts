@@ -128,10 +128,6 @@ function normalizeOffset(value?: string | null) {
   return parsed;
 }
 
-function normalizeSort(value?: string | null) {
-  return value === "new" ? "new" : "trending";
-}
-
 function normalizeMangaPillStatus(value?: string | null) {
   switch (value) {
     case "completed":
@@ -159,13 +155,12 @@ function getGenres(value?: string | null) {
 
 export function buildMangaPillExploreUrl(query: MangaPillExploreQuery, page = 1) {
   const params = new URLSearchParams();
-  const sort = normalizeSort(query.sort);
   const genres = getGenres(query.genre);
   const requestedType = normalizeMangaPillType(query.type);
   const type = requestedType === "doujinshi" && genres.length > 0 ? "" : requestedType;
   const status = normalizeMangaPillStatus(query.status);
 
-  if (sort === "new" && genres.length === 0 && !type && !status) {
+  if (genres.length === 0 && !type && !status) {
     if (page > 1) params.set("page", String(page));
     return `${MANGAPILL_BASE_URL}/mangas/new${params.size ? `?${params.toString()}` : ""}`;
   }

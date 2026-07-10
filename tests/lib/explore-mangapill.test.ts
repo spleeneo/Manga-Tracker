@@ -78,6 +78,7 @@ describe("MangaPill explore", () => {
       status: "completed",
     }, 2)).toBe("https://mangapill.com/search?q=&status=finished&genre=Ecchi&page=2");
 
+    expect(buildMangaPillExploreUrl({ sort: "trending" }, 1)).toBe("https://mangapill.com/mangas/new");
     expect(buildMangaPillExploreUrl({ sort: "new" }, 3)).toBe("https://mangapill.com/mangas/new?page=3");
     expect(buildMangaPillExploreUrl({ sort: "new", genre: "Ecchi" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
     expect(buildMangaPillExploreUrl({ genre: "adult-hentai" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
