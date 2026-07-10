@@ -1,23 +1,24 @@
 # Work Log
 
-## 2026-07-10 - Group Completed Manga By Catalog Status
+## 2026-07-10 - Group Finished Caught-Up Manga By Normalized Status
 
 ### Why
 
-- Some completed manga did not appear in the Completed library section.
-- The dashboard only grouped completed manga there when the series was also fully read, so completed titles with unread chapters stayed in Updates to Read.
+- Some finished manga appeared in the Caught Up library section instead of the Completed section.
+- The dashboard only recognized exact `COMPLETED`, so provider variants like `Finished` were treated as active titles.
 
 ### Plan
 
 - Extract section grouping into a small pure helper.
-- Treat completed as a catalog status grouping instead of a reading-progress grouping.
+- Preserve unread finished manga in Updates to Read.
+- Treat fully read finished manga as completed using normalized provider status aliases.
 - Cover unread completed manga and provider status aliases with focused tests.
 
 ### Changes
 
 - Added `groupLibrarySections` for the dashboard's Updates, Caught Up, and Completed groups.
-- Completed manga now go to Completed whenever their normalized catalog status is `COMPLETED`, even with unread chapters.
-- Provider aliases such as `Finished` are normalized before grouping.
+- Finished manga still go to Updates to Read when unread chapters remain.
+- Fully read provider aliases such as `Finished` now group with canonical `COMPLETED` manga.
 
 ### Verification
 
@@ -27,11 +28,11 @@
 
 ### Outcome
 
-- Done. Completed manga are grouped by normalized catalog status instead of requiring fully read progress.
+- Done. Fully read finished manga are grouped by normalized publication status, while unread finished manga remain in Updates to Read.
 
 ### Learnings
 
-- See [learnings.md](learnings.md#2026-07-10---library-sections-should-not-mix-catalog-status-with-reading-progress).
+- See [learnings.md](learnings.md#2026-07-10---completed-library-grouping-needs-status-normalization-and-progress).
 
 ## 2026-07-10 - Clarify admin account issue details
 

@@ -1,7 +1,7 @@
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import type { LibraryMangaSummary } from "@/lib/library-summary";
 
-export type LibrarySection<T extends Pick<LibraryMangaSummary, "status" | "unreadChapters">> = {
+export type LibrarySection<T extends Pick<LibraryMangaSummary, "status" | "unreadChapters" | "isCaughtUp">> = {
   id: "updates" | "caught-up" | "completed";
   title: string;
   description: string;
@@ -12,13 +12,13 @@ function isCompletedStatus(status: string | null | undefined) {
   return normalizeMangaStatus(status) === "COMPLETED";
 }
 
-export function groupLibrarySections<T extends Pick<LibraryMangaSummary, "status" | "unreadChapters">>(
+export function groupLibrarySections<T extends Pick<LibraryMangaSummary, "status" | "unreadChapters" | "isCaughtUp">>(
   sortedItems: T[],
 ): LibrarySection<T>[] {
-  const activeItems = sortedItems.filter((manga) => !isCompletedStatus(manga.status));
-  const completed = sortedItems.filter((manga) => isCompletedStatus(manga.status));
-  const updates = activeItems.filter((manga) => manga.unreadChapters > 0);
-  const caughtUp = activeItems.filter((manga) => manga.unreadChapters === 0);
+  const isFullyReadCompleted = (manga: T) => isCompletedStatus(manga.status) && manga.isCaughtUp;
+  const completed = sortedItems.filter(isFullyReadCompleted);
+  const updates = sortedItems.filter((manga) => manga.unreadChapters > 0);
+  const caughtUp = sortedItems.filter((manga) => manga.unreadChapters === 0 && !isFullyReadCompleted(manga));
 
   return [
     {

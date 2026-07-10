@@ -5,6 +5,7 @@ type Item = {
   id: string;
   status: string | null;
   unreadChapters: number;
+  isCaughtUp: boolean;
 };
 
 function sectionIds(sections: ReturnType<typeof groupLibrarySections<Item>>, id: string) {
@@ -12,20 +13,20 @@ function sectionIds(sections: ReturnType<typeof groupLibrarySections<Item>>, id:
 }
 
 describe("groupLibrarySections", () => {
-  it("places completed titles in the completed section even when unread chapters remain", () => {
+  it("keeps completed titles with unread chapters in updates", () => {
     const sections = groupLibrarySections<Item>([
-      { id: "completed-unread", status: "COMPLETED", unreadChapters: 3 },
-      { id: "ongoing-unread", status: "ONGOING", unreadChapters: 1 },
+      { id: "completed-unread", status: "COMPLETED", unreadChapters: 3, isCaughtUp: false },
+      { id: "ongoing-unread", status: "ONGOING", unreadChapters: 1, isCaughtUp: false },
     ]);
 
-    expect(sectionIds(sections, "completed")).toEqual(["completed-unread"]);
-    expect(sectionIds(sections, "updates")).toEqual(["ongoing-unread"]);
+    expect(sectionIds(sections, "completed")).toEqual([]);
+    expect(sectionIds(sections, "updates")).toEqual(["completed-unread", "ongoing-unread"]);
   });
 
-  it("recognizes provider status aliases when grouping completed titles", () => {
+  it("recognizes provider status aliases when grouping caught-up completed titles", () => {
     const sections = groupLibrarySections<Item>([
-      { id: "finished", status: "Finished", unreadChapters: 0 },
-      { id: "caught-up", status: "ONGOING", unreadChapters: 0 },
+      { id: "finished", status: "Finished", unreadChapters: 0, isCaughtUp: true },
+      { id: "caught-up", status: "ONGOING", unreadChapters: 0, isCaughtUp: true },
     ]);
 
     expect(sectionIds(sections, "completed")).toEqual(["finished"]);
