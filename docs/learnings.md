@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-10 - Library Sections Should Not Mix Catalog Status With Reading Progress
+
+Context:
+- The Completed library section filtered for manga that were both catalog-completed and fully read, which hid completed series that still had unread chapters.
+
+Learning:
+- Library sections named after publication state should use normalized catalog status only; reading progress should remain a separate badge or action state.
+
+Action:
+- Keep section grouping in a pure helper with regression coverage for completed unread titles and provider status aliases.
+
 ## 2026-07-10 - Health Badges Need Record-Level Evidence
 
 Context:

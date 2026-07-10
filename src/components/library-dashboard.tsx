@@ -7,15 +7,9 @@ import { MangaCard, type MangaCardData } from "./manga-card";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
 import { selectContinueReadingManga } from "@/lib/continue-reading";
+import { groupLibrarySections } from "@/lib/library-sections";
 
 type ProgressAction = "next" | "latest" | "caught-up" | "catch-up";
-
-type LibrarySection = {
-    id: string;
-    title: string;
-    description: string;
-    items: MangaCardData[];
-};
 
 function formatNextChapterEstimate(manga?: MangaCardData) {
     if (!manga || manga.status?.toUpperCase() !== "ONGOING" || !manga.estimatedNextChapterAt || manga.releaseEstimateSampleSize < 2) {
@@ -81,34 +75,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
         : null;
     const continueNextEstimate = formatNextChapterEstimate(continueManga);
 
-    const sections = useMemo<LibrarySection[]>(() => {
-        const isCompleted = (manga: MangaCardData) => manga.status?.toUpperCase() === "COMPLETED";
-        const isFullyReadCompleted = (manga: MangaCardData) => isCompleted(manga) && manga.isCaughtUp;
-        const updates = sortedItems.filter((manga) => manga.unreadChapters > 0);
-        const caughtUp = sortedItems.filter((manga) => manga.unreadChapters === 0 && !isFullyReadCompleted(manga));
-        const completed = sortedItems.filter(isFullyReadCompleted);
-
-        return [
-            {
-                id: "updates",
-                title: "Updates to Read",
-                description: "Fresh chapters waiting for you.",
-                items: updates,
-            },
-            {
-                id: "caught-up",
-                title: "Caught Up",
-                description: "Ongoing titles with nothing new right now.",
-                items: caughtUp,
-            },
-            {
-                id: "completed",
-                title: "Completed",
-                description: "Finished series kept in your library.",
-                items: completed,
-            },
-        ];
-    }, [sortedItems]);
+    const sections = useMemo(() => groupLibrarySections(sortedItems), [sortedItems]);
 
     const updateMangaSummary = (summary: MangaCardData) => {
         setItems((current) => current.map((manga) => manga.id === summary.id ? summary : manga));

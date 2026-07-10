@@ -1,5 +1,38 @@
 # Work Log
 
+## 2026-07-10 - Group Completed Manga By Catalog Status
+
+### Why
+
+- Some completed manga did not appear in the Completed library section.
+- The dashboard only grouped completed manga there when the series was also fully read, so completed titles with unread chapters stayed in Updates to Read.
+
+### Plan
+
+- Extract section grouping into a small pure helper.
+- Treat completed as a catalog status grouping instead of a reading-progress grouping.
+- Cover unread completed manga and provider status aliases with focused tests.
+
+### Changes
+
+- Added `groupLibrarySections` for the dashboard's Updates, Caught Up, and Completed groups.
+- Completed manga now go to Completed whenever their normalized catalog status is `COMPLETED`, even with unread chapters.
+- Provider aliases such as `Finished` are normalized before grouping.
+
+### Verification
+
+- Ran `npm run test -- tests/lib/library-sections.test.ts`: 2 tests passed.
+- Ran `npm run verify`: ESLint completed with the 8 existing `no-img-element` warnings, all 257 tests passed, and the production build completed.
+- Browser smoke check confirmed the local app loads with the dev parent session. The dev library was empty, and the configured database is remote, so no fake manga records were inserted for a visual grouping check.
+
+### Outcome
+
+- Done. Completed manga are grouped by normalized catalog status instead of requiring fully read progress.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-10---library-sections-should-not-mix-catalog-status-with-reading-progress).
+
 ## 2026-07-10 - Clarify admin account issue details
 
 ### Why
