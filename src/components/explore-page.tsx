@@ -11,7 +11,6 @@ import {
 } from "@/lib/explore/ui-results";
 
 type ExploreSort = "trending" | "updated" | "new";
-type BrowseSource = "mangapill" | "mangadex";
 
 interface ExploreTag {
   id: string;
@@ -19,18 +18,20 @@ interface ExploreTag {
   group: string;
 }
 
+interface BrowseCategoryOption {
+  value: string;
+  label: string;
+  mangaPillGenre?: string;
+  mangaDexTagId?: string;
+}
+
 const sortOptions: Array<{ value: ExploreSort; label: string }> = [
   { value: "trending", label: "Trending" },
   { value: "updated", label: "Recently updated" },
   { value: "new", label: "Newly added" },
 ];
-const mangaPillSortOptions: Array<{ value: ExploreSort; label: string }> = [
-  { value: "trending", label: "Latest" },
-];
-
 const demographicOptions = ["shounen", "seinen", "shoujo", "josei"];
 const statusOptions = ["ongoing", "completed", "hiatus", "cancelled"];
-const mangaPillTypeOptions = ["manga", "novel", "one-shot", "manhua", "oel"];
 const mangaPillCategoryOptions = [
   { value: "adult-erotic", label: "Erotic / adult" },
   { value: "adult-hentai", label: "Hentai" },
@@ -83,6 +84,13 @@ const mangaPillCategoryOptions = [
   { value: "Vampire", label: "Vampire" },
 ];
 
+const demographicGenreByValue: Record<string, string> = {
+  josei: "Josei",
+  seinen: "Seinen",
+  shoujo: "Shoujo",
+  shounen: "Shounen",
+};
+
 function buildQuery(params: {
   sort: ExploreSort;
   q: string;
@@ -106,6 +114,44 @@ function statusLabel(value?: string) {
   return value ? value.replaceAll("_", " ") : "Unknown";
 }
 
+function mergeBrowseResults(primary: ExploreDisplayManga[], secondary: ExploreDisplayManga[]) {
+  const bySlug = new Map<string, ExploreDisplayManga>();
+
+  for (const manga of [...primary, ...secondary]) {
+    const existing = bySlug.get(manga.slug);
+    if (!existing) {
+      bySlug.set(manga.slug, manga);
+      continue;
+    }
+
+    const sourceUrls = new Set(existing.sources.map((source) => source.url));
+    const sources = [
+      ...existing.sources,
+      ...manga.sources.filter((source) => !sourceUrls.has(source.url)),
+    ];
+    const tagIds = new Set(existing.tags.map((tag) => tag.id));
+    const tags = [
+      ...existing.tags,
+      ...manga.tags.filter((tag) => !tagIds.has(tag.id)),
+    ];
+
+    bySlug.set(manga.slug, {
+      ...existing,
+      description: existing.description || manga.description,
+      coverUrl: existing.coverUrl || manga.coverUrl,
+      status: existing.status || manga.status,
+      year: existing.year || manga.year,
+      contentRating: existing.contentRating || manga.contentRating,
+      classificationSource: existing.classificationSource || manga.classificationSource,
+      isTracked: existing.isTracked || manga.isTracked,
+      sources,
+      tags,
+    });
+  }
+
+  return Array.from(bySlug.values());
+}
+
 function ExploreSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -124,7 +170,6 @@ function ExploreSkeleton() {
 }
 
 export function ExplorePage() {
-  const [browseSource, setBrowseSource] = useState<BrowseSource>("mangapill");
   const [sort, setSort] = useState<ExploreSort>("trending");
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -142,8 +187,6 @@ export function ExplorePage() {
   const activeSearchQuery = submittedQuery.trim();
   const hasSubmittedSearch = activeSearchQuery.length > 0;
   const isSearchMode = activeSearchQuery.length >= 3;
-  const isMangaDexBrowse = !hasSubmittedSearch && browseSource === "mangadex";
-  const isMangaPillBrowse = !hasSubmittedSearch && browseSource === "mangapill";
 
   const popularTags = useMemo(() => {
     const preferred = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Slice of Life", "Sports", "Mystery", "Sci-Fi"];
@@ -151,6 +194,36 @@ export function ExplorePage() {
     const chosen = preferred.map((name) => byName.get(name.toLowerCase())).filter(Boolean) as ExploreTag[];
     return chosen.length > 0 ? chosen : tags.slice(0, 10);
   }, [tags]);
+
+  const browseCategoryOptions = useMemo(() => {
+    const byName = new Map(tags.map((tag) => [tag.name.toLowerCase(), tag]));
+    const options = new Map<string, BrowseCategoryOption>();
+
+    for (const option of mangaPillCategoryOptions) {
+      const mangaDexTag = byName.get(option.label.toLowerCase());
+      options.set(option.label.toLowerCase(), {
+        value: `category:${option.value}`,
+        label: option.label,
+        mangaPillGenre: option.value,
+        mangaDexTagId: mangaDexTag?.id,
+      });
+    }
+
+    for (const tag of popularTags) {
+      const key = tag.name.toLowerCase();
+      const existing = options.get(key);
+      options.set(key, {
+        value: existing?.value ?? `mangadex:${tag.id}`,
+        label: tag.name,
+        mangaPillGenre: existing?.mangaPillGenre,
+        mangaDexTagId: tag.id,
+      });
+    }
+
+    return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [popularTags, tags]);
+
+  const selectedCategory = browseCategoryOptions.find((option) => option.value === tagId);
 
   const loadExplore = async (offset = 0, append = false) => {
     if (append) {
@@ -175,29 +248,48 @@ export function ExplorePage() {
         return;
       }
 
-      const params = browseSource === "mangadex"
-        ? buildQuery({
+      const mangaDexParams = buildQuery({
           sort,
           q: "",
-          tagId,
+          tagId: selectedCategory?.mangaDexTagId ?? "",
           demographic,
           status,
           offset,
-        })
-        : new URLSearchParams({
-          sort,
-          limit: "24",
-          offset: String(offset),
-          ...(tagId ? { genre: tagId } : {}),
-          ...(demographic ? { type: demographic } : {}),
-          ...(status ? { status } : {}),
         });
-      const res = await fetch(`${browseSource === "mangadex" ? "/api/explore" : "/api/explore/mangapill"}?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load explore results");
-      const normalized = (data.results ?? []).map((manga: BrowseExploreResult) => normalizeBrowseExploreResult(manga));
+
+      const mangaPillGenre = selectedCategory?.mangaPillGenre || demographicGenreByValue[demographic] || "";
+      const mangaPillParams = new URLSearchParams({
+        sort,
+        limit: "24",
+        offset: String(offset),
+        ...(mangaPillGenre ? { genre: mangaPillGenre } : {}),
+        ...(status ? { status } : {}),
+      });
+      const shouldFetchMangaPill = !selectedCategory || Boolean(selectedCategory.mangaPillGenre);
+      const shouldFetchMangaDex = !selectedCategory || Boolean(selectedCategory.mangaDexTagId);
+
+      const [mangaPillRes, mangaDexRes] = await Promise.all([
+        shouldFetchMangaPill ? fetch(`/api/explore/mangapill?${mangaPillParams.toString()}`) : Promise.resolve(null),
+        shouldFetchMangaDex ? fetch(`/api/explore?${mangaDexParams.toString()}`) : Promise.resolve(null),
+      ]);
+      const [mangaPillData, mangaDexData] = await Promise.all([
+        mangaPillRes ? mangaPillRes.json() : Promise.resolve({ results: [], nextOffset: null }),
+        mangaDexRes ? mangaDexRes.json() : Promise.resolve({ results: [], nextOffset: null }),
+      ]);
+
+      if ((!mangaPillRes || !mangaPillRes.ok) && (!mangaDexRes || !mangaDexRes.ok)) {
+        throw new Error(mangaPillData.error || mangaDexData.error || "Failed to load explore results");
+      }
+
+      const mangaPillResults = mangaPillRes?.ok
+        ? (mangaPillData.results ?? []).map((manga: BrowseExploreResult) => normalizeBrowseExploreResult(manga))
+        : [];
+      const mangaDexResults = mangaDexRes?.ok
+        ? (mangaDexData.results ?? []).map((manga: BrowseExploreResult) => normalizeBrowseExploreResult(manga))
+        : [];
+      const normalized = mergeBrowseResults(mangaPillResults, mangaDexResults);
       setResults((current) => append ? [...current, ...normalized] : normalized);
-      setNextOffset(data.nextOffset ?? null);
+      setNextOffset(mangaPillData.nextOffset ?? mangaDexData.nextOffset ?? null);
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : "Failed to load explore results";
       setError(message);
@@ -226,7 +318,7 @@ export function ExplorePage() {
     }, 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [browseSource, sort, submittedQuery, tagId, demographic, status]);
+  }, [sort, submittedQuery, tagId, demographic, status, browseCategoryOptions]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -238,18 +330,8 @@ export function ExplorePage() {
     setSubmittedQuery("");
   };
 
-  const setMangaPillCategory = (value: string) => {
+  const setBrowseCategory = (value: string) => {
     setTagId(value);
-    if (value && demographic === "doujinshi") setDemographic("");
-  };
-
-  const switchBrowseSource = (source: BrowseSource) => {
-    setBrowseSource(source);
-    setTagId("");
-    setDemographic("");
-    setStatus("");
-    if (source === "mangapill" && sort === "updated") setSort("trending");
-    setNextOffset(null);
   };
 
   const trackManga = async (manga: ExploreDisplayManga) => {
@@ -310,7 +392,7 @@ export function ExplorePage() {
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover manga</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted-foreground">
-              Browse MangaPill picks first, search across registered sources, or switch to filtered catalog browsing when needed.
+              Browse MangaPill-first suggestions merged with the filtered catalog, or search across registered sources.
             </p>
           </div>
 
@@ -336,7 +418,7 @@ export function ExplorePage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold">Searching all registered sources</p>
                 <p className="text-xs font-medium leading-5 text-muted-foreground">
-                  MangaPill results and metadata are prioritized; filters are available in browse modes.
+                  MangaPill results and metadata are prioritized.
                 </p>
               </div>
               <button type="button" className="ui-button ui-button-secondary shrink-0" onClick={clearSearch}>
@@ -347,75 +429,6 @@ export function ExplorePage() {
           ) : null}
 
           {!hasSubmittedSearch ? (
-            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-              <button
-                type="button"
-                onClick={() => switchBrowseSource("mangapill")}
-                className={`ui-tab shrink-0 ${browseSource === "mangapill" ? "ui-tab-active" : ""}`}
-              >
-                MangaPill
-              </button>
-              <button
-                type="button"
-                onClick={() => switchBrowseSource("mangadex")}
-                className={`ui-tab shrink-0 ${browseSource === "mangadex" ? "ui-tab-active" : ""}`}
-              >
-                Filtered catalog
-              </button>
-            </div>
-          ) : null}
-
-          {isMangaPillBrowse ? (
-            <>
-              <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                {mangaPillSortOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSort(option.value)}
-                    className={`ui-tab shrink-0 ${sort === option.value ? "ui-tab-active" : ""}`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-3">
-                <label className="relative">
-                  <span className="sr-only">MangaPill category</span>
-                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setMangaPillCategory(event.target.value)}>
-                    <option value="">All categories</option>
-                    {mangaPillCategoryOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </label>
-
-                <label>
-                  <span className="sr-only">MangaPill type</span>
-                  <select className="ui-field h-10" value={demographic} onChange={(event) => setDemographic(event.target.value)}>
-                    <option value="">All types</option>
-                    {mangaPillTypeOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <span className="sr-only">MangaPill status</span>
-                  <select className="ui-field h-10" value={status} onChange={(event) => setStatus(event.target.value)}>
-                    <option value="">All statuses</option>
-                    {statusOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </>
-          ) : null}
-
-          {isMangaDexBrowse ? (
             <>
               <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
                 {sortOptions.map((option) => (
@@ -433,10 +446,10 @@ export function ExplorePage() {
               <div className="grid gap-2 sm:grid-cols-3">
                 <label className="relative">
                   <span className="sr-only">Category</span>
-                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setTagId(event.target.value)}>
+                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setBrowseCategory(event.target.value)}>
                     <option value="">All categories</option>
-                    {popularTags.map((tag) => (
-                      <option key={tag.id} value={tag.id}>{tag.name}</option>
+                    {browseCategoryOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                   <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -465,9 +478,9 @@ export function ExplorePage() {
             </>
           ) : null}
 
-          {!hasSubmittedSearch && browseSource === "mangapill" ? (
+          {!hasSubmittedSearch ? (
             <p className="text-xs font-medium leading-5 text-muted-foreground">
-              Showing MangaPill browse results. Mature options use available MangaPill genres: Ecchi, Doujinshi, Yaoi, and Yuri.
+              Showing MangaPill-first results merged with the filtered catalog. Filters apply to every source where the provider exposes an equivalent.
             </p>
           ) : null}
         </div>

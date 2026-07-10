@@ -2122,3 +2122,36 @@ Outcome:
 ### Outcome
 
 - The default MangaPill Discover view no longer points at MangaPill's empty unfiltered search page.
+
+## 2026-07-10 - Merge Discovery Sources And Filters
+
+### Why
+
+- Discovery still forced users to choose between MangaPill browse and the filtered catalog, even though the intended experience is one MangaPill-prioritized page with the broader catalog filters available.
+
+### Plan
+
+- Remove the browse-source toggle.
+- Fetch MangaPill and MangaDex browse data together for the single Discover grid.
+- Translate shared filters to each provider and avoid adding unrelated provider results when a selected category only exists on one provider.
+- Merge duplicate titles while keeping MangaPill ordering and adding secondary sources.
+
+### Changes
+
+- Replaced the MangaPill / filtered catalog tabs with one shared sort, category, demographic, and status control set.
+- Built a combined category list from MangaPill genres/adult aliases plus MangaDex tags, matching shared labels to both providers.
+- Fetches MangaPill and MangaDex in parallel, merges results by slug, keeps MangaPill first, and appends unique sources/tags from duplicates.
+- Applies demographics to MangaDex directly and to MangaPill when they have genre equivalents such as Shounen, Shoujo, Seinen, and Josei.
+- Skips provider calls for category filters that have no equivalent on that provider, preventing unrelated cards from leaking into filtered views.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-ui-results.test.ts tests/lib/explore-mangapill.test.ts`: passed (4 tests).
+- Focused ESLint for Explore and UI result helpers passed with the existing Explore `no-img-element` warnings.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 264 tests passed, and the production build completed.
+- Browser-verified `http://localhost:3000/explore` with dev parent login: the source toggle was gone, the merged filter controls rendered, default browse loaded 48 cards, no `No manga found` state appeared, and page-level horizontal overflow was absent.
+- Browser-selected the Action category: the grid refreshed to 46 cards with both MangaPill and MangaDex sources visible, no error or empty state, and no page-level horizontal overflow.
+
+### Outcome
+
+- Discover is now a single MangaPill-prioritized mixed-source browse page with the filtered catalog controls folded into the same experience.
