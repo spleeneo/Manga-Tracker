@@ -5,6 +5,7 @@ import { isDedicatedMangaSourceName } from "@/lib/source-preference";
 import { discoverSingleMangaSiteSources } from "@/lib/scrapers/single-manga-sites";
 import { discoverMissingSourcesForManga } from "@/lib/source-discovery";
 import { refreshMangaClassification } from "@/lib/content-classification";
+import { fetchLinkedMangaMetadata } from "@/lib/manga-metadata";
 
 function hasSingleMangaSiteSource(sources: Array<{ sourceName: string }>) {
     return sources.some((source) => isDedicatedMangaSourceName(source.sourceName));
@@ -187,6 +188,8 @@ async function updateMangaRecord(manga: MangaForUpdate) {
     const totalNewChapters = sourceResults.reduce((total, result) => total + result.createdCount, 0);
     const failedSources = sourceResults.filter((result) => result.error);
     const allSourcesFailed = failedSources.length === sourceResults.length;
+    const linkedMetadata = await fetchLinkedMangaMetadata(sources, manga.status);
+    const statusChanged = Boolean(linkedMetadata.status && linkedMetadata.status !== manga.status);
 
     try {
         await refreshMangaClassification(manga.id);
@@ -194,10 +197,13 @@ async function updateMangaRecord(manga: MangaForUpdate) {
         console.error(`Failed to refresh provider classifications for ${manga.title}`, error);
     }
 
-    if (totalNewChapters > 0) {
+    if (totalNewChapters > 0 || statusChanged) {
         await prisma.manga.update({
             where: { id: manga.id },
-            data: { updatedAt: new Date() }
+            data: {
+                ...(statusChanged ? { status: linkedMetadata.status } : {}),
+                updatedAt: new Date(),
+            }
         });
     }
 

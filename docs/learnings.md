@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-10 - Publication Status Needs Cross-Source Resolution
+
+Context:
+- Fully read finished manga can stay out of the Completed library section when one provider returns `ONGOING` as a fallback and a later linked provider has the actual terminal status.
+
+Learning:
+- Provider `ONGOING` values are sometimes selector fallbacks rather than strong publication evidence.
+
+Action:
+- Resolve publication status across linked metadata sources and prefer terminal/non-active statuses over `ONGOING` when sources disagree.
+
 ## 2026-07-10 - User-Triggered Syncs Need An Immediate Worker Pass
 
 Context:

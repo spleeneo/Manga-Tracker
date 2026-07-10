@@ -12,6 +12,7 @@ const {
   supportsInternalReader,
   discoverSingleMangaSiteSources,
   discoverMissingSourcesForManga,
+  fetchMetadata,
 } = vi.hoisted(() => ({
   findManyManga: vi.fn(),
   findManyChapter: vi.fn(),
@@ -24,6 +25,7 @@ const {
   supportsInternalReader: vi.fn(),
   discoverSingleMangaSiteSources: vi.fn(),
   discoverMissingSourcesForManga: vi.fn(),
+  fetchMetadata: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -37,6 +39,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/scrapers/registry", () => ({
   scrapeChapters,
   supportsInternalReader,
+  fetchMetadata,
 }));
 
 vi.mock("@/lib/scrapers/single-manga-sites", () => ({
@@ -67,6 +70,7 @@ describe("checkForUpdates", () => {
     discoverSingleMangaSiteSources.mockResolvedValue([]);
     discoverMissingSourcesForManga.mockResolvedValue([]);
     supportsInternalReader.mockReturnValue(false);
+    fetchMetadata.mockResolvedValue({ title: "Metadata", status: "ONGOING" });
   });
 
   it("reports manga with no sources", async () => {
@@ -113,6 +117,29 @@ describe("checkForUpdates", () => {
       where: { sourceId: "s1", readerStatus: null },
       data: { readerStatus: "READABLE", readerError: null },
     });
+  });
+
+  it("refreshes publication status from all linked sources during update checks", async () => {
+    findManyManga.mockResolvedValue([{
+      id: "m1",
+      title: "After the Rain",
+      status: "ONGOING",
+      sources: [
+        { id: "s1", sourceName: "MangaPill", sourceUrl: "mangapill" },
+        { id: "s2", sourceName: "MangaDex", sourceUrl: "mangadex" },
+      ],
+    }]);
+    scrapeChapters.mockResolvedValue([]);
+    fetchMetadata
+      .mockResolvedValueOnce({ title: "After the Rain", status: "ONGOING" })
+      .mockResolvedValueOnce({ title: "After the Rain", status: "COMPLETED" });
+
+    await checkForUpdates("m1");
+
+    expect(updateManga).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "m1" },
+      data: expect.objectContaining({ status: "COMPLETED" }),
+    }));
   });
 
   it("continues when one source fails", async () => {

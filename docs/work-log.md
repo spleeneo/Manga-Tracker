@@ -1,5 +1,42 @@
 # Work Log
 
+## 2026-07-10 - Resolve Completed Status Across Linked Sources
+
+### Why
+
+- `After the Rain` was fully read locally but remained outside the Completed library section.
+- The stored manga publication status was `ONGOING`, while the title had linked sources that can report the finished publication state.
+- Some providers return `ONGOING` as a metadata fallback when status extraction misses.
+
+### Plan
+
+- Add a pure status selector that prefers terminal/non-active publication evidence over `ONGOING`.
+- Fetch metadata across all linked sources for metadata refreshes and update checks.
+- Let regular update checks repair stale publication statuses.
+- Cover the disagreement behavior with focused tests.
+
+### Changes
+
+- Added cross-source linked metadata fetching and publication status resolution.
+- Manual metadata refresh now considers all linked sources for status.
+- Update checks now refresh publication status even when no new chapters are added.
+- Added regression coverage for `ONGOING` plus `COMPLETED` source disagreement.
+
+### Verification
+
+- Ran `npm run test -- tests/lib/manga-status.test.ts tests/lib/manga-metadata.test.ts tests/lib/manga-updater.test.ts tests/lib/library-sections.test.ts tests/api/manga-owned-routes.test.ts`: 22 tests passed.
+- Ran `npm run verify`: ESLint completed with the 8 existing `no-img-element` warnings, all 261 tests passed, and the production build completed.
+- Ran `npm run smoke:update`: passed; MangaPlus reported the known upstream `Account Banned` response while the update cycle continued.
+- Corrected the local `After the Rain` manga row to `COMPLETED` and confirmed its latest tracked chapter and last-read chapter are both `82.1`.
+
+### Outcome
+
+- Done. Fully read titles can be repaired into the Completed section when linked providers disagree and one source reports a terminal publication status.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-10---publication-status-needs-cross-source-resolution).
+
 ## 2026-07-10 - Process User-Triggered Syncs Immediately
 
 ### Why

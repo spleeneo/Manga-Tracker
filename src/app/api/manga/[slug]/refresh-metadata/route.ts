@@ -1,10 +1,9 @@
 import { prisma } from "@/lib/db";
-import { fetchMetadata } from "@/lib/scrapers/registry";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
-import { normalizeMangaStatus } from "@/lib/manga-status";
 import { getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 import { refreshMangaClassification } from "@/lib/content-classification";
+import { fetchLinkedMangaMetadata } from "@/lib/manga-metadata";
 
 export async function POST(
     request: NextRequest,
@@ -45,23 +44,22 @@ export async function POST(
             return NextResponse.json({ error: "No sources linked to this manga" }, { status: 400 });
         }
 
-        // Use the first source to refresh metadata
-        const source = manga.sources[0];
-        console.log(`[API] Refreshing metadata for ${manga.title} via ${source.sourceName}`);
+        console.log(`[API] Refreshing metadata for ${manga.title} via ${manga.sources.length} linked source(s)`);
 
-        const meta = await fetchMetadata(source.sourceUrl);
+        const linkedMetadata = await fetchLinkedMangaMetadata(manga.sources, manga.status);
+        const meta = linkedMetadata.metadata[0];
 
         const updatedManga = await prisma.manga.update({
             where: { id: manga.id },
             data: {
-                title: meta.title || manga.title,
-                coverUrl: meta.coverUrl || manga.coverUrl,
-                status: normalizeMangaStatus(meta.status || manga.status, "ONGOING"),
-                description: meta.description || manga.description,
-                contentRating: meta.classificationSource === "MANGADEX" ? meta.contentRating?.toLowerCase() : manga.contentRating,
-                classificationSource: meta.classificationSource ?? manga.classificationSource,
-                classifiedAt: meta.classificationSource ? new Date() : manga.classifiedAt,
-                tags: meta.classificationSource === "MANGADEX" && meta.tags ? {
+                title: meta?.title || manga.title,
+                coverUrl: meta?.coverUrl || manga.coverUrl,
+                status: linkedMetadata.status ?? manga.status,
+                description: meta?.description || manga.description,
+                contentRating: meta?.classificationSource === "MANGADEX" ? meta.contentRating?.toLowerCase() : manga.contentRating,
+                classificationSource: meta?.classificationSource ?? manga.classificationSource,
+                classifiedAt: meta?.classificationSource ? new Date() : manga.classifiedAt,
+                tags: meta?.classificationSource === "MANGADEX" && meta.tags ? {
                     deleteMany: {},
                     create: meta.tags.map((tag) => ({ tag: { connectOrCreate: { where: { id: tag.id }, create: { id: tag.id, name: tag.name, group: tag.group } } } })),
                 } : undefined,
