@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       includedTags: params.get("includedTags"),
       publicationDemographic: params.get("publicationDemographic"),
       status: params.get("status"),
+      contentRating: params.get("contentRating"),
       limit: params.get("limit"),
       offset: params.get("offset"),
     });

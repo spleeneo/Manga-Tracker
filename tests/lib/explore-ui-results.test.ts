@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBrowseCategoryOptions,
   mergeBrowseDisplayResults,
   normalizeBrowseExploreResult,
   normalizeSearchExploreResult,
@@ -101,6 +102,29 @@ describe("explore UI result normalization", () => {
         { name: "MangaPill", url: "https://mangapill.com/manga/2/shared" },
         { name: "MangaDex", url: "https://mangadex.org/title/shared" },
       ],
+    }));
+  });
+
+  it("maps mature and shared browse categories to MangaDex equivalents", () => {
+    const options = buildBrowseCategoryOptions([
+      { value: "adult-porn", label: "Porn" },
+      { value: "Ecchi", label: "Ecchi" },
+      { value: "Action", label: "Action" },
+    ], [
+      { id: "tag-action", name: "Action" },
+    ]);
+
+    expect(options.find((option) => option.label === "Porn")).toEqual(expect.objectContaining({
+      mangaPillGenre: "adult-porn",
+      mangaDexContentRatings: ["pornographic"],
+    }));
+    expect(options.find((option) => option.label === "Ecchi")).toEqual(expect.objectContaining({
+      mangaPillGenre: "Ecchi",
+      mangaDexContentRatings: ["suggestive", "erotica"],
+    }));
+    expect(options.find((option) => option.label === "Action")).toEqual(expect.objectContaining({
+      mangaPillGenre: "Action",
+      mangaDexTagId: "tag-action",
     }));
   });
 });

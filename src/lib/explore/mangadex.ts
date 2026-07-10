@@ -16,6 +16,7 @@ export interface ExploreQuery {
   includedTags?: string | null;
   publicationDemographic?: string | null;
   status?: string | null;
+  contentRating?: string | null;
   limit?: string | null;
   offset?: string | null;
 }
@@ -140,10 +141,10 @@ function buildExploreUrl(query: ExploreQuery) {
   search.set("limit", String(limit));
   search.set("offset", String(offset));
   search.append("includes[]", "cover_art");
-  search.append("contentRating[]", "safe");
-  search.append("contentRating[]", "suggestive");
-  search.append("contentRating[]", "erotica");
-  search.append("contentRating[]", "pornographic");
+  const contentRatings = normalizeList(query.contentRating);
+  for (const rating of contentRatings.length > 0 ? contentRatings : ["safe", "suggestive", "erotica", "pornographic"]) {
+    search.append("contentRating[]", rating);
+  }
   search.append("availableTranslatedLanguage[]", "en");
 
   if (query.q?.trim()) {

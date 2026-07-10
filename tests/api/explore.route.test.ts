@@ -90,7 +90,7 @@ describe("GET /api/explore", () => {
   });
 
   it("maps sort modes and caps limit", async () => {
-    const res = await exploreGET(mockNextRequest("http://localhost/api/explore?sort=updated&limit=200&includedTags=tag1&publicationDemographic=shounen&status=ongoing"));
+    const res = await exploreGET(mockNextRequest("http://localhost/api/explore?sort=updated&limit=200&includedTags=tag1&publicationDemographic=shounen&status=ongoing&contentRating=erotica,pornographic"));
 
     expect(res.status).toBe(200);
     const calledUrl = String((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]);
@@ -101,6 +101,7 @@ describe("GET /api/explore", () => {
     expect(calledUrl).toContain("status%5B%5D=ongoing");
     expect(calledUrl).toContain("contentRating%5B%5D=erotica");
     expect(calledUrl).toContain("contentRating%5B%5D=pornographic");
+    expect(calledUrl).not.toContain("contentRating%5B%5D=safe");
   });
 
   it("returns a readable error when MangaDex fails", async () => {

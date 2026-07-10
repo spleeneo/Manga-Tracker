@@ -2185,3 +2185,33 @@ Outcome:
 ### Outcome
 
 - Mixed Discover results now show more than MangaPill in the first visible result sequence.
+
+## 2026-07-10 - Apply Mature Discovery Filters To MangaDex
+
+### Why
+
+- Mature category filters such as Porn, Hentai, Erotica, and Ecchi still behaved MangaPill-only because MangaDex models those as content ratings rather than genre tags.
+
+### Plan
+
+- Add content-rating filtering to the MangaDex explore API.
+- Map mature UI categories to MangaDex content ratings while keeping MangaPill genre aliases.
+- Cover the provider mapping and API URL generation with focused tests.
+
+### Changes
+
+- Added `contentRating` support to MangaDex explore queries and route parameter forwarding.
+- Changed MangaDex URL construction to use selected content ratings when present instead of always sending all ratings.
+- Mapped Porn/Hentai to `pornographic`, Erotica to `erotica`, Erotic/adult to `erotica,pornographic`, and Ecchi to `suggestive,erotica` for MangaDex.
+- Moved category option construction into the shared Explore UI helper and added regression coverage for shared and mature category mappings.
+
+### Verification
+
+- `npm run test -- tests/api/explore.route.test.ts tests/lib/explore-ui-results.test.ts`: passed (9 tests).
+- Focused ESLint for Explore, MangaDex explore, UI result helpers, routes, and tests passed with the existing Explore `no-img-element` warnings.
+- `npm run verify`: passed (lint, 266 tests, production build). Lint still reports the existing `no-img-element` warnings.
+- Browser check on family dev: selected the Porn category on `/explore` and confirmed the rendered results were not empty and included interleaved MangaPill and MangaDex cards.
+
+### Outcome
+
+- Mature Discover filters now apply to MangaDex/catalog results as well as MangaPill wherever provider semantics support it.

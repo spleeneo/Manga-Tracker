@@ -8,6 +8,20 @@ export interface ExploreTagSummary {
   name: string;
 }
 
+export interface ExploreTagOption {
+  id: string;
+  name: string;
+  group?: string;
+}
+
+export interface BrowseCategoryOption {
+  value: string;
+  label: string;
+  mangaPillGenre?: string;
+  mangaDexTagId?: string;
+  mangaDexContentRatings?: string[];
+}
+
 export interface BrowseExploreResult {
   id: string;
   title: string;
@@ -48,6 +62,14 @@ export interface ExploreDisplayManga {
   classificationSource?: "MANGADEX";
 }
 
+const mangaDexContentRatingsByCategory: Record<string, string[]> = {
+  "adult-erotic": ["erotica", "pornographic"],
+  "adult-hentai": ["pornographic"],
+  "adult-erotica": ["erotica"],
+  "adult-porn": ["pornographic"],
+  Ecchi: ["suggestive", "erotica"],
+};
+
 export function slugifyExploreTitle(title: string) {
   return title
     .toLowerCase()
@@ -81,6 +103,36 @@ export function normalizeSearchExploreResult(manga: AggregatedExploreSearchResul
     isTracked: false,
     resultKind: "search",
   };
+}
+
+export function buildBrowseCategoryOptions(mangaPillCategories: Array<{ value: string; label: string }>, mangaDexTags: ExploreTagOption[]) {
+  const byName = new Map(mangaDexTags.map((tag) => [tag.name.toLowerCase(), tag]));
+  const options = new Map<string, BrowseCategoryOption>();
+
+  for (const option of mangaPillCategories) {
+    const mangaDexTag = byName.get(option.label.toLowerCase());
+    options.set(option.label.toLowerCase(), {
+      value: `category:${option.value}`,
+      label: option.label,
+      mangaPillGenre: option.value,
+      mangaDexTagId: mangaDexTag?.id,
+      mangaDexContentRatings: mangaDexContentRatingsByCategory[option.value],
+    });
+  }
+
+  for (const tag of mangaDexTags) {
+    const key = tag.name.toLowerCase();
+    const existing = options.get(key);
+    options.set(key, {
+      value: existing?.value ?? `mangadex:${tag.id}`,
+      label: tag.name,
+      mangaPillGenre: existing?.mangaPillGenre,
+      mangaDexTagId: tag.id,
+      mangaDexContentRatings: existing?.mangaDexContentRatings,
+    });
+  }
+
+  return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function mergeDisplayManga(existing: ExploreDisplayManga, manga: ExploreDisplayManga): ExploreDisplayManga {

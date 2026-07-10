@@ -6,6 +6,7 @@ import { useToast } from "@/components/toast-provider";
 import {
   type BrowseExploreResult,
   type ExploreDisplayManga,
+  buildBrowseCategoryOptions,
   mergeBrowseDisplayResults,
   normalizeBrowseExploreResult,
   normalizeSearchExploreResult,
@@ -17,13 +18,6 @@ interface ExploreTag {
   id: string;
   name: string;
   group: string;
-}
-
-interface BrowseCategoryOption {
-  value: string;
-  label: string;
-  mangaPillGenre?: string;
-  mangaDexTagId?: string;
 }
 
 const sortOptions: Array<{ value: ExploreSort; label: string }> = [
@@ -98,6 +92,7 @@ function buildQuery(params: {
   tagId: string;
   demographic: string;
   status: string;
+  contentRating?: string;
   offset?: number;
 }) {
   const query = new URLSearchParams();
@@ -108,6 +103,7 @@ function buildQuery(params: {
   if (params.tagId) query.set("includedTags", params.tagId);
   if (params.demographic) query.set("publicationDemographic", params.demographic);
   if (params.status) query.set("status", params.status);
+  if (params.contentRating) query.set("contentRating", params.contentRating);
   return query;
 }
 
@@ -159,31 +155,7 @@ export function ExplorePage() {
   }, [tags]);
 
   const browseCategoryOptions = useMemo(() => {
-    const byName = new Map(tags.map((tag) => [tag.name.toLowerCase(), tag]));
-    const options = new Map<string, BrowseCategoryOption>();
-
-    for (const option of mangaPillCategoryOptions) {
-      const mangaDexTag = byName.get(option.label.toLowerCase());
-      options.set(option.label.toLowerCase(), {
-        value: `category:${option.value}`,
-        label: option.label,
-        mangaPillGenre: option.value,
-        mangaDexTagId: mangaDexTag?.id,
-      });
-    }
-
-    for (const tag of popularTags) {
-      const key = tag.name.toLowerCase();
-      const existing = options.get(key);
-      options.set(key, {
-        value: existing?.value ?? `mangadex:${tag.id}`,
-        label: tag.name,
-        mangaPillGenre: existing?.mangaPillGenre,
-        mangaDexTagId: tag.id,
-      });
-    }
-
-    return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label));
+    return buildBrowseCategoryOptions(mangaPillCategoryOptions, [...tags, ...popularTags]);
   }, [popularTags, tags]);
 
   const selectedCategory = browseCategoryOptions.find((option) => option.value === tagId);
@@ -217,6 +189,7 @@ export function ExplorePage() {
           tagId: selectedCategory?.mangaDexTagId ?? "",
           demographic,
           status,
+          contentRating: selectedCategory?.mangaDexContentRatings?.join(","),
           offset,
         });
 
@@ -229,7 +202,7 @@ export function ExplorePage() {
         ...(status ? { status } : {}),
       });
       const shouldFetchMangaPill = !selectedCategory || Boolean(selectedCategory.mangaPillGenre);
-      const shouldFetchMangaDex = !selectedCategory || Boolean(selectedCategory.mangaDexTagId);
+      const shouldFetchMangaDex = !selectedCategory || Boolean(selectedCategory.mangaDexTagId) || Boolean(selectedCategory.mangaDexContentRatings?.length);
 
       const [mangaPillRes, mangaDexRes] = await Promise.all([
         shouldFetchMangaPill ? fetch(`/api/explore/mangapill?${mangaPillParams.toString()}`) : Promise.resolve(null),
