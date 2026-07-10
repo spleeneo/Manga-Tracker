@@ -263,6 +263,7 @@ export async function POST(request: Request) {
         const job = needsInitialSync
             ? await enqueueMangaSyncJob(userId, mangaId)
             : shouldRefresh ? await enqueueSharedMangaSyncJob(mangaId) : null;
+        const initialSyncResult = needsInitialSync && job ? await processSyncJob(job.id) : null;
         if (shouldRefresh) after(async () => {
             if (job) await processSyncJob(job.id);
             await refreshMangaClassification(mangaId);
@@ -272,7 +273,7 @@ export async function POST(request: Request) {
             id: mangaId,
             title: finalMangaData.title,
             slug: finalMangaData.slug,
-            syncStatus,
+            syncStatus: initialSyncResult?.status === "completed" ? "UPDATED" : syncStatus,
         });
 
     } catch (error) {

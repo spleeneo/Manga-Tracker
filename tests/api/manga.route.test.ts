@@ -77,6 +77,7 @@ describe("POST /api/manga", () => {
     sourceFindFirst.mockResolvedValue(null);
     getChildPolicyMock.mockResolvedValue(null);
     getMangaAccessMock.mockResolvedValue({ allowed: true, isChild: false, reason: "allowed" });
+    processSyncJobMock.mockResolvedValue({ id: "job1", status: "completed" });
   });
 
   it("resolves an opaque child catalog reference server-side", async () => {
@@ -155,12 +156,14 @@ describe("POST /api/manga", () => {
     });
 
     const res = await POST(req);
+    const data = await res.json();
 
     expect(res.status).toBe(200);
+    expect(data.syncStatus).toBe("UPDATED");
     expect(sourceCreate).toHaveBeenCalledOnce();
     expect(enqueueMangaSyncJobMock).toHaveBeenCalledWith("u1", "m1");
+    expect(processSyncJobMock).toHaveBeenCalledWith("job1");
     expect(afterMock).toHaveBeenCalledOnce();
-    expect(processSyncJobMock).not.toHaveBeenCalled();
     expect(userMangaUpsert).toHaveBeenCalledWith(expect.objectContaining({
       update: expect.objectContaining({ syncStatus: "SYNCING" }),
       create: expect.objectContaining({ syncStatus: "SYNCING" }),

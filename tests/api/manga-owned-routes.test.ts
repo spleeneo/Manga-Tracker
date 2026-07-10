@@ -62,6 +62,7 @@ describe("owned manga API routes", () => {
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue("u1");
     enqueueMangaSyncJobMock.mockResolvedValue({ id: "job1" });
+    processSyncJobMock.mockResolvedValue({ id: "job1", status: "completed" });
   });
 
   it("requires ownership before checking updates", async () => {
@@ -88,9 +89,10 @@ describe("owned manga API routes", () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.queued).toBe(1);
+    expect(body.jobStatus).toBe("completed");
     expect(enqueueMangaSyncJobMock).toHaveBeenCalledWith("u1", "m1");
+    expect(processSyncJobMock).toHaveBeenCalledWith("job1");
     expect(afterMock).toHaveBeenCalledOnce();
-    expect(processSyncJobMock).not.toHaveBeenCalled();
   });
 
   it("requires ownership before returning manga data", async () => {

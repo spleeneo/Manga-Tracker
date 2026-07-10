@@ -11,6 +11,7 @@ export async function POST() {
         }
 
         const { queued } = await enqueueUserLibrarySyncJobs(userId);
+        const processed = await processQueuedSyncJobs({ limit: Math.max(queued, 1), concurrency: 4 });
 
         after(async () => {
             try {
@@ -20,7 +21,7 @@ export async function POST() {
             }
         });
 
-        return NextResponse.json({ success: true, queued });
+        return NextResponse.json({ success: true, queued, ...processed });
     } catch (error) {
         console.error("Library update failed:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

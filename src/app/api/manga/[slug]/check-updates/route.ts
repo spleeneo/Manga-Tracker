@@ -40,6 +40,7 @@ export async function POST(
         }
 
         const job = await enqueueMangaSyncJob(userId, manga.id);
+        const processed = await processSyncJob(job.id);
 
         after(async () => {
             try {
@@ -49,7 +50,7 @@ export async function POST(
             }
         });
 
-        return NextResponse.json({ success: true, queued: 1, jobId: job.id });
+        return NextResponse.json({ success: true, queued: 1, jobId: job.id, jobStatus: processed.status });
     } catch (error) {
         console.error("Manual update failed:", error);
         return NextResponse.json(

@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-10 - User-Triggered Syncs Need An Immediate Worker Pass
+
+Context:
+- User-triggered library updates marked rows `SYNCING` and created due `QUEUED` jobs, but the request-local background callback did not always drain those jobs.
+
+Learning:
+- For user-visible synchronization, enqueueing work is not enough; the request that changes visible state should make a bounded worker pass before returning.
+
+Action:
+- Process newly queued sync jobs once in manual update and initial tracking routes, while keeping background and cron processing as safety nets.
+
 ## 2026-07-10 - Completed Library Grouping Needs Status Normalization And Progress
 
 Context:

@@ -1,5 +1,42 @@
 # Work Log
 
+## 2026-07-10 - Process User-Triggered Syncs Immediately
+
+### Why
+
+- Several library rows were stuck in `SYNCING` even though their shared jobs were merely due and `QUEUED`.
+- The update routes relied on request-local `after(...)` callbacks to drain jobs, so if that callback did not run or did not get enough time, the UI waited for a later manual retrigger or daily cron.
+
+### Plan
+
+- Inspect the configured database state read-only to identify the stuck pattern.
+- Process user-triggered single-title, library, and initial tracking syncs once before returning from the request.
+- Keep the existing `after(...)` pass as a best-effort safety pass for remaining work.
+- Verify the affected route behavior and the full repository gate.
+
+### Changes
+
+- Manual library updates now call `processQueuedSyncJobs` in the POST request and return the processing counts.
+- Manual single-title updates now call `processSyncJob` before responding and return the job status.
+- Initial tracking syncs now process the first job before responding and report `UPDATED` immediately when that pass completes.
+- Updated route tests to assert the immediate processing pass.
+
+### Verification
+
+- Ran `npm run test -- tests/api/manga-updates.route.test.ts tests/api/manga-owned-routes.test.ts tests/api/manga.route.test.ts tests/lib/sync-jobs.test.ts`: 21 tests passed.
+- Ran `npm run verify`: ESLint completed with the 8 existing `no-img-element` warnings, all 257 tests passed, and the production build completed.
+- Read-only database inspection before repair found 5 `UserManga` rows in `SYNCING`, each with a due `QUEUED` shared job, plus one leftover active shared job.
+- Drained the configured database queue in two worker passes: 6 jobs processed, 6 completed, 0 failed, 0 retrying.
+- Final configured database check: all 39 `UserManga` rows are `UPDATED`, there are 0 active `QUEUED`/`RUNNING` sync jobs, and the single `FAILED` sync job is historical.
+
+### Outcome
+
+- Done. User-triggered syncs now perform a bounded immediate worker pass, and the configured database queue has been drained.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-10---user-triggered-syncs-need-an-immediate-worker-pass).
+
 ## 2026-07-10 - Group Finished Caught-Up Manga By Normalized Status
 
 ### Why

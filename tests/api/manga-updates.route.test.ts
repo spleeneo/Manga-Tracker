@@ -50,8 +50,10 @@ describe("POST /api/manga/updates", () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.queued).toBe(2);
+    expect(body.processed).toBe(2);
+    expect(body.completed).toBe(2);
     expect(enqueueUserLibrarySyncJobsMock).toHaveBeenCalledWith("u1");
+    expect(processQueuedSyncJobsMock).toHaveBeenCalledWith({ limit: 2, concurrency: 4 });
     expect(afterMock).toHaveBeenCalledOnce();
-    expect(processQueuedSyncJobsMock).not.toHaveBeenCalled();
   });
 });
