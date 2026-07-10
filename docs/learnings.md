@@ -414,3 +414,4 @@ Learning:
 
 Action:
 - Keep broad adult aliases mapped to `Ecchi`, expose Doujinshi/Yaoi/Yuri as separate categories, and parse MangaPill chips from rounded badge markup only.
+- Do not combine MangaPill's `type=doujinshi` with category filters; live checks showed valid categories can become empty provider intersections.

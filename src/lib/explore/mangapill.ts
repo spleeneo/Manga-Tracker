@@ -161,7 +161,8 @@ export function buildMangaPillExploreUrl(query: MangaPillExploreQuery, page = 1)
   const params = new URLSearchParams();
   const sort = normalizeSort(query.sort);
   const genres = getGenres(query.genre);
-  const type = normalizeMangaPillType(query.type);
+  const requestedType = normalizeMangaPillType(query.type);
+  const type = requestedType === "doujinshi" && genres.length > 0 ? "" : requestedType;
   const status = normalizeMangaPillStatus(query.status);
 
   if (sort === "new" && genres.length === 0 && !type && !status) {

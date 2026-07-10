@@ -76,10 +76,11 @@ describe("MangaPill explore", () => {
       genre: "adult-erotic",
       type: "doujinshi",
       status: "completed",
-    }, 2)).toBe("https://mangapill.com/search?q=&type=doujinshi&status=finished&genre=Ecchi&page=2");
+    }, 2)).toBe("https://mangapill.com/search?q=&status=finished&genre=Ecchi&page=2");
 
     expect(buildMangaPillExploreUrl({ sort: "new" }, 3)).toBe("https://mangapill.com/mangas/new?page=3");
     expect(buildMangaPillExploreUrl({ sort: "new", genre: "Ecchi" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
     expect(buildMangaPillExploreUrl({ genre: "adult-hentai" }, 1)).toBe("https://mangapill.com/search?q=&genre=Ecchi");
+    expect(buildMangaPillExploreUrl({ genre: "Doujinshi", type: "doujinshi" }, 1)).toBe("https://mangapill.com/search?q=&genre=Doujinshi");
   });
 });

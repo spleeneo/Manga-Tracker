@@ -2065,3 +2065,32 @@ Outcome:
 ### Learnings
 
 - See [learnings.md](learnings.md#2026-07-10---mangapill-search-filters-are-conjunctive).
+
+## 2026-07-10 - Fix Empty MangaPill Category Results
+
+### Why
+
+- Selecting a MangaPill category could produce an empty grid when the stale Doujinshi type filter was also active.
+
+### Plan
+
+- Reproduce the provider combination.
+- Avoid sending MangaPill's `type=doujinshi` alongside category filters.
+- Keep Doujinshi available as a category filter, where MangaPill returns results.
+
+### Changes
+
+- Removed Doujinshi from the MangaPill type dropdown while keeping the Doujinshi category.
+- Cleared a stale Doujinshi type when a MangaPill category is selected.
+- Hardened the MangaPill URL builder to ignore stale `type=doujinshi` whenever a category is present.
+- Added a regression assertion for the previously-empty URL shape.
+
+### Verification
+
+- `npm run test -- tests/lib/explore-mangapill.test.ts`: passed (2 tests).
+- Focused ESLint for Explore and MangaPill explore passed with the existing Explore `no-img-element` warnings.
+- Live MangaPill provider check for `{ genre: "adult-hentai", type: "doujinshi", status: "completed" }` built `https://mangapill.com/search?q=&status=finished&genre=Ecchi`, returned HTTP 200, and parsed 50 cards.
+
+### Outcome
+
+- Category selection no longer gets emptied by the incompatible Doujinshi type intersection.

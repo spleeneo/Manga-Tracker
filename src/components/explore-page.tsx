@@ -31,7 +31,7 @@ const mangaPillSortOptions: Array<{ value: ExploreSort; label: string }> = [
 
 const demographicOptions = ["shounen", "seinen", "shoujo", "josei"];
 const statusOptions = ["ongoing", "completed", "hiatus", "cancelled"];
-const mangaPillTypeOptions = ["manga", "novel", "one-shot", "doujinshi", "manhua", "oel"];
+const mangaPillTypeOptions = ["manga", "novel", "one-shot", "manhua", "oel"];
 const mangaPillCategoryOptions = [
   { value: "adult-erotic", label: "Erotic / adult" },
   { value: "adult-hentai", label: "Hentai" },
@@ -239,6 +239,11 @@ export function ExplorePage() {
     setSubmittedQuery("");
   };
 
+  const setMangaPillCategory = (value: string) => {
+    setTagId(value);
+    if (value && demographic === "doujinshi") setDemographic("");
+  };
+
   const switchBrowseSource = (source: BrowseSource) => {
     setBrowseSource(source);
     setTagId("");
@@ -379,7 +384,7 @@ export function ExplorePage() {
               <div className="grid gap-2 sm:grid-cols-3">
                 <label className="relative">
                   <span className="sr-only">MangaPill category</span>
-                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setTagId(event.target.value)}>
+                  <select className="ui-field h-10 pl-9" value={tagId} onChange={(event) => setMangaPillCategory(event.target.value)}>
                     <option value="">All categories</option>
                     {mangaPillCategoryOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
