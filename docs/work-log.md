@@ -1,5 +1,41 @@
 # Work Log
 
+## 2026-07-10 - Clarify admin account issue details
+
+### Why
+
+- The admin account list still showed only an issue count, so an administrator could see that an account needed attention without seeing the affected title or stored sync error.
+- The account detail page needed a stronger first-stop diagnostic section for each concrete problem.
+
+### Plan
+
+- Derive record-level issue details from the same admin health rules used by the dashboard and endpoints.
+- Show visible issue summaries on the dashboard instead of relying on badge hover text.
+- Add detail-page issue cards with inspect/retry affordances and supporting account facts.
+- Verify the dashboard and account detail page in the browser.
+
+### Changes
+
+- Added typed admin issue derivation for failed syncs, stale syncs, and incomplete family links.
+- Updated the admin account list to show the affected title and exact stored error/duration under the health badge, plus an "Open diagnostics" link.
+- Added a "What needs attention" section on user detail pages with issue cards, inspect actions, retry actions for eligible sync rows, and extra account facts.
+- Added focused coverage for issue derivation.
+
+### Verification
+
+- Focused admin diagnostics tests passed (7 tests).
+- Focused ESLint passed on the touched admin files.
+- Browser verification confirmed the account list exposes concrete issue details, the Matéo account detail page shows exact issue cards, and the safe Inspect action filters the library to the affected title.
+- `npm run verify` passed: ESLint completed with the 8 existing `no-img-element` warnings, all 255 tests passed, and the production build completed.
+
+### Outcome
+
+- Administrators can now see what is wrong directly from the account list and drill into the specific affected title without guessing from a generic issue count.
+
+### Learnings
+
+- See [learnings.md](learnings.md#2026-07-10---health-badges-need-record-level-evidence).
+
 ## 2026-07-06 - Restore Berserk Chapters and Child Cover
 
 ### Why

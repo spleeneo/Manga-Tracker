@@ -34,7 +34,16 @@ export function AdminAccountsTable({ accounts }: { accounts: AdminAccountRow[] }
         <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">Account</th><th className="px-5 py-3">Health</th><th className="px-5 py-3 text-right">Library</th><th className="px-5 py-3 text-right">Unread</th><th className="px-5 py-3">Last read</th><th className="px-5 py-3 text-right">Sessions</th></tr></thead>
         <tbody className="divide-y divide-border">{filtered.map((account) => <tr key={account.id}>
           <td className="px-5 py-4"><Link href={`/admin/users/${account.id}`} className="font-medium hover:text-primary hover:underline">{account.name}</Link><p className="mt-0.5 text-xs text-muted-foreground">{account.email} · {account.role === "ADMIN" ? "Admin" : "User"}</p></td>
-          <td className="px-5 py-4"><span title={account.issues.join("; ")} className={`rounded-full px-2 py-1 text-xs font-semibold ${account.health === "attention" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"}`}>{account.health === "attention" ? `${account.issues.length} issue${account.issues.length === 1 ? "" : "s"}` : "Healthy"}</span></td>
+          <td className="px-5 py-4">
+            <div className="flex flex-col gap-2">
+              <span title={account.issues.join("; ")} className={`w-fit rounded-full px-2 py-1 text-xs font-semibold ${account.health === "attention" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"}`}>{account.health === "attention" ? `${account.issues.length} issue${account.issues.length === 1 ? "" : "s"}` : "Healthy"}</span>
+              {account.issues.length > 0 && <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+                {account.issues.slice(0, 2).map((issue) => <p key={issue} className="max-w-[34rem] break-words">{issue}</p>)}
+                {account.issues.length > 2 && <p>{account.issues.length - 2} more issue{account.issues.length - 2 === 1 ? "" : "s"} on the account detail page.</p>}
+                <Link href={`/admin/users/${account.id}`} className="inline-flex font-semibold text-primary hover:underline">Open diagnostics</Link>
+              </div>}
+            </div>
+          </td>
           <td className="px-5 py-4 text-right tabular-nums">{account.libraryCount}</td><td className="px-5 py-4 text-right tabular-nums">{account.unreadCount}</td>
           <td className="px-5 py-4 text-muted-foreground">{account.lastReadAt ? dateFormatter.format(new Date(account.lastReadAt)) : "Never"}</td><td className="px-5 py-4 text-right tabular-nums">{account.sessions}</td>
         </tr>)}</tbody>

@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-07-10 - Health Badges Need Record-Level Evidence
+
+Context:
+- The admin dashboard correctly flagged accounts needing attention, but the visible badge stopped at "1 issue" and hid the affected record and error details.
+
+Learning:
+- Support health summaries should keep a visible path back to the specific record, stored error, and timing evidence that caused the status.
+
+Action:
+- Build typed issue details from shared diagnostics and render the concrete title, reason, and stored error/duration wherever an admin health badge is shown.
+
 ## 2026-07-08 - Compute Time-Sensitive Diagnostics On The Server
 
 Context:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountHealth, deriveActivity, isAdmin, isRetryableSync, sortAdminAccounts } from "@/lib/admin";
+import { accountHealth, buildAccountIssues, deriveActivity, isAdmin, isRetryableSync, sortAdminAccounts } from "@/lib/admin";
 
 describe("isAdmin", () => {
   it("allows administrators", () => {
@@ -41,5 +41,20 @@ describe("account diagnostics", () => {
       { name: "Older", health: "healthy" as const, lastReadAt: new Date("2026-07-01") },
     ]);
     expect(result.map((item) => item.name)).toEqual(["Needs help", "Recent", "Older"]);
+  });
+
+  it("explains the affected title, stored error, duration, and family state", () => {
+    const issues = buildAccountIssues({
+      library: [
+        { id: "failed", title: "Berserk", syncStatus: "FAILED", syncStartedAt: new Date("2026-07-08T11:50:00Z"), syncError: "All sources were blocked" },
+        { id: "stale", title: "Vagabond", syncStatus: "SYNCING", syncStartedAt: new Date("2026-07-08T11:20:00Z"), syncError: null },
+      ],
+      familyLinks: [{ label: "Child invitation for kid@example.com", status: "PENDING" }],
+    }, now);
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "failed_sync", title: "Berserk", detail: "All sources were blocked", userMangaId: "failed" }),
+      expect.objectContaining({ kind: "stale_sync", title: "Vagabond", detail: "Running for 40 minutes without finishing." }),
+      expect.objectContaining({ kind: "family_setup", detail: expect.stringContaining("pending") }),
+    ]));
   });
 });

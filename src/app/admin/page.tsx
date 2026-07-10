@@ -10,7 +10,7 @@ import { BrandLink } from "@/components/brand-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
 import { AdminAccountsTable } from "@/components/admin-accounts-table";
-import { accountHealth, sortAdminAccounts } from "@/lib/admin";
+import { accountHealth, buildAccountIssues, sortAdminAccounts } from "@/lib/admin";
 import { getLibraryMangaSummaries } from "@/lib/library-summary";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ export default async function AdminPage() {
         name: true,
         email: true,
         role: true,
-        library: { select: { syncStatus: true, syncStartedAt: true, lastReadAt: true } },
+        library: { select: { id: true, syncStatus: true, syncStartedAt: true, syncError: true, lastReadAt: true, manga: { select: { title: true } } } },
         parentLinks: { select: { status: true } }, childLink: { select: { status: true } },
         _count: { select: { sessions: true } },
       },
@@ -48,9 +48,11 @@ export default async function AdminPage() {
 
   const accountRows = await Promise.all(users.map(async (user) => {
     const summaries = await getLibraryMangaSummaries(user.id);
-    const health = accountHealth({ library: user.library, familyStatuses: [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])] });
+    const familyStatuses = [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])];
+    const health = accountHealth({ library: user.library, familyStatuses });
+    const detailedIssues = buildAccountIssues({ library: user.library.map((item) => ({ ...item, title: item.manga.title })), familyLinks: familyStatuses.map((status) => ({ label: "Family relationship", status })) });
     const lastReadAt = user.library.map((item) => item.lastReadAt).filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
-    return { id: user.id, name: user.name || "Unnamed user", email: user.email || "No email", role: user.role, health: health.level, issues: health.issues, libraryCount: summaries.length, unreadCount: summaries.reduce((sum, item) => sum + item.unreadChapters, 0), lastReadAt, sessions: user._count.sessions };
+    return { id: user.id, name: user.name || "Unnamed user", email: user.email || "No email", role: user.role, health: health.level, issues: detailedIssues.map((issue) => `${issue.title}: ${issue.summary} — ${issue.detail}`), libraryCount: summaries.length, unreadCount: summaries.reduce((sum, item) => sum + item.unreadChapters, 0), lastReadAt, sessions: user._count.sessions };
   }));
 
   const stats = [

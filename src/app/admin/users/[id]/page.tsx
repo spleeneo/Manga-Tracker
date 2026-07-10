@@ -8,7 +8,7 @@ import { BrandLink } from "@/components/brand-link";
 import { LegalFooter } from "@/components/legal-footer";
 import { ThemeSelector } from "@/components/theme-selector";
 import { AdminUserDetail, type AdminUserDetailData } from "@/components/admin-user-detail";
-import { accountHealth, deriveActivity, isAdmin, isRetryableSync } from "@/lib/admin";
+import { accountHealth, buildAccountIssues, deriveActivity, isAdmin, isRetryableSync } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { getLibraryMangaSummaries } from "@/lib/library-summary";
 import { DEFAULT_ALLOWED_CONTENT_RATINGS, DEFAULT_BLOCKED_TAG_NAMES, evaluateMangaAccess } from "@/lib/parental-controls";
@@ -39,10 +39,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   if (!user) notFound();
 
   const isChild = user.childLink?.status === "ACTIVE";
-  const [summaries, recentReads, lastChat, jobs] = await Promise.all([
+  const [summaries, recentReads, readChapterCount, lastChat, chatMessageCount, jobs] = await Promise.all([
     getLibraryMangaSummaries(user.id, isChild),
     prisma.userChapter.findMany({ where: { userId: user.id, isRead: true, readAt: { not: null } }, orderBy: { readAt: "desc" }, take: 12, select: { readAt: true, chapter: { select: { chapterNumber: true, manga: { select: { title: true } } } } } }),
+    prisma.userChapter.count({ where: { userId: user.id, isRead: true } }),
     prisma.chatMessage.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    prisma.chatMessage.count({ where: { userId: user.id } }),
     prisma.syncJob.findMany({ where: { mangaId: { in: user.library.map((item) => item.mangaId) } }, orderBy: { createdAt: "desc" }, take: 20, select: { id: true, userId: true, status: true, error: true, createdAt: true, manga: { select: { title: true } } } }),
   ]);
   const summaryByManga = new Map(summaries.map((item) => [item.id, item]));
@@ -59,12 +61,18 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
     ...(user.childLink ? [{ id: user.childLink.id, label: "Parent", accountId: user.childLink.parent.id, name: user.childLink.parent.name || user.childLink.parent.email || "Unnamed", email: user.childLink.parent.email || "No email", status: user.childLink.status }] : []),
     ...user.parentLinks.map((link) => ({ id: link.id, label: "Child", accountId: link.child?.id ?? null, name: link.child?.name || link.child?.email || link.childEmail, email: link.child?.email || link.childEmail, status: link.status })),
   ];
+  const issueDetails = buildAccountIssues({
+    library: user.library.map((item) => ({ id: item.id, title: item.manga.title, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt, syncError: item.syncError })),
+    familyLinks: familyLinks.map((link) => ({ label: `${link.label} relationship with ${link.name}`, status: link.status })),
+  });
 
   const data: AdminUserDetailData = {
     id: user.id, actorId, name: user.name || "Unnamed user", email: user.email || "No email", role: user.role,
     providers: [...new Set(user.accounts.map((item) => item.provider))], emailVerified: user.emailVerified?.toISOString() ?? null,
     familyRole: user.childLink ? "Child" : user.parentLinks.length ? "Parent" : "No family role", health: health.level, issues: health.issues,
+    issueDetails: issueDetails.map((issue) => ({ ...issue, startedAt: issue.startedAt?.toISOString() ?? null })),
     activeSessions: user.sessions.filter((item) => item.expires > new Date()).length,
+    accountFacts: { userId: user.id, totalSessions: user.sessions.length, expiredSessions: user.sessions.filter((item) => item.expires <= new Date()).length, readChapterCount, chatMessageCount, relevantJobCount: jobs.length },
     lastReadAt: activity.lastReadAt?.toISOString() ?? null, lastTrackedAt: activity.lastTrackedAt?.toISOString() ?? null, lastChatAt: activity.lastChatAt?.toISOString() ?? null,
     library: user.library.map((item) => { const summary = summaryByManga.get(item.mangaId); const access = policy ? evaluateMangaAccess(policy, { contentRating: item.manga.contentRating, classificationSource: item.manga.classificationSource, tags: item.manga.tags.map(({ tag }) => tag.name) }, overrideByManga.get(item.mangaId) as "ALLOW" | "BLOCK" | undefined) : { reason: "allowed" }; return {
       id: item.id, title: item.manga.title, slug: item.manga.slug, status: item.status, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt?.toISOString() ?? null, syncError: item.syncError,
