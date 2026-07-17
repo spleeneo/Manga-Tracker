@@ -26,6 +26,7 @@ type IdleWindow = Window & typeof globalThis & {
 const prefetchedUrls = new Set<string>();
 const PREFETCH_CONCURRENCY = 3;
 const IMAGE_TIMEOUT_MS = 20_000;
+const MAX_CHAPTER_PREFETCH_PAGES = 3;
 
 function canPrefetch() {
   if (typeof window === "undefined" || typeof Image === "undefined") return false;
@@ -92,7 +93,7 @@ export async function prefetchReaderChapter({ slug, chapterId, signal }: ReaderP
     const data = await res.json() as ReaderPrefetchResponse;
     if (data.status !== "READABLE" || !Array.isArray(data.pages)) return;
 
-    await prefetchReaderPages(data.pages, signal);
+    await prefetchReaderPages(data.pages.slice(0, MAX_CHAPTER_PREFETCH_PAGES), signal);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return;
   }

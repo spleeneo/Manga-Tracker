@@ -14,6 +14,7 @@ const APPEND_CHAPTER_THRESHOLD_PX = 1400;
 const NEXT_CHAPTER_BATCH_SIZE = 1;
 const READER_WINDOW_BEFORE = 1;
 const READER_WINDOW_AFTER = 1;
+const READER_PAGE_PREFETCH_LIMIT = 3;
 
 interface ReaderPage {
   index: number;
@@ -100,8 +101,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
 
   const fetchReader = useCallback(async (targetChapter: ReaderStreamChapter, signal?: AbortSignal): Promise<ReaderResponse> => {
     const res = await fetch(`/api/manga/${slug}/chapter/${targetChapter.id}/reader`, { signal });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.reason || data.error || `Reader failed: ${res.status}`);
+    const contentType = res.headers.get("content-type") ?? "";
+    const data = (contentType.includes("application/json") ? await res.json() : null) as Partial<ReaderResponse> & { error?: string } | null;
+    if (!res.ok) throw new Error(data?.reason || data?.error || `Reader failed: ${res.status}`);
     return data as ReaderResponse;
   }, [slug]);
 
@@ -412,7 +414,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     if (activeReader?.status !== "READABLE" || activeReader.pages.length === 0) return;
 
     const controller = new AbortController();
-    void prefetchReaderPages(activeReader.pages, controller.signal);
+    void prefetchReaderPages(activeReader.pages.slice(0, READER_PAGE_PREFETCH_LIMIT), controller.signal);
 
     const cancelAdjacentPrefetch = scheduleReaderPrefetch(() => {
       const adjacentChapters = [nextChapter, previousNavChapter].filter((item): item is ReaderNavChapter => Boolean(item));
@@ -510,7 +512,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                         <div key={index} className="surface h-[70vh] animate-pulse rounded-lg bg-muted" />
                       ))}
                     </div>
-                  ) : chapterReader?.status === "READABLE" ? (
+                  ) : chapterReader?.status === "READABLE" && chapterReader.pages.length > 0 ? (
                     <div className="space-y-3">
                       {chapterReader.usedAlternative && (
                         <div className="surface mx-auto max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">

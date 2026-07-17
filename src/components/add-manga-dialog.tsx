@@ -27,6 +27,7 @@ export function AddMangaDialog() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
     const [trackingKey, setTrackingKey] = useState<string | null>(null);
     const { showToast, updateToast } = useToast();
     const visibleSearchResults = searchQuery.trim().length >= 3 ? searchResults : [];
@@ -38,20 +39,37 @@ export function AddMangaDialog() {
             return;
         }
 
+        const controller = new AbortController();
         const timer = setTimeout(async () => {
             setIsSearching(true);
+            setSearchError(null);
             try {
-                const res = await fetch(`/api/manga/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/manga/search?q=${encodeURIComponent(query)}`, {
+                    signal: controller.signal,
+                });
                 const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || "Search failed");
+                }
                 setSearchResults((data.results || []) as SearchResult[]);
             } catch (e) {
+                if (e instanceof DOMException && e.name === "AbortError") {
+                    return;
+                }
                 console.error(e);
+                setSearchResults([]);
+                setSearchError(e instanceof Error ? e.message : "Search failed");
             } finally {
-                setIsSearching(false);
+                if (!controller.signal.aborted) {
+                    setIsSearching(false);
+                }
             }
         }, 500);
 
-        return () => clearTimeout(timer);
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
     }, [searchQuery]);
 
     const getMangaFormData = (manga: SearchResult, initialSourceUrl?: string) => {
@@ -74,6 +92,8 @@ export function AddMangaDialog() {
         setSearchQuery(value);
         if (value.trim().length < 3) {
             setIsSearching(false);
+            setSearchError(null);
+            setSearchResults([]);
         }
     };
 
@@ -139,6 +159,7 @@ export function AddMangaDialog() {
     const resetForm = () => {
         setSearchQuery("");
         setSearchResults([]);
+        setSearchError(null);
     };
 
     if (!isOpen) {
@@ -198,7 +219,13 @@ export function AddMangaDialog() {
                         </div>
 
                         <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-2 custom-scrollbar">
-                            {visibleSearchResults.length > 0 ? (
+                            {searchError && searchQuery.trim().length >= 3 && !isSearching ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                                    <Search className="mb-2 h-8 w-8 opacity-20" />
+                                    <p className="text-sm">Search failed</p>
+                                    <p className="mt-1 max-w-sm text-xs">{searchError}</p>
+                                </div>
+                            ) : visibleSearchResults.length > 0 ? (
                                 visibleSearchResults.map((manga, idx) => (
                                     <div
                                         key={manga.title || idx}
@@ -254,12 +281,12 @@ export function AddMangaDialog() {
                                 ))
                             ) : searchQuery.length >= 3 && !isSearching ? (
                                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                                    <Search className="h-8 w-8 opacity-20 mb-2" />
+                                    <Search className="mb-2 h-8 w-8 opacity-20" />
                                     <p className="text-sm">No results found</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                                    <Sparkles className="h-8 w-8 opacity-20 mb-2" />
+                                    <Sparkles className="mb-2 h-8 w-8 opacity-20" />
                                     <p className="text-sm">Type to search</p>
                                 </div>
                             )}

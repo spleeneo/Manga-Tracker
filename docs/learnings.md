@@ -416,3 +416,25 @@ Action:
 - Keep broad adult aliases mapped to `Ecchi`, expose Doujinshi/Yaoi/Yuri as separate categories, and parse MangaPill chips from rounded badge markup only.
 - Do not combine MangaPill's `type=doujinshi` with category filters; live checks showed valid categories can become empty provider intersections.
 - Do not use MangaPill `/search?q=` for the unfiltered default browse feed; it returns an empty result page, while `/mangas/new` returns paginated cards.
+
+## 2026-07-17 - Search Requests Need Stale Response Protection
+
+Context:
+- Debounced search inputs can still have older provider requests in flight while the user continues typing.
+
+Learning:
+- A valid later search can appear empty if an older request resolves afterward and overwrites the current results.
+
+Action:
+- Abort or ignore stale search requests, clear short-query state, and show request failures separately from legitimate empty results.
+
+## 2026-07-17 - Reader Failures Must Render As Fallbacks
+
+Context:
+- Provider-backed reader requests can return non-JSON errors, route-level 404s, or empty readable payloads while the page shell itself loads.
+
+Learning:
+- Reader UI should never assume a failed chapter response is JSON or that `READABLE` implies at least one page image.
+
+Action:
+- Parse reader API responses defensively and render the source-link fallback whenever the response is non-readable or contains no pages.

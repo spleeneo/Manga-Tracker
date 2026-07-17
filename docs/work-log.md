@@ -2156,6 +2156,49 @@ Outcome:
 
 - Discover is now a single MangaPill-prioritized mixed-source browse page with the filtered catalog controls folded into the same experience.
 
+## 2026-07-17 - Stabilize Search And Reader Loading
+
+### Why
+
+- Searching for titles such as `noise` or `gyges` could show an empty result state even when the providers returned matches.
+- Reader loading also felt slow/not loaded, suggesting a broader provider/network pressure issue rather than only a search parser problem.
+- The add dialog treated failed requests and stale responses the same as a legitimate empty search.
+- The reader prefetch path could start fetching many proxied images in the background while visible pages were still loading.
+- Browser verification found reader API failures could also render as raw JSON parse/null errors or a blank chapter shell instead of a source-link fallback.
+
+### Plan
+
+- Reproduce the search path directly against registered providers.
+- Prevent older in-flight search requests from overwriting the current query.
+- Surface search failures separately from "No results found".
+- Reduce reader background image prefetch pressure so visible pages have less competition.
+- Make reader fetch/display handling defensive for non-JSON errors and empty page lists.
+- Verify with focused checks and live provider searches.
+
+### Changes
+
+- Added per-query request cancellation to the add manga dialog search effect.
+- Clears stale results and errors when the query becomes shorter than the searchable threshold.
+- Displays a "Search failed" state with the route error instead of silently falling through to "No results found".
+- Limited current and adjacent reader chapter image prefetches to the first few pages instead of an entire chapter.
+- Reader fetch now handles non-JSON failed responses without throwing parse/null exceptions.
+- Reader display now treats `READABLE` with zero pages as a source-link fallback instead of rendering an empty chapter.
+- Recorded stale-response search and reader-fallback lessons in `docs/learnings.md`.
+
+### Verification
+
+- `npx eslint src/components/add-manga-dialog.tsx src/components/chapter-reader.tsx src/lib/reader-prefetch.ts src/app/api/proxy/image/route.ts`: passed with existing `no-img-element` warnings.
+- `npm run test -- tests/api/manga-search.route.test.ts tests/api/chapter-reader.route.test.ts tests/api/proxy-image.route.test.ts tests/scrapers/registry.test.ts tests/scrapers/mangapill.test.ts tests/scrapers/mangadex.test.ts`: passed (25 tests).
+- Live scraper check with `searchScrapers("noise")` returned 30 results headed by `NOiSE`; `searchScrapers("gyges")` returned `Gyges no Futari`. MangaPlus still reports the known upstream `Account Banned` block from this environment.
+- Browser-verified the signed-in add manga dialog at `http://localhost:3000`: `gyges` rendered `Gyges no Futari`, and `noise` rendered results headed by `NOiSE` without the no-results or search-failed state.
+- Browser-verified an existing reader route: failed MangaPill reader API responses no longer surfaced JSON parse/null exceptions, and the chapter sections rendered the source-link fallback with `Reader failed: 404`.
+- `npm run verify`: passed after stopping the local dev server and removing the generated `.next/dev` artifact; ESLint completed with the existing 8 `no-img-element` warnings, all 266 tests passed, and the production build completed.
+
+### Outcome
+
+- Add manga search is more resistant to stale and failed requests, and the reported `noise` / `gyges` searches return visible results locally.
+- Reader loading is less aggressive with background image prefetching and now degrades to a source-link fallback instead of raw errors or a blank shell when provider/API loading fails.
+
 ## 2026-07-10 - Interleave Discovery Sources
 
 ### Why
