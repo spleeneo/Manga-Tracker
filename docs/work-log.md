@@ -57,19 +57,23 @@
 ### Changes
 
 - Fixed aggregation to store separate ambiguous entries under their computed identity keys.
+- Added a known search identity bridge so MangaPill `NOiSE`, MangaDex `NOiSE`, and NeloManga `/manga/noise` display as one source group.
 - Added exact-query ranking before source ranking in search results.
 - Added a NeloManga known-duplicate search result for `/manga/noise_44084`.
-- Added regression tests for Nelo duplicate search, ambiguous same-title aggregation, and Nelo-only override behavior.
+- Kept the tracking route's `NOiSE` source override active so grouped display sources are reduced to the verified MangaPill source before saving/syncing.
+- Added regression tests for Nelo duplicate search, ambiguous same-title aggregation, Nelo-only override behavior, and grouped `NOiSE` tracking.
 
 ### Verification
 
 - `npm run test -- tests/scrapers/registry.test.ts tests/scrapers/nelomanga.test.ts tests/lib/source-overrides.test.ts`: passed (13 tests).
 - `npx eslint src/lib/scrapers/registry.ts src/lib/scrapers/nelomanga.ts src/lib/source-overrides.ts tests/scrapers/registry.test.ts tests/scrapers/nelomanga.test.ts tests/lib/source-overrides.test.ts`: passed.
 - Live `searchScrapers("noise")` check: `NOiSE` is index 0, NeloManga `/manga/noise` is index 1, and NeloManga `/manga/noise_44084` is index 2. MangaPlus still reports the known 403 block in this environment.
+- `npm run test -- tests/scrapers/registry.test.ts tests/scrapers/nelomanga.test.ts tests/lib/source-overrides.test.ts tests/api/manga.route.test.ts`: passed (22 tests).
+- Live `searchScrapers("noise")` check after grouping: `NOiSE` is index 0 with MangaPill, NeloManga `/manga/noise`, and MangaDex sources; NeloManga `/manga/noise_44084` is separate at index 1. MangaPlus still reports the known 403 block in this environment.
 
 ### Outcome
 
-- Searching `noise` now surfaces the distinct NeloManga `noise_44084` result near the top without mixing it into the tracked MangaPill `NOiSE` entry.
+- Searching `noise` now groups the same `NOiSE` manga across sources while surfacing the distinct NeloManga `noise_44084` result separately near the top.
 
 ## 2026-07-10 - Resolve Completed Status Across Linked Sources
 

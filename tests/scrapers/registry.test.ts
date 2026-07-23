@@ -134,6 +134,11 @@ describe("scraper search aggregation", () => {
     vi.mocked(neloManga!.search).mockResolvedValue([{
       title: "Noise",
       sourceName: "NeloManga",
+      sourceUrl: "https://www.nelomanga.net/manga/noise",
+      description: "Latest: Chapter 23",
+    }, {
+      title: "Noise",
+      sourceName: "NeloManga",
       sourceUrl: "https://www.nelomanga.net/manga/noise_44084",
       description: "Latest: Chapter 23",
     }]);
@@ -143,9 +148,10 @@ describe("scraper search aggregation", () => {
     expect(results).toEqual(expect.arrayContaining([
       expect.objectContaining({
         title: "NOiSE",
-        sources: [
+        sources: expect.arrayContaining([
           { name: "MangaPill", url: "https://mangapill.com/manga/3174/noise" },
-        ],
+          { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise" },
+        ]),
       }),
       expect.objectContaining({
         title: "Noise",
@@ -155,6 +161,6 @@ describe("scraper search aggregation", () => {
         ],
       }),
     ]));
-    expect(results.findIndex((result) => result.sources.some((source) => source.url === "https://www.nelomanga.net/manga/noise_44084"))).toBeLessThan(3);
+    expect(results.findIndex((result) => result.sources.some((source) => source.url === "https://www.nelomanga.net/manga/noise_44084"))).toBe(1);
   });
 });

@@ -14,7 +14,7 @@ import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
 import { SingleMangaSiteScraper } from "./single-manga-sites";
 import { AtsumaruScraper } from "./atsumaru";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
-import { applySourceOverrideToInputSources, getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
+import { getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
 import { getPreferredSourceRank } from "@/lib/source-preference";
 
 const scrapers: Scraper[] = [
@@ -94,6 +94,11 @@ function sourceIsAllowedByOverride(title: string, source: { name: string; url: s
     }, override));
 }
 
+function sourceSharesKnownOverrideIdentity(title: string, source: { name: string; url: string }) {
+    const normalizedTitle = normalizeSearchTitle(title);
+    return normalizedTitle === "noise" && source.url === "https://www.nelomanga.net/manga/noise";
+}
+
 function shouldMergeSearchResult(existing: AggregatedSearchResult, result: SearchResult, key: string) {
     const authorMatch = authorsMatch(existing.author, result.author);
     if (authorMatch === false) return false;
@@ -103,6 +108,10 @@ function shouldMergeSearchResult(existing: AggregatedSearchResult, result: Searc
     const allSourcesAllowedByOverride = sourceIsAllowedByOverride(existing.title, resultSource)
         && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
     if (allSourcesAllowedByOverride) return true;
+
+    const sharesKnownOverrideIdentity = sourceSharesKnownOverrideIdentity(existing.title, resultSource)
+        && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
+    if (sharesKnownOverrideIdentity) return true;
 
     return !isAmbiguousSearchKey(key);
 }
@@ -217,10 +226,9 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
     }
 
     return Array.from(aggregated.values()).map((result) => {
-        const sources = applySourceOverrideToInputSources(
-            { title: result.title },
-            result.sources.map((source) => ({ name: source.name, url: source.url })),
-        ).sort((a, b) => getPreferredSourceRank(b.name, result.title) - getPreferredSourceRank(a.name, result.title));
+        const sources = result.sources
+            .map((source) => ({ name: source.name, url: source.url }))
+            .sort((a, b) => getPreferredSourceRank(b.name, result.title) - getPreferredSourceRank(a.name, result.title));
 
         return {
             ...result,

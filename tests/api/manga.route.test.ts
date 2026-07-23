@@ -170,6 +170,40 @@ describe("POST /api/manga", () => {
     }));
   });
 
+  it("drops grouped same-title NOiSE display sources before tracking", async () => {
+    mangaFindUnique.mockResolvedValue(null);
+    mangaCreate.mockResolvedValue({ id: "m1" });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+    sourceFindUnique.mockResolvedValue(null);
+    sourceCreate.mockResolvedValue({ id: "s1" });
+    enqueueMangaSyncJobMock.mockResolvedValue({ id: "job1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "NOiSE",
+        slug: "noise",
+        sources: [
+          { name: "MangaPill", url: "https://mangapill.com/manga/3174/noise" },
+          { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise" },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(sourceCreate).toHaveBeenCalledOnce();
+    expect(sourceCreate).toHaveBeenCalledWith({
+      data: {
+        mangaId: "m1",
+        sourceName: "MangaPill",
+        sourceUrl: "https://mangapill.com/manga/3174/noise",
+      },
+    });
+  });
+
   it("attaches an already cached manga without scheduling another scrape", async () => {
     mangaFindUnique.mockResolvedValue({ id: "m1", _count: { chapters: 42 } });
     userMangaUpsert.mockResolvedValue({ id: "um1" });
