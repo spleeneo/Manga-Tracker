@@ -73,7 +73,12 @@ export function applySourceOverrideToInputSources<T extends { name?: string; sou
   sources: T[],
 ) {
   const override = getMangaSourceOverride(manga);
-  if (override) {
+  const hasAllowedSource = override && sources.some((source) => isAllowedOverrideSource({
+    sourceName: source.name ?? source.sourceName ?? "",
+    sourceUrl: source.url ?? source.sourceUrl ?? "",
+  }, override));
+
+  if (override && hasAllowedSource) {
     return [{
       name: override.sourceName,
       url: override.sourceUrl,

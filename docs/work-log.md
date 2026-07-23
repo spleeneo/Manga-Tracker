@@ -39,6 +39,38 @@
 
 - `NOiSE` no longer shows chapters from same-name NeloManga titles, and future update cycles should not rediscover those sources.
 
+## 2026-07-23 - Keep Same-Name Noise Results Searchable
+
+### Why
+
+- Searching `noise` did not visibly show `https://www.nelomanga.net/manga/noise_44084`.
+- The search aggregator collapsed ambiguous same-title results under the base `noise` key, and the `NOiSE` source override could rewrite Nelo-only `Noise` results too broadly.
+- NeloManga's search endpoint returns `/manga/noise` but omits `/manga/noise_44084`, even though the chapter API supports the duplicate slug.
+
+### Plan
+
+- Make source overrides apply only when a result already contains an allowed source.
+- Preserve ambiguous same-title search results as separate entries unless author or override identity evidence links them.
+- Add the known NeloManga duplicate to `noise` search results.
+- Rank exact title matches above partial matches so same-name entries are visible near the top.
+
+### Changes
+
+- Fixed aggregation to store separate ambiguous entries under their computed identity keys.
+- Added exact-query ranking before source ranking in search results.
+- Added a NeloManga known-duplicate search result for `/manga/noise_44084`.
+- Added regression tests for Nelo duplicate search, ambiguous same-title aggregation, and Nelo-only override behavior.
+
+### Verification
+
+- `npm run test -- tests/scrapers/registry.test.ts tests/scrapers/nelomanga.test.ts tests/lib/source-overrides.test.ts`: passed (13 tests).
+- `npx eslint src/lib/scrapers/registry.ts src/lib/scrapers/nelomanga.ts src/lib/source-overrides.ts tests/scrapers/registry.test.ts tests/scrapers/nelomanga.test.ts tests/lib/source-overrides.test.ts`: passed.
+- Live `searchScrapers("noise")` check: `NOiSE` is index 0, NeloManga `/manga/noise` is index 1, and NeloManga `/manga/noise_44084` is index 2. MangaPlus still reports the known 403 block in this environment.
+
+### Outcome
+
+- Searching `noise` now surfaces the distinct NeloManga `noise_44084` result near the top without mixing it into the tracked MangaPill `NOiSE` entry.
+
 ## 2026-07-10 - Resolve Completed Status Across Linked Sources
 
 ### Why

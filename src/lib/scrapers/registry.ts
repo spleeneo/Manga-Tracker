@@ -1,4 +1,4 @@
-import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
+import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput, SearchResult } from "./types";
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
@@ -14,7 +14,7 @@ import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
 import { SingleMangaSiteScraper } from "./single-manga-sites";
 import { AtsumaruScraper } from "./atsumaru";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
-import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
+import { applySourceOverrideToInputSources, getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
 import { getPreferredSourceRank } from "@/lib/source-preference";
 
 const scrapers: Scraper[] = [
@@ -49,6 +49,72 @@ function normalizeSearchTitle(title: string) {
 function getCanonicalSearchTitle(title: string) {
     const normalized = normalizeSearchTitle(title);
     return getMangaAliasGroup(normalized)?.slug ?? normalized;
+}
+
+function getAuthorParts(value?: string) {
+    const normalized = normalizeSearchTitle(value ?? "");
+    if (!normalized) return [];
+
+    const parts = normalized
+        .split(/\s+(?:and)\s+|[|/;,]/)
+        .map((part) => part.trim())
+        .filter((part) => part.length >= 3);
+
+    return parts.length > 0 ? parts : [normalized];
+}
+
+function getSortedTokens(value: string) {
+    return value.split(/\s+/).filter(Boolean).sort().join(" ");
+}
+
+function authorsMatch(left?: string, right?: string) {
+    const leftParts = getAuthorParts(left);
+    const rightParts = getAuthorParts(right);
+
+    if (leftParts.length === 0 || rightParts.length === 0) return null;
+
+    return leftParts.some((leftPart) => rightParts.some((rightPart) => (
+        leftPart === rightPart
+        || leftPart.includes(rightPart)
+        || rightPart.includes(leftPart)
+        || getSortedTokens(leftPart) === getSortedTokens(rightPart)
+    )));
+}
+
+function isAmbiguousSearchKey(key: string) {
+    if (getMangaAliasGroup(key)) return false;
+    return key.length <= 6 || !key.includes(" ");
+}
+
+function sourceIsAllowedByOverride(title: string, source: { name: string; url: string }) {
+    const override = getMangaSourceOverride({ title });
+    return Boolean(override && isAllowedOverrideSource({
+        sourceName: source.name,
+        sourceUrl: source.url,
+    }, override));
+}
+
+function shouldMergeSearchResult(existing: AggregatedSearchResult, result: SearchResult, key: string) {
+    const authorMatch = authorsMatch(existing.author, result.author);
+    if (authorMatch === false) return false;
+    if (authorMatch === true) return true;
+
+    const resultSource = { name: result.sourceName, url: result.sourceUrl };
+    const allSourcesAllowedByOverride = sourceIsAllowedByOverride(existing.title, resultSource)
+        && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
+    if (allSourcesAllowedByOverride) return true;
+
+    return !isAmbiguousSearchKey(key);
+}
+
+function getQueryMatchRank(query: string, title: string) {
+    const normalizedQuery = normalizeSearchTitle(query);
+    const normalizedTitle = normalizeSearchTitle(title);
+
+    if (normalizedTitle === normalizedQuery) return 3;
+    if (normalizedTitle.startsWith(`${normalizedQuery} `)) return 2;
+    if (normalizedTitle.includes(normalizedQuery)) return 1;
+    return 0;
 }
 
 export function getRegisteredScrapers(): Scraper[] {
@@ -107,7 +173,12 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
 
     for (const result of flatResults) {
         const key = getCanonicalSearchTitle(result.title);
-        const existingKey = sourceUrlToKey.get(result.sourceUrl) ?? key;
+        const candidateKeys = [key, ...Array.from(aggregated.keys()).filter((candidateKey) => candidateKey.startsWith(`${key}|`))];
+        const matchingKey = candidateKeys.find((candidateKey) => {
+            const candidate = aggregated.get(candidateKey);
+            return candidate ? shouldMergeSearchResult(candidate, result, key) : false;
+        });
+        const existingKey = sourceUrlToKey.get(result.sourceUrl) ?? matchingKey ?? (aggregated.has(key) ? `${key}|${result.sourceUrl}` : key);
         const existing = aggregated.get(existingKey);
         const resultRank = getPreferredSourceRank(result.sourceName, result.title);
 
@@ -129,7 +200,7 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             if (preferIncomingMetadata) metadataRankByKey.set(existingKey, resultRank);
         } else {
             const canonicalTitle = getCanonicalMangaTitle(result.title);
-            aggregated.set(key, {
+            aggregated.set(existingKey, {
                 title: canonicalTitle,
                 description: result.description,
                 coverUrl: result.coverUrl,
@@ -140,8 +211,8 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                     url: result.sourceUrl
                 }]
             });
-            sourceUrlToKey.set(result.sourceUrl, key);
-            metadataRankByKey.set(key, resultRank);
+            sourceUrlToKey.set(result.sourceUrl, existingKey);
+            metadataRankByKey.set(existingKey, resultRank);
         }
     }
 
@@ -156,6 +227,9 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             sources,
         };
     }).sort((a, b) => {
+        const matchDelta = getQueryMatchRank(query, b.title) - getQueryMatchRank(query, a.title);
+        if (matchDelta !== 0) return matchDelta;
+
         const aRank = Math.max(0, ...a.sources.map((source) => getPreferredSourceRank(source.name, a.title)));
         const bRank = Math.max(0, ...b.sources.map((source) => getPreferredSourceRank(source.name, b.title)));
         return bRank - aRank;

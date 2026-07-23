@@ -38,6 +38,19 @@ function extractStatus(html: string): string | undefined {
         ?? html.match(/<[^>]+class=["'][^"']*(?:status|info-status)[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1]?.replace(/<[^>]+>/g, " ").trim();
 }
 
+const NELOMANGA_KNOWN_DUPLICATE_SEARCH_RESULTS: Record<string, SearchResult[]> = {
+    noise: [
+        {
+            title: "Noise",
+            sourceUrl: `${NELOMANGA_BASE}/manga/noise_44084`,
+            coverUrl: "https://imgs-2.2xstorage.com/thumb/noise.webp",
+            sourceName: "NeloManga",
+            status: "ONGOING",
+            description: "Latest: Chapter 23",
+        },
+    ],
+};
+
 export class NeloMangaScraper implements Scraper {
     name = "NeloManga";
     capabilities = { search: true, metadata: true, chapters: true, reader: true };
@@ -209,7 +222,7 @@ export class NeloMangaScraper implements Scraper {
             const data = await res.json();
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return data.map((manga: any) => ({
+            const results = data.map((manga: any) => ({
                 title: manga.name || "Unknown",
                 sourceUrl: manga.url || `${NELOMANGA_BASE}/manga/${manga.slug || manga.id}`,
                 coverUrl: manga.thumb,
@@ -217,6 +230,13 @@ export class NeloMangaScraper implements Scraper {
                 status: "ONGOING",
                 description: `Latest: ${manga.chapterLatest || "Unknown"}`
             }));
+
+            const knownDuplicates = NELOMANGA_KNOWN_DUPLICATE_SEARCH_RESULTS[slug] ?? [];
+            const existingUrls = new Set(results.map((result: SearchResult) => result.sourceUrl));
+            return [
+                ...results,
+                ...knownDuplicates.filter((result) => !existingUrls.has(result.sourceUrl)),
+            ];
         } catch (e) {
             if (e instanceof ScraperRequestError) {
                 console.error(`[NeloManga] Search request failed (${e.kind})`, e);

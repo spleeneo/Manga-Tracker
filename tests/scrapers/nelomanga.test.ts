@@ -102,4 +102,31 @@ describe("NeloMangaScraper", () => {
 
     expect(metadata.status).toBe("COMPLETED");
   });
+
+  it("adds known duplicate NeloManga titles that the search endpoint omits", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce({
+      json: async () => [
+        {
+          name: "Noise",
+          url: "https://www.nelomanga.net/manga/noise",
+          thumb: "https://imgs-2.2xstorage.com/thumb/noise.webp",
+          chapterLatest: "Chapter 23",
+        },
+      ],
+    } as Response);
+
+    const scraper = new NeloMangaScraper();
+    const results = await scraper.search("noise");
+
+    expect(results).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "Noise",
+        sourceUrl: "https://www.nelomanga.net/manga/noise",
+      }),
+      expect.objectContaining({
+        title: "Noise",
+        sourceUrl: "https://www.nelomanga.net/manga/noise_44084",
+      }),
+    ]));
+  });
 });

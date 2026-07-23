@@ -453,3 +453,4 @@ Action:
 - Pin known ambiguous titles to verified source URLs and allowed providers.
 - When pruning a bad source, check for orphaned chapters on the same manga and delete the confirmed bad rows.
 - Treat author as a source identity guard: reject discovered same-title sources when both sides expose conflicting authors, and require author evidence for short ambiguous titles when the tracked manga has an author.
+- Search aggregation must not collapse ambiguous same-title results onto the base title key; use separate identity keys and rank exact title matches above partial matches so distinct same-name manga stay visible.

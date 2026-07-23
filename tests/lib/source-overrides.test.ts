@@ -16,6 +16,12 @@ describe("manga source overrides", () => {
     ])).toEqual([
       { name: "MangaPill", url: "https://mangapill.com/manga/3174/noise" },
     ]);
+
+    expect(applySourceOverrideToInputSources({ title: "Noise" }, [
+      { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise_44084" },
+    ])).toEqual([
+      { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise_44084" },
+    ]);
   });
 
   it("hides tracked NOiSE same-name sources from unsupported providers", () => {
