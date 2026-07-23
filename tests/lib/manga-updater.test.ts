@@ -291,6 +291,29 @@ describe("checkForUpdates", () => {
     expect(upsertSource).not.toHaveBeenCalled();
   });
 
+  it("does not auto-discover same-title sources for provider-distinct override variants", async () => {
+    findManyManga.mockResolvedValue([
+      {
+        id: "m1",
+        title: "Noise",
+        slug: "noise-nelomanga-noise-44084",
+        sources: [{ id: "s1", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/noise_44084" }],
+      },
+    ]);
+    scrapeChapters.mockResolvedValueOnce([{ chapterNumber: 23, url: "nelo", title: "Chapter 23" }]);
+    createManyChapter.mockResolvedValueOnce({ count: 1 });
+
+    await checkForUpdates("m1");
+
+    expect(discoverMissingSourcesForManga).not.toHaveBeenCalled();
+    expect(discoverSingleMangaSiteSources).not.toHaveBeenCalled();
+    expect(upsertSource).not.toHaveBeenCalled();
+    expect(scrapeChapters).toHaveBeenCalledTimes(1);
+    expect(scrapeChapters).toHaveBeenCalledWith("https://www.nelomanga.net/manga/noise_44084", expect.objectContaining({
+      sourceName: "NeloManga",
+    }));
+  });
+
   it("checks all tracked manga during the global update cycle", async () => {
     findManyManga.mockResolvedValue([]);
 

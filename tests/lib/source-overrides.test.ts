@@ -55,6 +55,13 @@ describe("manga source overrides", () => {
     ]);
   });
 
+  it("does not apply the NOiSE override to provider-distinct Noise slugs", () => {
+    expect(getMangaSourceOverride({
+      title: "Noise",
+      slug: "noise-nelomanga-noise-44084",
+    })).toBeNull();
+  });
+
   it("does not force Houseki no Kuni to the single-title source", () => {
     expect(getMangaSourceOverride({ slug: "houseki-no-kuni" })).toBeNull();
 

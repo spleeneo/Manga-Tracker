@@ -44,7 +44,9 @@ const SOURCE_OVERRIDES: Array<{
 export function getMangaSourceOverride(manga: MangaIdentity): MangaSourceOverride | null {
   const title = normalizeValue(manga.title).replace(/\s+/g, "-");
   const slug = normalizeValue(manga.slug).replace(/\s+/g, "-");
-  const match = SOURCE_OVERRIDES.find((item) => item.slugs.includes(title) || item.slugs.includes(slug));
+  const match = SOURCE_OVERRIDES.find((item) => slug
+    ? item.slugs.includes(slug)
+    : item.slugs.includes(title));
 
   return match?.override ?? null;
 }

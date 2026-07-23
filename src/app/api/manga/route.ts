@@ -7,10 +7,29 @@ import { inferSourceName } from "@/lib/source-name";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { enqueueMangaSyncJob, enqueueSharedMangaSyncJob, processSyncJob } from "@/lib/sync-jobs";
 import { getCanonicalMangaSlug, getCanonicalMangaTitle, getMangaAliasSlugs } from "@/lib/manga-aliases";
-import { applySourceOverrideToInputSources } from "@/lib/source-overrides";
+import { applySourceOverrideToInputSources, getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
 import { evaluateMangaAccess, getChildPolicy, getMangaAccess, parentalControlError } from "@/lib/parental-controls";
 import { refreshMangaClassification } from "@/lib/content-classification";
 import { parseChildCatalogSource } from "@/lib/child-safety";
+
+function slugifyRouteValue(value: string) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function getSourceIdentitySlug(title: string, sources: Array<{ name?: string; sourceName?: string; url?: string; sourceUrl?: string }>) {
+    const source = sources.find((candidate) => candidate.url || candidate.sourceUrl);
+    const sourceUrl = source?.url || source?.sourceUrl;
+    if (!sourceUrl) return slugifyRouteValue(title);
+
+    try {
+        const url = new URL(sourceUrl);
+        const hostname = url.hostname.replace(/^www\./, "").split(".")[0] ?? "source";
+        const pathSlug = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+        return slugifyRouteValue(`${title}-${hostname}-${pathSlug}`);
+    } catch {
+        return slugifyRouteValue(`${title}-${sourceUrl}`);
+    }
+}
 
 export async function POST(request: Request) {
     try {
@@ -88,6 +107,18 @@ export async function POST(request: Request) {
             slug: getCanonicalMangaSlug(finalMangaData.title, finalMangaData.slug),
         };
         sourcesToProcess = applySourceOverrideToInputSources(finalMangaData, sourcesToProcess);
+        const sourceOverride = getMangaSourceOverride(finalMangaData);
+        const hasOnlyOutsideOverrideSources = Boolean(sourceOverride && sourcesToProcess.length > 0)
+            && sourcesToProcess.every((source) => !isAllowedOverrideSource({
+                sourceName: source.name ?? source.sourceName ?? "",
+                sourceUrl: source.url ?? source.sourceUrl ?? "",
+            }, sourceOverride!));
+        if (hasOnlyOutsideOverrideSources) {
+            finalMangaData = {
+                ...finalMangaData,
+                slug: getSourceIdentitySlug(finalMangaData.title, sourcesToProcess),
+            };
+        }
         const sourceUrls = sourcesToProcess
             .map((source) => source.url || source.sourceUrl)
             .filter((url): url is string => Boolean(url));
@@ -102,7 +133,7 @@ export async function POST(request: Request) {
             },
         });
 
-        if (!existingManga) {
+        if (!existingManga && !hasOnlyOutsideOverrideSources) {
             const aliasSlugs = getMangaAliasSlugs(finalMangaData.title, finalMangaData.slug);
             const aliasManga = aliasSlugs.length > 0 ? await prisma.manga.findFirst({
                 where: { slug: { in: aliasSlugs } },

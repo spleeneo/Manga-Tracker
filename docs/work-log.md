@@ -1,5 +1,42 @@
 # Work Log
 
+## 2026-07-23 - Save Separate NeloManga Noise In Library
+
+### Why
+
+- Tracking the separate NeloManga `Noise` result from `https://www.nelomanga.net/manga/noise_44084` did not create a visible second library entry.
+- The add route reused the existing `noise` slug before recognizing that `noise_44084` is outside the protected `NOiSE` source override.
+- The updater also treated any title named `Noise` as the protected `NOiSE` record and rediscovered MangaPill/MangaDex for the provider-distinct row.
+
+### Plan
+
+- Derive a provider-specific slug for outside-override same-title sources before slug lookup.
+- Keep grouped search display sources, but reduce grouped `NOiSE` tracking to the verified source before saving.
+- Make source overrides exact-slug-aware so distinct provider slugs are not matched by title alone after creation.
+- Prevent update-cycle source discovery for provider-distinct variants of protected titles.
+- Repair the live database rows and verify both `Noise` entries.
+
+### Changes
+
+- Added provider URL identity slugging in `POST /api/manga` for same-title sources that are outside a source override.
+- Changed source override lookup to prefer the stored slug when one exists.
+- Skipped automatic missing-source and single-manga-site discovery for provider-distinct variants of protected titles.
+- Added API and updater regression coverage for `noise_44084`.
+- Moved the misplaced NeloManga `noise_44084` source into a separate `Noise` manga row with slug `noise-nelomanga-noise-44084`.
+- Removed accidental MangaPill/MangaDex sources and MangaPill chapters from the separate `Noise` row.
+
+### Verification
+
+- `npm run test -- tests/api/manga.route.test.ts tests/scrapers/registry.test.ts tests/lib/source-overrides.test.ts`: passed (19 tests).
+- `npm run test -- tests/api/manga.route.test.ts tests/lib/manga-updater.test.ts tests/lib/source-overrides.test.ts tests/scrapers/registry.test.ts`: passed (31 tests).
+- Targeted update for `noise-nelomanga-noise-44084`: scraped only NeloManga `https://www.nelomanga.net/manga/noise_44084`, returned no new chapters and no failed sources.
+- Live database check: `NOiSE` has 8 chapters from MangaPill plus MangaDex metadata source; separate `Noise` has 23 chapters from only NeloManga `noise_44084`. Both are attached to the user library with `UPDATED` sync status.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 276 tests passed, and the production build completed.
+
+### Outcome
+
+- The separate NeloManga `Noise` title now appears as its own library entry and future updates should not merge it back into `NOiSE`.
+
 ## 2026-07-23 - Pin NOiSE To Verified Source
 
 ### Why

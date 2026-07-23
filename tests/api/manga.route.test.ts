@@ -204,6 +204,51 @@ describe("POST /api/manga", () => {
     });
   });
 
+  it("creates a separate manga for outside-override same-title sources", async () => {
+    mangaFindUnique.mockResolvedValue(null);
+    mangaCreate.mockResolvedValue({ id: "m-nelo-noise" });
+    userMangaUpsert.mockResolvedValue({ id: "um1" });
+    sourceFindUnique.mockResolvedValue(null);
+    sourceCreate.mockResolvedValue({ id: "s1" });
+    enqueueMangaSyncJobMock.mockResolvedValue({ id: "job1" });
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Noise",
+        slug: "noise",
+        sources: [
+          { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise_44084" },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data).toEqual(expect.objectContaining({
+      id: "m-nelo-noise",
+      title: "Noise",
+      slug: "noise-nelomanga-noise-44084",
+    }));
+    expect(mangaFindFirst).not.toHaveBeenCalled();
+    expect(mangaCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        title: "Noise",
+        slug: "noise-nelomanga-noise-44084",
+      }),
+    });
+    expect(sourceCreate).toHaveBeenCalledWith({
+      data: {
+        mangaId: "m-nelo-noise",
+        sourceName: "NeloManga",
+        sourceUrl: "https://www.nelomanga.net/manga/noise_44084",
+      },
+    });
+  });
+
   it("attaches an already cached manga without scheduling another scrape", async () => {
     mangaFindUnique.mockResolvedValue({ id: "m1", _count: { chapters: 42 } });
     userMangaUpsert.mockResolvedValue({ id: "um1" });

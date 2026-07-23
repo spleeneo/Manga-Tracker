@@ -455,3 +455,4 @@ Action:
 - Treat author as a source identity guard: reject discovered same-title sources when both sides expose conflicting authors, and require author evidence for short ambiguous titles when the tracked manga has an author.
 - Search aggregation must not collapse ambiguous same-title results onto the base title key; use separate identity keys and rank exact title matches above partial matches so distinct same-name manga stay visible.
 - Display grouping and tracking safety are separate concerns: search results may show a same-manga source group, while the tracking route can still apply a stricter source override before saving sources.
+- Source overrides should prefer exact stored slugs over title-only matches. Provider-distinct variants derived from the same title need their own slug and should not auto-discover sources for the protected base title.

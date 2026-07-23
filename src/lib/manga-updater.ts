@@ -28,6 +28,7 @@ export async function updateSingleManga(mangaId: string) {
 
 async function updateMangaRecord(manga: MangaForUpdate) {
     const override = getMangaSourceOverride(manga);
+    const isOutsideSourceOverrideVariant = !override && Boolean(getMangaSourceOverride({ title: manga.title }));
     let sources = filterSourcesForManga(manga, manga.sources);
 
     if (override && sources.length === 0) {
@@ -50,7 +51,7 @@ async function updateMangaRecord(manga: MangaForUpdate) {
         sources = [source];
     }
 
-    if (!override) {
+    if (!override && !isOutsideSourceOverrideVariant) {
         const discoveredSources = await discoverMissingSourcesForManga(manga, sources);
         for (const discoveredSource of discoveredSources) {
             const source = await prisma.source.upsert({
@@ -73,7 +74,7 @@ async function updateMangaRecord(manga: MangaForUpdate) {
         }
     }
 
-    if (!override && sources.length > 0 && !hasSingleMangaSiteSource(sources)) {
+    if (!override && !isOutsideSourceOverrideVariant && sources.length > 0 && !hasSingleMangaSiteSource(sources)) {
         const [discoveredSource] = await discoverSingleMangaSiteSources(manga.title);
         if (discoveredSource && !sources.some((source) => source.sourceUrl === discoveredSource.sourceUrl)) {
             const source = await prisma.source.upsert({
