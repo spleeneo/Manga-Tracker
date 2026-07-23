@@ -19,6 +19,8 @@
 - Added a `noise` source override that pins search/add/update behavior to MangaPill `3174/noise`.
 - Allows only MangaPill and MangaDex sources for `NOiSE`, filtering out same-title NeloManga sources.
 - Added regression coverage for `NOiSE` override behavior.
+- Tightened automatic missing-source discovery so same-title matches are rejected when provider and tracked authors conflict.
+- Requires matching author evidence before auto-linking short ambiguous titles when the tracked manga has an author.
 - Deleted the two bad NeloManga sources from the tracked `NOiSE` record and removed 47 orphaned NeloManga chapters, leaving 8 MangaPill chapters.
 - Recorded the source deletion/orphaned chapter cleanup lesson in `docs/learnings.md`.
 
@@ -26,6 +28,8 @@
 
 - `npm run test -- tests/lib/source-overrides.test.ts tests/lib/manga-updater.test.ts tests/lib/source-discovery.test.ts`: passed (18 tests).
 - `npx eslint src/lib/source-overrides.ts tests/lib/source-overrides.test.ts`: passed.
+- `npm run test -- tests/lib/source-discovery.test.ts tests/lib/manga-updater.test.ts tests/lib/source-overrides.test.ts`: passed (20 tests).
+- `npx eslint src/lib/source-discovery.ts tests/lib/source-discovery.test.ts`: passed.
 - Targeted live update for `NOiSE` (`checkForUpdates("fc025e22-1b72-46fe-a90b-8c2922ba7ee1")`): scraped only MangaPill and MangaDex, returned no new chapters and no failed sources.
 - Live database check after cleanup and targeted update: `NOiSE` has 8 chapters, with MangaPill `3174/noise` (8 chapters) and MangaDex (0 chapters) as the only sources.
 - `npm run smoke:update`: passed; the smoke manga update completed with the known non-fatal MangaPlus 403 block recorded as one failed source.

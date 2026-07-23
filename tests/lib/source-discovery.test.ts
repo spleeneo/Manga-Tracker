@@ -39,6 +39,36 @@ describe("source discovery", () => {
     )).toBe(true);
   });
 
+  it("rejects same-title matches when both sides expose conflicting authors", () => {
+    expect(isSearchResultForManga(
+      { title: "NOiSE", slug: "noise", author: "Tsutomu Nihei" },
+      {
+        title: "Noise",
+        author: "Tetsuya Tsutsui",
+        sourceUrl: "https://example.test/manga/noise",
+      },
+    )).toBe(false);
+  });
+
+  it("requires author evidence before auto-linking short ambiguous titles", () => {
+    expect(isSearchResultForManga(
+      { title: "NOiSE", slug: "noise", author: "Tsutomu Nihei" },
+      {
+        title: "Noise",
+        sourceUrl: "https://example.test/manga/noise",
+      },
+    )).toBe(false);
+
+    expect(isSearchResultForManga(
+      { title: "NOiSE", slug: "noise", author: "Tsutomu Nihei" },
+      {
+        title: "Noise",
+        author: "Nihei Tsutomu",
+        sourceUrl: "https://example.test/manga/noise",
+      },
+    )).toBe(true);
+  });
+
   it("discovers a missing registered source for already tracked manga", async () => {
     const search = vi.fn().mockResolvedValue([
       {
