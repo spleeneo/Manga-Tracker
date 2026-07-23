@@ -1,5 +1,40 @@
 # Work Log
 
+## 2026-07-23 - Pin NOiSE To Verified Source
+
+### Why
+
+- The tracked `NOiSE` manga had chapters from two unrelated NeloManga titles that share the `noise` slug/title.
+- The intended `NOiSE` source is MangaPill `https://mangapill.com/manga/3174/noise`, which has 8 chapters.
+
+### Plan
+
+- Add a focused source override for the ambiguous `noise` slug.
+- Cover search/add and tracked-source filtering with regression tests.
+- Remove the bad persisted NeloManga sources and their orphaned chapters from the live database.
+- Run focused checks, update-cycle verification, then the repo verification gate.
+
+### Changes
+
+- Added a `noise` source override that pins search/add/update behavior to MangaPill `3174/noise`.
+- Allows only MangaPill and MangaDex sources for `NOiSE`, filtering out same-title NeloManga sources.
+- Added regression coverage for `NOiSE` override behavior.
+- Deleted the two bad NeloManga sources from the tracked `NOiSE` record and removed 47 orphaned NeloManga chapters, leaving 8 MangaPill chapters.
+- Recorded the source deletion/orphaned chapter cleanup lesson in `docs/learnings.md`.
+
+### Verification
+
+- `npm run test -- tests/lib/source-overrides.test.ts tests/lib/manga-updater.test.ts tests/lib/source-discovery.test.ts`: passed (18 tests).
+- `npx eslint src/lib/source-overrides.ts tests/lib/source-overrides.test.ts`: passed.
+- Targeted live update for `NOiSE` (`checkForUpdates("fc025e22-1b72-46fe-a90b-8c2922ba7ee1")`): scraped only MangaPill and MangaDex, returned no new chapters and no failed sources.
+- Live database check after cleanup and targeted update: `NOiSE` has 8 chapters, with MangaPill `3174/noise` (8 chapters) and MangaDex (0 chapters) as the only sources.
+- `npm run smoke:update`: passed; the smoke manga update completed with the known non-fatal MangaPlus 403 block recorded as one failed source.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 268 tests passed, and the production build completed.
+
+### Outcome
+
+- `NOiSE` no longer shows chapters from same-name NeloManga titles, and future update cycles should not rediscover those sources.
+
 ## 2026-07-10 - Resolve Completed Status Across Linked Sources
 
 ### Why

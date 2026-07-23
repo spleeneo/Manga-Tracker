@@ -26,9 +26,27 @@ function normalizeValue(value?: string | null) {
     .trim();
 }
 
+const SOURCE_OVERRIDES: Array<{
+  slugs: string[];
+  override: MangaSourceOverride;
+}> = [
+  {
+    slugs: ["noise"],
+    override: {
+      sourceName: "MangaPill",
+      sourceUrl: "https://mangapill.com/manga/3174/noise",
+      allowedSourceNames: ["mangapill", "mangadex"],
+      allowedHostnames: ["mangapill.com", "mangadex.org"],
+    },
+  },
+];
+
 export function getMangaSourceOverride(manga: MangaIdentity): MangaSourceOverride | null {
-  void manga;
-  return null;
+  const title = normalizeValue(manga.title).replace(/\s+/g, "-");
+  const slug = normalizeValue(manga.slug).replace(/\s+/g, "-");
+  const match = SOURCE_OVERRIDES.find((item) => item.slugs.includes(title) || item.slugs.includes(slug));
+
+  return match?.override ?? null;
 }
 
 export function isAllowedOverrideSource(source: SourceIdentity, override: MangaSourceOverride) {

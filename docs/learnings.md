@@ -438,3 +438,17 @@ Learning:
 
 Action:
 - Parse reader API responses defensively and render the source-link fallback whenever the response is non-readable or contains no pages.
+
+## 2026-07-23 - Same-Title Sources Need Explicit Identity Guards
+
+Context:
+- `NOiSE` was linked to NeloManga sources for other manga that share the `noise` slug/title, which added unrelated chapters to the tracked title.
+- Deleting a `Source` sets existing `Chapter.sourceId` to null instead of deleting those chapters.
+
+Learning:
+- Short or shared titles need source overrides or stronger identity checks before automatic source discovery is trusted.
+- Cleaning a bad source must also remove or reassign its chapters before or after the source deletion.
+
+Action:
+- Pin known ambiguous titles to verified source URLs and allowed providers.
+- When pruning a bad source, check for orphaned chapters on the same manga and delete the confirmed bad rows.

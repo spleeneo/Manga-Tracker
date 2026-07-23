@@ -2,6 +2,53 @@ import { describe, expect, it } from "vitest";
 import { applySourceOverrideToInputSources, filterSourcesForManga, getMangaSourceOverride } from "@/lib/source-overrides";
 
 describe("manga source overrides", () => {
+  it("pins NOiSE to the known MangaPill title instead of same-name NeloManga sources", () => {
+    expect(getMangaSourceOverride({ slug: "noise" })).toEqual({
+      sourceName: "MangaPill",
+      sourceUrl: "https://mangapill.com/manga/3174/noise",
+      allowedSourceNames: ["mangapill", "mangadex"],
+      allowedHostnames: ["mangapill.com", "mangadex.org"],
+    });
+
+    expect(applySourceOverrideToInputSources({ title: "NOiSE" }, [
+      { name: "NeloManga", url: "https://www.nelomanga.net/manga/noise" },
+      { name: "MangaPill", url: "https://mangapill.com/manga/3174/noise" },
+    ])).toEqual([
+      { name: "MangaPill", url: "https://mangapill.com/manga/3174/noise" },
+    ]);
+  });
+
+  it("hides tracked NOiSE same-name sources from unsupported providers", () => {
+    expect(filterSourcesForManga({ slug: "noise" }, [
+      {
+        id: "s1",
+        sourceName: "MangaPill",
+        sourceUrl: "https://mangapill.com/manga/3174/noise",
+      },
+      {
+        id: "s2",
+        sourceName: "NeloManga",
+        sourceUrl: "https://www.nelomanga.net/manga/noise",
+      },
+      {
+        id: "s3",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/9d6393a0-e651-496d-9c68-465b7ee5fad2",
+      },
+    ])).toEqual([
+      {
+        id: "s1",
+        sourceName: "MangaPill",
+        sourceUrl: "https://mangapill.com/manga/3174/noise",
+      },
+      {
+        id: "s3",
+        sourceName: "MangaDex",
+        sourceUrl: "https://mangadex.org/title/9d6393a0-e651-496d-9c68-465b7ee5fad2",
+      },
+    ]);
+  });
+
   it("does not force Houseki no Kuni to the single-title source", () => {
     expect(getMangaSourceOverride({ slug: "houseki-no-kuni" })).toBeNull();
 
