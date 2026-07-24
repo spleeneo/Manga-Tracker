@@ -126,7 +126,10 @@ describe("NeloMangaScraper", () => {
       expect.objectContaining({
         title: "Noise",
         sourceUrl: "https://www.nelomanga.net/manga/noise_44084",
+        coverUrl: "https://uploads.mangadex.org/covers/a1ccb58d-d225-47fa-87de-1b1678f8931a/7a316413-6ffd-4a7d-a623-ee696e46be73.jpg.256.jpg",
       }),
     ]));
+    expect(results.find((result) => result.sourceUrl === "https://www.nelomanga.net/manga/noise_44084")?.coverUrl)
+      .not.toBe(results.find((result) => result.sourceUrl === "https://www.nelomanga.net/manga/noise")?.coverUrl);
   });
 });

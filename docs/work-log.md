@@ -1,5 +1,33 @@
 # Work Log
 
+## 2026-07-24 - Correct Separate Noise Cover
+
+### Why
+
+- The separate NeloManga `Noise` row for `https://www.nelomanga.net/manga/noise_44084` reused the `NOiSE`/NeloManga `/manga/noise` thumbnail.
+- The saved library row showed the wrong manga picture.
+
+### Plan
+
+- Replace the known duplicate search metadata with a distinct cover for Tetsuya Tsutsui's 2017 `Noise`.
+- Add regression coverage so `noise_44084` does not reuse the `/manga/noise` cover.
+- Repair the live database row.
+
+### Changes
+
+- Updated the hard-coded NeloManga known duplicate cover to the MangaDex cover for `a1ccb58d-d225-47fa-87de-1b1678f8931a`.
+- Strengthened the NeloManga search test to assert the duplicate has a distinct cover URL.
+- Updated the live `noise-nelomanga-noise-44084` row's `coverUrl`.
+
+### Verification
+
+- `npx vitest run tests/scrapers/nelomanga.test.ts`: passed (4 tests).
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 276 tests passed, and the production build completed.
+
+### Outcome
+
+- The separate `Noise` entry now uses the correct 2017 `Noise` cover instead of the `NOiSE` image.
+
 ## 2026-07-23 - Save Separate NeloManga Noise In Library
 
 ### Why
