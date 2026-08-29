@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Home, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { BrandLink } from "@/components/brand-link";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
 import { isReaderChapterCompleted } from "@/lib/reader-progress";
@@ -440,23 +441,22 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     <div className="min-h-screen bg-background">
       <header className={`app-header transition-transform duration-300 ease-out ${isHeaderHidden ? "-translate-y-full" : "translate-y-0"}`}>
         <div className="page-wrap flex min-h-16 flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <Link href={`/manga/${slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              Back to {mangaTitle}
-            </Link>
-            <h1 className="mt-1 truncate text-xl font-bold md:text-2xl">
-              Chapter {displayChapter.chapterNumber}
-              {displayChapter.title ? `: ${displayChapter.title}` : ""}
-            </h1>
-            <p className="text-xs font-bold uppercase text-muted-foreground">{sourceLabel}</p>
+          <div className="flex min-w-0 items-start gap-3">
+            <BrandLink />
+            <div className="min-w-0">
+              <Link href={`/manga/${slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
+                <ArrowLeft className="h-4 w-4" />
+                Back to {mangaTitle}
+              </Link>
+              <h1 className="mt-1 truncate text-xl font-bold md:text-2xl">
+                Chapter {displayChapter.chapterNumber}
+                {displayChapter.title ? `: ${displayChapter.title}` : ""}
+              </h1>
+              <p className="text-xs font-bold uppercase text-muted-foreground">{sourceLabel}</p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link href="/" className="ui-button ui-button-secondary" aria-label="Return to homepage">
-              <Home className="h-4 w-4" />
-              Home
-            </Link>
             {previousNavChapter && (
               <Link href={`/manga/${slug}/chapter/${previousNavChapter.id}`} className="ui-button ui-button-secondary">
                 <ArrowLeft className="h-4 w-4" />
