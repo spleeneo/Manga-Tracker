@@ -20,4 +20,11 @@ describe("reader routing invariants", () => {
     expect(chapterList).not.toContain("isDedicatedMangaSourceName");
     expect(chapterList).toContain("const visibleSources = initialSources");
   });
+
+  it("keeps homepage navigation available from the reader", () => {
+    const reader = readSource("src/components/chapter-reader.tsx");
+
+    expect(reader).toContain("href=\"/\"");
+    expect(reader).toContain("Return to homepage");
+  });
 });

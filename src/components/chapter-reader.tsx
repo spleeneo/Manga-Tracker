@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ExternalLink, Home, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
 import { isReaderChapterCompleted } from "@/lib/reader-progress";
@@ -453,6 +453,10 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link href="/" className="ui-button ui-button-secondary" aria-label="Return to homepage">
+              <Home className="h-4 w-4" />
+              Home
+            </Link>
             {previousNavChapter && (
               <Link href={`/manga/${slug}/chapter/${previousNavChapter.id}`} className="ui-button ui-button-secondary">
                 <ArrowLeft className="h-4 w-4" />

@@ -1,5 +1,33 @@
 # Work Log
 
+## 2026-08-29 - Add Reader Home Navigation
+
+### Why
+
+- The chapter reader had chapter and manga-detail navigation, but no direct way to return to the homepage/library.
+
+### Plan
+
+- Add a homepage control to the existing reader header actions.
+- Cover the reader navigation affordance with a small invariant test.
+- Run focused verification, then the standard repository gate.
+
+### Changes
+
+- Added a Home button in the reader header that links to `/`.
+- Added a regression assertion that the reader keeps homepage navigation available.
+
+### Verification
+
+- `npm run test -- tests/lib/reader-routing-invariants.test.ts`: passed (3 tests).
+- `npx eslint src/components/chapter-reader.tsx tests/lib/reader-routing-invariants.test.ts`: passed with the existing reader `no-img-element` warning.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 277 tests passed, and the production build completed.
+- Browser smoke check on `http://localhost:3000` with dev parent login: a MangaPill-backed reader page showed the Home control with `href="/"`, and clicking it returned to the homepage.
+
+### Outcome
+
+- The chapter reader now has direct homepage navigation without removing the existing manga-detail back link.
+
 ## 2026-07-24 - Correct Separate Noise Cover
 
 ### Why
