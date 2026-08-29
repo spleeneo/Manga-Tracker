@@ -1,5 +1,49 @@
 # Work Log
 
+## 2026-08-30 - Surface Real Admin Sync Failures
+
+### Why
+
+- The admin panel still showed completed manga as stale sync failures after completed-title syncs had been excluded from routine retry paths.
+- Shared manga sync jobs can fail while a user's `UserManga` row remains `UPDATED`, leaving the real job error hard to find from the user diagnostics table.
+
+### Plan
+
+- Inspect current retryable user rows and active/failed shared jobs.
+- Teach admin diagnostics to ignore completed manga for retry/health calculations.
+- Surface latest shared sync-job status and error beside each library row.
+- Let the admin retry endpoint settle old completed-title rows and retry latest failed shared jobs.
+- Verify with focused tests, update smoke, and the full repository gate.
+
+### Changes
+
+- Added publication-status awareness to admin sync diagnostics so completed manga no longer count as retryable account issues.
+- Added latest manga update job status/error to the admin account list and account detail data.
+- The library diagnostics table now shows completed titles as skipped, and shows latest failed-job errors directly in the sync cell for active manga.
+- The sync health graph now separates completed titles from updated/failed/syncing active titles.
+- Admin retry now clears selected completed stale/failed rows and closes their active shared jobs instead of leaving old `SYNCING` state behind.
+- Admin retry now also queues active manga whose latest shared sync job failed even if the user-library row still says `UPDATED`.
+- Cleaned the current local stale completed-title rows: 8 user rows and 8 active jobs were settled.
+- After browser verification triggered a fresh local running batch, recovered 8 interrupted running jobs through the app sync helper and processed them to 7 completed / 1 skipped / 0 failed.
+
+### Verification
+
+- Data inspection found 8 stale `SYNCING` user rows and 8 queued jobs, all for manga with status `COMPLETED`.
+- After cleanup, no retryable user rows remained locally; two genuine failed shared jobs remained visible for active manga: One Punch and Kengan Omega.
+- Browser-verified the admin detail page at `http://localhost:3000/admin/users/cmox3n2s40000l704e5dv9hx2` with a temporary dev-parent admin session: Quick insights rendered, completed manga rows displayed `Routine sync skipped for finished manga.`, and the account no longer showed retryable completed-title noise. The dev-parent fixture role was restored to `USER` after the check.
+- `npm run test -- tests/lib/admin.test.ts tests/api/admin-users.route.test.ts tests/lib/admin-ui-invariants.test.ts`: passed (18 tests).
+- `npm run lint`: passed with the existing 8 `no-img-element` warnings.
+- `npm run smoke:update`: passed; MangaPlus still reported a 403 during discovery, but the update completed through other sources.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 286 tests passed, and the production build completed.
+
+### Outcome
+
+- Completed manga no longer create fake failing-sync noise in admin diagnostics, while real failed shared jobs are visible and retryable from the account detail flow.
+
+### Learnings
+
+- [Admin Diagnostics Need Shared Job Evidence](learnings.md#2026-08-30---admin-diagnostics-need-shared-job-evidence)
+
 ## 2026-08-29 - Process Admin Sync Retries Immediately
 
 ### Why

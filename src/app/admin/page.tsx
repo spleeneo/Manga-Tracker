@@ -39,7 +39,10 @@ export default async function AdminPage() {
         name: true,
         email: true,
         role: true,
-        library: { select: { id: true, syncStatus: true, syncStartedAt: true, syncError: true, lastReadAt: true, manga: { select: { title: true } } } },
+        library: { select: {
+          id: true, syncStatus: true, syncStartedAt: true, syncError: true, lastReadAt: true,
+          manga: { select: { title: true, status: true, syncJobs: { where: { type: "MANGA_UPDATE" }, orderBy: { updatedAt: "desc" }, take: 1, select: { status: true, error: true } } } },
+        } },
         parentLinks: { select: { status: true } }, childLink: { select: { status: true } },
         _count: { select: { sessions: true } },
       },
@@ -49,8 +52,8 @@ export default async function AdminPage() {
   const accountRows = await Promise.all(users.map(async (user) => {
     const summaries = await getLibraryMangaSummaries(user.id);
     const familyStatuses = [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])];
-    const health = accountHealth({ library: user.library, familyStatuses });
-    const detailedIssues = buildAccountIssues({ library: user.library.map((item) => ({ ...item, title: item.manga.title })), familyLinks: familyStatuses.map((status) => ({ label: "Family relationship", status })) });
+    const health = accountHealth({ library: user.library.map((item) => ({ ...item, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null })), familyStatuses });
+    const detailedIssues = buildAccountIssues({ library: user.library.map((item) => ({ ...item, title: item.manga.title, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null, latestJobError: item.manga.syncJobs[0]?.error ?? null })), familyLinks: familyStatuses.map((status) => ({ label: "Family relationship", status })) });
     const lastReadAt = user.library.map((item) => item.lastReadAt).filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     return { id: user.id, name: user.name || "Unnamed user", email: user.email || "No email", role: user.role, health: health.level, issues: detailedIssues.map((issue) => `${issue.title}: ${issue.summary} — ${issue.detail}`), libraryCount: summaries.length, unreadCount: summaries.reduce((sum, item) => sum + item.unreadChapters, 0), lastReadAt, sessions: user._count.sessions };
   }));

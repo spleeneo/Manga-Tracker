@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, AlertTriangle, BookOpen, CheckCircle2, Clock3, RefreshCw, Shield, Users } from "lucide-react";
 
-type LibraryItem = { id: string; title: string; slug: string; status: string; syncStatus: string; syncStartedAt: string | null; syncError: string | null; retryable: boolean; lastReadAt: string | null; lastReadChapterNumber: number | null; latestChapterNumber: number | null; unreadChapters: number; preferredSource: string | null; sourceFailureCount: number; sourceError: string | null; accessReason: string };
+type LibraryItem = { id: string; title: string; slug: string; status: string; publicationStatus: string | null; syncStatus: string; syncStartedAt: string | null; syncError: string | null; retryable: boolean; latestJobStatus: string | null; latestJobAttempts: number | null; latestJobError: string | null; latestJobUpdatedAt: string | null; lastReadAt: string | null; lastReadChapterNumber: number | null; latestChapterNumber: number | null; unreadChapters: number; preferredSource: string | null; sourceFailureCount: number; sourceError: string | null; accessReason: string };
 type ActivityItem = { label: string; detail: string; at: string | null };
 type Job = { id: string; mangaTitle: string; status: string; error: string | null; createdAt: string; userAttributed: boolean };
 type FamilyLink = { id: string; label: string; accountId: string | null; name: string; email: string; status: string };
@@ -42,7 +42,7 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
   const library = useMemo(() => data.library
     .filter((item) => item.title.toLowerCase().includes(query.toLowerCase()))
     .filter((item) => statusFilter === "ALL" || item.status === statusFilter)
-    .filter((item) => syncFilter === "ALL" || (syncFilter === "PROBLEM" ? item.retryable : item.syncStatus === syncFilter))
+    .filter((item) => syncFilter === "ALL" || (syncFilter === "PROBLEM" ? item.retryable : visibleSyncStatus(item) === syncFilter))
     .sort((a, b) => Number(b.retryable) - Number(a.retryable)), [data.library, query, statusFilter, syncFilter]);
 
   const act = (request: () => Promise<Response>, success: (body: Record<string, unknown>) => string) => startTransition(async () => {
@@ -65,12 +65,14 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
     }),
     (body) => {
       const queued = Number(body.queued ?? 0);
+      const settledCompleted = Number(body.settledCompleted ?? 0);
       const processing = body.processing as { completed?: unknown; failed?: unknown; retrying?: unknown } | undefined;
       if (processing) {
         const completed = Number(processing.completed ?? 0);
         const failed = Number(processing.failed ?? 0);
         const retrying = Number(processing.retrying ?? 0);
-        return `${queued} synchronization${queued === 1 ? "" : "s"} queued: ${completed} completed, ${retrying} retrying, ${failed} failed.`;
+        const settled = settledCompleted > 0 ? ` ${settledCompleted} completed title${settledCompleted === 1 ? "" : "s"} settled.` : "";
+        return `${queued} synchronization${queued === 1 ? "" : "s"} queued: ${completed} completed, ${retrying} retrying, ${failed} failed.${settled}`;
       }
       return `${queued} synchronization${queued === 1 ? "" : "s"} queued.`;
     },
@@ -207,17 +209,30 @@ function LibraryDiagnostics({ allLibrary, library, pending, query, retry, setQue
             <tr><th className="px-5 py-3">Title</th><th className="px-5 py-3">Progress</th><th className="px-5 py-3">Access</th><th className="px-5 py-3">Source</th><th className="px-5 py-3">Sync</th><th className="px-5 py-3">Last read</th><th className="px-5 py-3"></th></tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {library.map((item) => (
+            {library.map((item) => {
+              const isCompleted = item.publicationStatus === "COMPLETED";
+              const syncStatus = visibleSyncStatus(item);
+              const diagnosticError = item.syncError ?? item.latestJobError;
+              return (
               <tr key={item.id} className={item.retryable ? "bg-amber-500/5" : ""}>
                 <td className="px-5 py-4"><Link href={`/manga/${item.slug}`} className="font-medium hover:underline">{item.title}</Link><p className="text-xs capitalize text-muted-foreground">{item.status.toLowerCase()}</p></td>
                 <td className="px-5 py-4">{item.lastReadChapterNumber ?? "-"} / {item.latestChapterNumber ?? "-"}<p className="text-xs text-muted-foreground">{item.unreadChapters} unread</p></td>
                 <td className="px-5 py-4 capitalize">{item.accessReason.replaceAll("_", " ")}</td>
                 <td className="px-5 py-4">{item.preferredSource || "Automatic"}{item.sourceFailureCount > 0 && <p title={item.sourceError || undefined} className="text-xs text-amber-500">{item.sourceFailureCount} source failures</p>}</td>
-                <td className="px-5 py-4"><span className={syncStatusClass(item.syncStatus, item.retryable)}>{item.syncStatus.toLowerCase()}</span>{item.syncError && <p className="mt-2 max-w-[22rem] break-words text-xs leading-5 text-muted-foreground">{item.syncError}</p>}</td>
+                <td className="px-5 py-4">
+                  <span className={syncStatusClass(isCompleted ? "COMPLETED" : syncStatus, item.retryable)}>{isCompleted ? "completed" : syncStatus.toLowerCase()}</span>
+                  {isCompleted && <p className="mt-2 max-w-[22rem] text-xs leading-5 text-muted-foreground">Routine sync skipped for finished manga.</p>}
+                  {!isCompleted && diagnosticError && <p className="mt-2 max-w-[22rem] break-words text-xs leading-5 text-red-500">{diagnosticError}</p>}
+                  {!isCompleted && item.latestJobStatus && (
+                    <p className="mt-2 max-w-[22rem] text-xs leading-5 text-muted-foreground">
+                      Latest job: {item.latestJobStatus.toLowerCase()}{item.latestJobAttempts !== null ? ` / attempt ${item.latestJobAttempts}` : ""}{item.latestJobUpdatedAt ? ` / ${formatDate(item.latestJobUpdatedAt)}` : ""}
+                    </p>
+                  )}
+                </td>
                 <td className="px-5 py-4 text-muted-foreground">{formatDate(item.lastReadAt)}</td>
                 <td className="px-5 py-4">{item.retryable && <button disabled={pending} className="ui-button ui-button-secondary" onClick={() => retry([item.id])}><RefreshCw className="h-4 w-4" /> Retry</button>}</td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
         {!library.length && <p className="p-8 text-center text-sm text-muted-foreground">No titles match these filters.</p>}
@@ -260,16 +275,23 @@ function Badge({ children }: { children: React.ReactNode }) { return <span class
 function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className={`mt-1 break-words font-medium ${mono ? "font-mono text-xs" : ""}`}>{value}</dd></div>; }
 function syncStatusClass(syncStatus: string, canRetry: boolean) {
   const base = "inline-flex rounded-full px-2 py-1 text-xs font-bold capitalize";
+  if (syncStatus === "FAILED") return `${base} bg-red-500/15 text-red-700 dark:text-red-300`;
+  if (syncStatus === "COMPLETED") return `${base} bg-sky-500/15 text-sky-700 dark:text-sky-300`;
   if (canRetry) return `${base} bg-amber-500/15 text-amber-700 dark:text-amber-300`;
   if (syncStatus === "UPDATED") return `${base} bg-emerald-500/15 text-emerald-700 dark:text-emerald-300`;
   return `${base} bg-muted text-muted-foreground`;
 }
+function visibleSyncStatus(item: LibraryItem) {
+  return item.publicationStatus !== "COMPLETED" && item.latestJobStatus === "FAILED" ? "FAILED" : item.syncStatus;
+}
 function buildSyncSegments(library: LibraryItem[]): InsightSegment[] {
+  const activeLibrary = library.filter((item) => item.publicationStatus !== "COMPLETED");
   return [
-    { label: "Updated", value: library.filter((item) => item.syncStatus === "UPDATED").length, className: "bg-emerald-500" },
-    { label: "Failed", value: library.filter((item) => item.syncStatus === "FAILED").length, className: "bg-red-500" },
-    { label: "Syncing", value: library.filter((item) => item.syncStatus === "SYNCING").length, className: "bg-amber-500" },
-    { label: "Other", value: library.filter((item) => !["UPDATED", "FAILED", "SYNCING"].includes(item.syncStatus)).length, className: "bg-muted-foreground" },
+    { label: "Updated", value: activeLibrary.filter((item) => visibleSyncStatus(item) === "UPDATED").length, className: "bg-emerald-500" },
+    { label: "Failed", value: activeLibrary.filter((item) => visibleSyncStatus(item) === "FAILED").length, className: "bg-red-500" },
+    { label: "Syncing", value: activeLibrary.filter((item) => visibleSyncStatus(item) === "SYNCING").length, className: "bg-amber-500" },
+    { label: "Completed", value: library.filter((item) => item.publicationStatus === "COMPLETED").length, className: "bg-sky-500" },
+    { label: "Other", value: activeLibrary.filter((item) => !["UPDATED", "FAILED", "SYNCING"].includes(visibleSyncStatus(item))).length, className: "bg-muted-foreground" },
   ];
 }
 function buildIssueSegments(issues: IssueDetail[]): InsightSegment[] {

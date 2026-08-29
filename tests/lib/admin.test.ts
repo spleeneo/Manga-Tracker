@@ -28,6 +28,26 @@ describe("account diagnostics", () => {
     expect(isRetryableSync({ syncStatus: "SYNCING", syncStartedAt: new Date("2026-07-08T11:55:00Z") }, now)).toBe(false);
   });
 
+  it("does not flag completed manga as retryable account sync problems", () => {
+    const completedFailed = { syncStatus: "FAILED", syncStartedAt: null, mangaStatus: "COMPLETED" };
+    const completedStale = { syncStatus: "SYNCING", syncStartedAt: new Date("2026-07-08T11:20:00Z"), mangaStatus: "COMPLETED" };
+
+    expect(isRetryableSync(completedFailed, now)).toBe(false);
+    expect(isRetryableSync(completedStale, now)).toBe(false);
+    expect(accountHealth({ library: [completedFailed, completedStale], familyStatuses: [] }, now)).toEqual({ level: "healthy", issues: [] });
+  });
+
+  it("flags a failed latest shared job even when the library row was previously updated", () => {
+    const sync = { syncStatus: "UPDATED", syncStartedAt: null, latestJobStatus: "FAILED" };
+
+    expect(isRetryableSync(sync, now)).toBe(true);
+    expect(accountHealth({ library: [sync], familyStatuses: [] }, now).issues).toContain("Failed synchronization");
+    expect(buildAccountIssues({
+      library: [{ id: "row", title: "Kengan Omega", syncStatus: "UPDATED", syncStartedAt: null, syncError: null, latestJobStatus: "FAILED", latestJobError: "All sources failed" }],
+      familyLinks: [],
+    }, now)).toEqual([expect.objectContaining({ kind: "failed_sync", title: "Kengan Omega", detail: "All sources failed", userMangaId: "row" })]);
+  });
+
   it("derives explicit activity without treating background updates as user activity", () => {
     expect(deriveActivity({ readDates: [new Date("2026-07-01")], trackedDates: [new Date("2026-07-02")], chatDates: [new Date("2026-07-03")] })).toEqual({
       lastReadAt: new Date("2026-07-01"), lastTrackedAt: new Date("2026-07-02"), lastChatAt: new Date("2026-07-03"),
@@ -56,5 +76,16 @@ describe("account diagnostics", () => {
       expect.objectContaining({ kind: "stale_sync", title: "Vagabond", detail: "Running for 40 minutes without finishing." }),
       expect.objectContaining({ kind: "family_setup", detail: expect.stringContaining("pending") }),
     ]));
+  });
+
+  it("omits completed manga from detailed sync issues", () => {
+    const issues = buildAccountIssues({
+      library: [
+        { id: "completed", title: "Naruto", syncStatus: "FAILED", syncStartedAt: null, syncError: "Old failure", mangaStatus: "COMPLETED" },
+      ],
+      familyLinks: [],
+    }, now);
+
+    expect(issues).toEqual([]);
   });
 });

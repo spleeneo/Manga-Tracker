@@ -15,6 +15,8 @@ describe("admin diagnostics UI invariants", () => {
     expect(detail).toContain("Sync health");
     expect(detail).toContain("Issue mix");
     expect(detail).toContain("Reading load");
+    expect(detail).toContain("Routine sync skipped for finished manga.");
+    expect(detail).toContain("Latest job:");
     expect(detail).not.toContain("What needs attention");
     expect(detail).not.toContain("Diagnostic detail");
     expect(detail).not.toContain("Retry all affected");

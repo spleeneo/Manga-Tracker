@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-08-30 - Admin Diagnostics Need Shared Job Evidence
+
+Context:
+- Shared manga sync jobs can fail independently from a user's `UserManga` row, and completed manga can retain stale row state from older queue behavior.
+
+Learning:
+- Admin sync health cannot rely on per-user row status alone; it needs publication status to suppress completed-title noise and latest shared job state to expose real provider failures.
+
+Action:
+- Feed publication status and latest manga update job status/error into admin diagnostics, and let retry actions settle completed rows while retrying active failed shared jobs.
+
 ## 2026-08-29 - Admin Retries Must Process Targeted Jobs
 
 Context:

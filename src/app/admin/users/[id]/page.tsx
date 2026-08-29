@@ -32,7 +32,11 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
       library: { orderBy: { createdAt: "desc" }, select: {
         id: true, mangaId: true, status: true, createdAt: true, syncStatus: true, syncStartedAt: true, syncError: true,
         preferredSource: { select: { sourceName: true, failureCount: true, lastError: true } },
-        manga: { select: { title: true, slug: true, contentRating: true, classificationSource: true, tags: { select: { tag: { select: { name: true } } } } } },
+        manga: { select: {
+          title: true, slug: true, status: true, contentRating: true, classificationSource: true,
+          tags: { select: { tag: { select: { name: true } } } },
+          syncJobs: { where: { type: "MANGA_UPDATE" }, orderBy: { updatedAt: "desc" }, take: 1, select: { status: true, attempts: true, error: true, updatedAt: true } },
+        } },
       } },
     },
   });
@@ -50,7 +54,8 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   const summaryByManga = new Map(summaries.map((item) => [item.id, item]));
   const overrideByManga = new Map(user.childOverrides.map((item) => [item.mangaId, item.decision]));
   const policy = isChild ? (user.childPolicy ?? { enabled: true, allowedContentRatings: DEFAULT_ALLOWED_CONTENT_RATINGS, blockedTagNames: DEFAULT_BLOCKED_TAG_NAMES }) : null;
-  const health = accountHealth({ library: user.library, familyStatuses: [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])] });
+  const libraryDiagnostics = user.library.map((item) => ({ ...item, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null }));
+  const health = accountHealth({ library: libraryDiagnostics, familyStatuses: [...user.parentLinks.map((link) => link.status), ...(user.childLink ? [user.childLink.status] : [])] });
   const activity = deriveActivity({ readDates: recentReads.flatMap((item) => item.readAt ? [item.readAt] : []), trackedDates: user.library.map((item) => item.createdAt), chatDates: lastChat ? [lastChat.createdAt] : [] });
   const recentActivity = [
     ...recentReads.map((item) => ({ label: "Chapter read", detail: `${item.chapter.manga.title} · chapter ${item.chapter.chapterNumber}`, at: item.readAt })),
@@ -62,7 +67,10 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
     ...user.parentLinks.map((link) => ({ id: link.id, label: "Child", accountId: link.child?.id ?? null, name: link.child?.name || link.child?.email || link.childEmail, email: link.child?.email || link.childEmail, status: link.status })),
   ];
   const issueDetails = buildAccountIssues({
-    library: user.library.map((item) => ({ id: item.id, title: item.manga.title, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt, syncError: item.syncError })),
+    library: user.library.map((item) => {
+      const latestJob = item.manga.syncJobs[0];
+      return { id: item.id, title: item.manga.title, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt, syncError: item.syncError, latestJobStatus: latestJob?.status ?? null, latestJobError: latestJob?.error ?? null, mangaStatus: item.manga.status };
+    }),
     familyLinks: familyLinks.map((link) => ({ label: `${link.label} relationship with ${link.name}`, status: link.status })),
   });
 
@@ -75,8 +83,9 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
     accountFacts: { userId: user.id, totalSessions: user.sessions.length, expiredSessions: user.sessions.filter((item) => item.expires <= new Date()).length, readChapterCount, chatMessageCount, relevantJobCount: jobs.length },
     lastReadAt: activity.lastReadAt?.toISOString() ?? null, lastTrackedAt: activity.lastTrackedAt?.toISOString() ?? null, lastChatAt: activity.lastChatAt?.toISOString() ?? null,
     library: user.library.map((item) => { const summary = summaryByManga.get(item.mangaId); const access = policy ? evaluateMangaAccess(policy, { contentRating: item.manga.contentRating, classificationSource: item.manga.classificationSource, tags: item.manga.tags.map(({ tag }) => tag.name) }, overrideByManga.get(item.mangaId) as "ALLOW" | "BLOCK" | undefined) : { reason: "allowed" }; return {
-      id: item.id, title: item.manga.title, slug: item.manga.slug, status: item.status, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt?.toISOString() ?? null, syncError: item.syncError,
-      retryable: isRetryableSync(item),
+      id: item.id, title: item.manga.title, slug: item.manga.slug, status: item.status, publicationStatus: item.manga.status, syncStatus: item.syncStatus, syncStartedAt: item.syncStartedAt?.toISOString() ?? null, syncError: item.syncError,
+      retryable: isRetryableSync({ ...item, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null }),
+      latestJobStatus: item.manga.syncJobs[0]?.status ?? null, latestJobAttempts: item.manga.syncJobs[0]?.attempts ?? null, latestJobError: item.manga.syncJobs[0]?.error ?? null, latestJobUpdatedAt: item.manga.syncJobs[0]?.updatedAt.toISOString() ?? null,
       lastReadAt: summary?.lastReadAt?.toISOString() ?? null, lastReadChapterNumber: summary?.lastReadChapterNumber ?? null, latestChapterNumber: summary?.latestChapter?.chapterNumber ?? null, unreadChapters: summary?.unreadChapters ?? 0,
       preferredSource: item.preferredSource?.sourceName ?? null, sourceFailureCount: item.preferredSource?.failureCount ?? 0, sourceError: item.preferredSource?.lastError ?? null, accessReason: access.reason,
     }; }),
