@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import { BrandLink } from "@/components/brand-link";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
@@ -16,6 +16,7 @@ const NEXT_CHAPTER_BATCH_SIZE = 1;
 const READER_WINDOW_BEFORE = 1;
 const READER_WINDOW_AFTER = 1;
 const READER_PAGE_PREFETCH_LIMIT = 3;
+const PAGE_AUTO_RETRY_DELAYS_MS = [1500, 4000, 8000];
 
 interface ReaderPage {
   index: number;
@@ -524,12 +525,11 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                         </div>
                       )}
                       {chapterReader.pages.map((page) => (
-                        <img
+                        <ReaderPageImage
                           key={`${loadedChapter.chapter.id}-${page.index}-${page.imageUrl}`}
-                          data-reader-page-index={page.index}
-                          src={page.imageUrl}
-                          alt={`Chapter ${chapterDisplay.chapterNumber} page ${page.index + 1}`}
-                          className={fitWidth ? "mx-auto h-auto w-full max-w-full rounded-sm bg-card" : "mx-auto h-auto max-w-none rounded-sm bg-card"}
+                          page={page}
+                          chapterNumber={chapterDisplay.chapterNumber}
+                          fitWidth={fitWidth}
                           loading={chapterIndex === 0 && page.index < 2 ? "eager" : "lazy"}
                         />
                       ))}
@@ -554,4 +554,74 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
       </main>
     </div>
   );
+}
+
+function ReaderPageImage({ chapterNumber, fitWidth, loading, page }: { chapterNumber: number; fitWidth: boolean; loading: "eager" | "lazy"; page: ReaderPage }) {
+  const [failed, setFailed] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [autoRetryCount, setAutoRetryCount] = useState(0);
+
+  const retryPage = useCallback((resetAutoRetries: boolean) => {
+    if (resetAutoRetries) setAutoRetryCount(0);
+    setFailed(false);
+    setRetryNonce((value) => value + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!failed || autoRetryCount >= PAGE_AUTO_RETRY_DELAYS_MS.length) return;
+
+    const timer = window.setTimeout(() => {
+      setAutoRetryCount((value) => value + 1);
+      retryPage(false);
+    }, PAGE_AUTO_RETRY_DELAYS_MS[autoRetryCount]);
+
+    return () => window.clearTimeout(timer);
+  }, [autoRetryCount, failed, retryPage]);
+
+  const pageLabel = `Chapter ${chapterNumber} page ${page.index + 1}`;
+  const imageClassName = fitWidth ? "mx-auto h-auto w-full max-w-full rounded-sm bg-card" : "mx-auto h-auto max-w-none rounded-sm bg-card";
+
+  if (failed) {
+    const willAutoRetry = autoRetryCount < PAGE_AUTO_RETRY_DELAYS_MS.length;
+
+    return (
+      <div
+        data-reader-page-index={page.index}
+        className="surface mx-auto flex min-h-[55vh] w-full max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-amber-500/40 bg-amber-500/5 p-6 text-center"
+        style={fitWidth ? undefined : { width: page.width ?? undefined }}
+      >
+        <p className="text-sm font-semibold">Page {page.index + 1} did not load.</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {willAutoRetry ? "Mangateo will try again in a moment." : "The automatic retries did not recover it."}
+        </p>
+        <button type="button" className="ui-button ui-button-primary" onClick={() => retryPage(true)}>
+          <RefreshCw className="h-4 w-4" />
+          Reload page
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      data-reader-page-index={page.index}
+      src={withReaderReloadParam(page.imageUrl, retryNonce)}
+      alt={pageLabel}
+      className={imageClassName}
+      loading={loading}
+      onError={() => setFailed(true)}
+      onLoad={() => {
+        setFailed(false);
+        setAutoRetryCount(0);
+      }}
+    />
+  );
+}
+
+function withReaderReloadParam(imageUrl: string, retryNonce: number) {
+  if (retryNonce === 0) return imageUrl;
+
+  const [withoutHash, hash = ""] = imageUrl.split("#", 2);
+  const separator = withoutHash.includes("?") ? "&" : "?";
+  return `${withoutHash}${separator}readerReload=${retryNonce}${hash ? `#${hash}` : ""}`;
 }

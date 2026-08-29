@@ -26,4 +26,14 @@ describe("reader routing invariants", () => {
 
     expect(reader).toContain("BrandLink");
   });
+
+  it("keeps failed reader pages manually and automatically reloadable", () => {
+    const reader = readSource("src/components/chapter-reader.tsx");
+
+    expect(reader).toContain("PAGE_AUTO_RETRY_DELAYS_MS");
+    expect(reader).toContain("ReaderPageImage");
+    expect(reader).toContain("Reload page");
+    expect(reader).toContain("readerReload=");
+    expect(reader).toContain("onError={() => setFailed(true)}");
+  });
 });

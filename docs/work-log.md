@@ -1,5 +1,38 @@
 # Work Log
 
+## 2026-08-29 - Add Reader Page Reload Recovery
+
+### Why
+
+- Individual chapter page images can fail to load transiently, leaving the reader with no obvious way to recover that single page without refreshing the whole chapter.
+
+### Plan
+
+- Add a per-page failed-load state in the chapter reader.
+- Show an in-place reload button when a page image fails.
+- Automatically retry failed page images a few times with short backoff delays.
+- Verify focused reader invariants, lint, the full repository gate, and the reader flow in the browser.
+
+### Changes
+
+- Added a `ReaderPageImage` component that tracks failed loads, retry attempts, and cache-busted image reloads per page.
+- Added an in-place `Reload page` button for failed reader images.
+- Added automatic page image retries after failed loads.
+- Added a reader invariant test to keep page reload recovery available.
+
+### Verification
+
+- `npm run test -- tests/lib/reader-routing-invariants.test.ts`: passed (4 tests).
+- `npx eslint src/components/chapter-reader.tsx tests/lib/reader-routing-invariants.test.ts`: passed with the existing reader `no-img-element` warning for provider page images.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 280 tests passed, and the production build completed.
+- Browser smoke check on `http://localhost:3000/manga/bleach/chapter/2e015076-425b-4f8e-8c84-046cec68090f` with a temporary dev-parent tracking fixture: the reader route loaded, rendered 46 page images, and retained the expected reader controls.
+- Mobile browser check at 390px width: the reader route rendered 46 page images and had no page-level horizontal overflow.
+- The browser harness did not support reliably synthesizing a native image `error` event on an already loaded page image, so the in-place failed-page recovery path is covered by the focused invariant, lint, TypeScript, and production build rather than an end-to-end synthetic image-failure click.
+
+### Outcome
+
+- Reader pages now show an in-place reload action when an individual image fails, and failed images automatically retry a few times with cache-busted requests before requiring manual recovery.
+
 ## 2026-08-29 - Remove Duplicate Admin Diagnostics Detail
 
 ### Why
