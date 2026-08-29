@@ -1,5 +1,46 @@
 # Work Log
 
+## 2026-08-29 - Process Admin Sync Retries Immediately
+
+### Why
+
+- Admin sync retry actions queued shared manga update jobs but did not process the queue, leaving affected library rows stuck in `SYNCING` until another worker or cron request happened to run.
+- Routine sync retry paths should avoid officially completed manga so finished series are not repeatedly refreshed without a specific reason.
+
+### Plan
+
+- Inspect current retryable user sync rows and related sync jobs.
+- Make the admin retry endpoint process queued jobs after enqueueing retryable rows.
+- Skip completed manga in admin retry and library-wide queueing.
+- Update response/UI feedback so admin retries report processing outcomes.
+- Verify focused route/job tests, lint, full repository checks, and update-cycle smoke.
+
+### Changes
+
+- Admin sync retries now call a targeted `processSyncJobs` helper after enqueueing eligible retry jobs and return the worker summary under `processing`.
+- Admin retry eligibility now excludes manga with stored status `COMPLETED`.
+- Library-wide sync queueing now only queues manga whose status is unknown or not `COMPLETED`.
+- The sync worker now skips already-queued completed-manga jobs without scraping and clears waiting `SYNCING` rows for those completed titles.
+- Admin retry feedback now includes completed, retrying, and failed processing counts when available.
+- Added tests for admin retry processing, targeted job processing, completed-manga exclusion in user library sync queueing, and worker handling of old completed-manga jobs.
+
+### Verification
+
+- Current data inspection before the fix showed 13 retryable user rows stuck in `SYNCING` and 13 matching shared jobs in `QUEUED` with `attempts: 0`, confirming the admin button had queued work without running it.
+- A later queue inspection also showed old stale `RUNNING` jobs for completed manga, which prompted the worker-level completed-manga guard.
+- `npm run test -- tests/api/admin-users.route.test.ts tests/lib/sync-jobs.test.ts tests/lib/admin-ui-invariants.test.ts`: passed (17 tests).
+- `npm run lint`: passed with the existing 8 `no-img-element` warnings.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 283 tests passed, and the production build completed.
+- `npm run smoke:update`: passed; MangaPlus was blocked with 403 during discovery, but the update succeeded through the other sources and reported `allSourcesFailed: false`.
+
+### Outcome
+
+- Admin retry actions now perform a bounded worker pass over the exact jobs they queue, report useful processing results, and avoid routine syncing of officially completed manga.
+
+### Learnings
+
+- [Admin Retries Must Process Targeted Jobs](learnings.md#2026-08-29---admin-retries-must-process-targeted-jobs)
+
 ## 2026-08-29 - Add Reader Page Reload Recovery
 
 ### Why

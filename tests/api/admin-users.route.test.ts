@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getAdminActor: vi.fn(), userFindUnique: vi.fn(), userCount: vi.fn(), userUpdate: vi.fn(),
   sessionDeleteMany: vi.fn(), libraryFindMany: vi.fn(), enqueue: vi.fn(), linkFindFirst: vi.fn(),
-  overrideDeleteMany: vi.fn(), policyDeleteMany: vi.fn(), linkDelete: vi.fn(), transaction: vi.fn(),
+  processJobs: vi.fn(), overrideDeleteMany: vi.fn(), policyDeleteMany: vi.fn(), linkDelete: vi.fn(), transaction: vi.fn(),
 }));
 
 vi.mock("@/lib/admin-server", () => ({ getAdminActor: mocks.getAdminActor }));
-vi.mock("@/lib/sync-jobs", () => ({ enqueueMangaSyncJob: mocks.enqueue }));
+vi.mock("@/lib/sync-jobs", () => ({ enqueueMangaSyncJob: mocks.enqueue, processSyncJobs: mocks.processJobs }));
 vi.mock("@/lib/db", () => ({ prisma: {
   user: { findUnique: mocks.userFindUnique, count: mocks.userCount, update: mocks.userUpdate },
   session: { deleteMany: mocks.sessionDeleteMany }, userManga: { findMany: mocks.libraryFindMany },
@@ -68,13 +68,16 @@ describe("admin user routes", () => {
   it("queues only failed and stale syncs owned by the account", async () => {
     mocks.userFindUnique.mockResolvedValue({ id: "target" });
     mocks.libraryFindMany.mockResolvedValue([
-      { id: "failed", mangaId: "m1", syncStatus: "FAILED", syncStartedAt: null },
-      { id: "healthy", mangaId: "m2", syncStatus: "UPDATED", syncStartedAt: null },
+      { id: "failed", mangaId: "m1", syncStatus: "FAILED", syncStartedAt: null, manga: { status: "ONGOING" } },
+      { id: "healthy", mangaId: "m2", syncStatus: "UPDATED", syncStartedAt: null, manga: { status: "ONGOING" } },
+      { id: "completed", mangaId: "m3", syncStatus: "FAILED", syncStartedAt: null, manga: { status: "COMPLETED" } },
     ]);
     mocks.enqueue.mockResolvedValue({ id: "job" });
+    mocks.processJobs.mockResolvedValue({ processed: 1, completed: 1, failed: 0, retrying: 0, skipped: 0, remaining: 0 });
     const response = await retrySyncs(new Request("http://local", { method: "POST", body: "{}" }), context());
-    expect(await response.json()).toEqual({ queued: 1, skipped: 1, jobs: [{ id: "job" }] });
+    expect(await response.json()).toEqual({ queued: 1, skipped: 2, jobs: [{ id: "job" }], processing: { processed: 1, completed: 1, failed: 0, retrying: 0, skipped: 0, remaining: 0 } });
     expect(mocks.enqueue).toHaveBeenCalledWith("target", "m1");
+    expect(mocks.processJobs).toHaveBeenCalledWith(["job"], { concurrency: 4 });
   });
 
   it("unlinks only a relationship involving the target and cleans child controls", async () => {

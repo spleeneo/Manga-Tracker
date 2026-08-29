@@ -63,7 +63,17 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(ids ? { userMangaIds: ids } : {}),
     }),
-    (body) => `${body.queued ?? 0} synchronization${body.queued === 1 ? "" : "s"} queued.`,
+    (body) => {
+      const queued = Number(body.queued ?? 0);
+      const processing = body.processing as { completed?: unknown; failed?: unknown; retrying?: unknown } | undefined;
+      if (processing) {
+        const completed = Number(processing.completed ?? 0);
+        const failed = Number(processing.failed ?? 0);
+        const retrying = Number(processing.retrying ?? 0);
+        return `${queued} synchronization${queued === 1 ? "" : "s"} queued: ${completed} completed, ${retrying} retrying, ${failed} failed.`;
+      }
+      return `${queued} synchronization${queued === 1 ? "" : "s"} queued.`;
+    },
   );
   const changeRole = () => {
     const next = data.role === "ADMIN" ? "USER" : "ADMIN";

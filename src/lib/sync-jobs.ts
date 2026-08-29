@@ -15,6 +15,10 @@ type ProcessQueuedSyncJobsOptions = {
   concurrency?: number;
 };
 
+type ProcessSyncJobsOptions = {
+  concurrency?: number;
+};
+
 type RecoverStaleSyncJobsOptions = {
   mangaId?: string;
   staleAfterMs?: number;
@@ -130,7 +134,15 @@ export async function enqueueMangaSyncJob(userId: string, mangaId: string) {
 
 export async function enqueueUserLibrarySyncJobs(userId: string) {
   const library = await prisma.userManga.findMany({
-    where: { userId },
+    where: {
+      userId,
+      manga: {
+        OR: [
+          { status: null },
+          { status: { not: "COMPLETED" } },
+        ],
+      },
+    },
     select: { mangaId: true },
   });
 
@@ -258,12 +270,27 @@ async function runClaimedSyncJob(jobId: string) {
       status: true,
       mangaId: true,
       attempts: true,
-      manga: { select: { title: true } },
+      manga: { select: { status: true, title: true } },
     },
   });
 
   if (!job || job.status !== "RUNNING") {
     return { id: jobId, status: "skipped" as const };
+  }
+
+  if (job.manga.status === "COMPLETED") {
+    await markWaitingUsersUpdated(job.mangaId);
+    await prisma.syncJob.update({
+      where: { id: job.id },
+      data: {
+        status: "DONE",
+        finishedAt: new Date(),
+        lockedAt: null,
+        error: null,
+      },
+    });
+
+    return { id: job.id, status: "skipped" as const };
   }
 
   try {
@@ -319,6 +346,31 @@ export async function processSyncJob(jobId: string) {
   }
 
   return runClaimedSyncJob(jobId);
+}
+
+export async function processSyncJobs(jobIds: string[], options: ProcessSyncJobsOptions = {}) {
+  await recoverStaleRunningSyncJobs();
+
+  const uniqueJobIds = [...new Set(jobIds)];
+  const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+  const results = await runWithConcurrency(uniqueJobIds, concurrency, (jobId) => processSyncJob(jobId));
+  const remaining = uniqueJobIds.length > 0 ? await prisma.syncJob.count({
+    where: {
+      id: { in: uniqueJobIds },
+      type: SYNC_JOB_TYPE,
+      status: "QUEUED",
+      runAfter: { lte: new Date() },
+    },
+  }) : 0;
+
+  return {
+    processed: results.length,
+    completed: results.filter((result) => result.status === "completed").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    retrying: results.filter((result) => result.status === "retrying").length,
+    skipped: results.filter((result) => result.status === "skipped").length,
+    remaining,
+  };
 }
 
 async function runWithConcurrency<T, R>(

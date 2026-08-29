@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-08-29 - Admin Retries Must Process Targeted Jobs
+
+Context:
+- Admin sync retries reset affected rows to `SYNCING` and queued shared manga jobs, but did not drain those exact jobs, so retrying could look like it did nothing.
+
+Learning:
+- Support/admin retry actions should process the jobs they just queued, not only enqueue work or rely on unrelated global queue order.
+
+Action:
+- Use targeted sync-job processing for admin retries, and keep completed manga out of routine retry paths with a worker-level guard for old queued jobs.
+
 ## 2026-07-10 - Publication Status Needs Cross-Source Resolution
 
 Context:
