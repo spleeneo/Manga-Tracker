@@ -1,5 +1,38 @@
 # Work Log
 
+## 2026-08-29 - Refine Admin Failure Diagnostics
+
+### Why
+
+- The account diagnosis panel made failed sync recovery hard to scan: quick insights were separated from the retry action, and failure details read like dense paragraphs.
+
+### Plan
+
+- Promote retry-all controls near the account health and quick insight areas.
+- Make issue cards easier to skim with explicit diagnostic labels and per-title actions.
+- Surface stored sync errors directly in the library table rows.
+- Verify focused UI invariants, lint, the full repository gate, and the changed admin page in the browser.
+
+### Changes
+
+- Added top-level "Retry problem syncs" actions in the account health and attention panels.
+- Added a named "Quick insights" section with a secondary retry-all action.
+- Reworked issue cards to show issue type, title, summary, diagnostic detail, started time, inspect, and per-title retry actions.
+- Highlighted retryable library rows and displayed stored sync errors inline.
+- Added an admin diagnostics UI invariant test.
+
+### Verification
+
+- `npm run test -- tests/lib/admin-ui-invariants.test.ts tests/lib/admin.test.ts`: passed (8 tests).
+- `npx eslint src/components/admin-user-detail.tsx tests/lib/admin-ui-invariants.test.ts`: passed.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 278 tests passed, and the production build completed.
+- Browser smoke check on `http://localhost:3000/admin/users/cmr9hrppa0001m320duua73sc` with a temporary failed sync fixture: the account health and attention panels showed "Retry problem syncs", the issue card exposed "Diagnostic detail", the stored sync error appeared, and the library row showed the failure inline.
+- Mobile browser check at 390px width: the admin detail page had no page-level horizontal overflow.
+
+### Outcome
+
+- Admin user diagnostics now put retry controls near the top of the account page and make failed/stale sync details easier to read before dropping into the full library table.
+
 ## 2026-08-29 - Add Reader Logo Home Navigation
 
 ### Why
