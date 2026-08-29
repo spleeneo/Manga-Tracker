@@ -1,5 +1,37 @@
 # Work Log
 
+## 2026-08-29 - Improve Admin Account List Triage
+
+### Why
+
+- The admin account list health column was hard to scan when an account had many issues: long issue text stretched across the row, and the diagnostics link was too easy to miss.
+
+### Plan
+
+- Redesign account rows so health is summarized visually instead of listing several long issue strings.
+- Turn the diagnostics link into a clear row action button.
+- Group library/unread counts into a compact overview.
+- Verify focused UI invariants, lint, the full repository gate, and the account list in the browser.
+
+### Changes
+
+- Replaced long issue text in the account list with a health badge, compact issue summary, issue meter, and first-issue preview tooltip.
+- Added a prominent `Diagnostics` button at the end of each account row.
+- Grouped library and unread counts into a `Library overview` column with a small load bar.
+- Added an invariant test for the account-list diagnostics layout.
+
+### Verification
+
+- `npm run test -- tests/lib/admin-ui-invariants.test.ts tests/lib/admin.test.ts`: passed (9 tests).
+- `npx eslint src/components/admin-accounts-table.tsx src/components/admin-user-detail.tsx tests/lib/admin-ui-invariants.test.ts`: passed.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 279 tests passed, and the production build completed.
+- Browser smoke check on `http://localhost:3000/admin` with temporary dev-parent admin access: the account list showed compact health summaries, a visible `Diagnostics` button per row, issue meters for accounts with issues, and no old `Open diagnostics` text link.
+- Mobile browser check at 390px width: the page had no page-level horizontal overflow while the account table remained horizontally scrollable inside its container.
+
+### Outcome
+
+- The admin account list is easier to scan: noisy issue text is condensed, the primary diagnostics action is obvious, and library/unread information is grouped into a compact overview.
+
 ## 2026-08-29 - Refine Admin Failure Diagnostics
 
 ### Why

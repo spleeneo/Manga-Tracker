@@ -17,4 +17,13 @@ describe("admin diagnostics UI invariants", () => {
     expect(detail).toContain("Reading load");
     expect(detail).not.toContain("Retry all affected");
   });
+
+  it("keeps account-list diagnostics compact and actionable", () => {
+    const table = readSource("src/components/admin-accounts-table.tsx");
+
+    expect(table).toContain("Library overview");
+    expect(table).toContain("Diagnostics");
+    expect(table).toContain("IssueMeter");
+    expect(table).not.toContain("Open diagnostics");
+  });
 });
