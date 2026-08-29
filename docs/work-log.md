@@ -1,5 +1,36 @@
 # Work Log
 
+## 2026-08-29 - Remove Duplicate Admin Diagnostics Detail
+
+### Why
+
+- The admin user detail page repeated the same failed or stale sync information twice: once in the attention card list and again in the library diagnostics table.
+
+### Plan
+
+- Keep the visual quick insights and one aggregate retry action near the top.
+- Remove the duplicated issue-card list.
+- Make the library table the single row-level diagnostics area by defaulting it to problem syncs when issues exist.
+- Verify focused diagnostics invariants, lint, the full repository gate, and the changed page in the browser.
+
+### Changes
+
+- Removed the `What needs attention` card list from admin user detail pages.
+- Added a `Problem syncs` table filter and made it the initial sync filter when the account has issue details.
+- Updated the diagnostics invariant test to guard against reintroducing the duplicated detail section.
+
+### Verification
+
+- `npm run test -- tests/lib/admin-ui-invariants.test.ts tests/lib/admin.test.ts`: passed (9 tests).
+- `npx eslint src/components/admin-user-detail.tsx tests/lib/admin-ui-invariants.test.ts`: passed.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 279 tests passed, and the production build completed.
+- Browser smoke check on `http://localhost:3000/admin/users/cmr9hrppa0001m320duua73sc` with a temporary failed sync fixture: Quick insights stayed visible, the duplicated `What needs attention` and `Diagnostic detail` section text was absent, `Problem syncs` was selected by default, the stored sync error appeared in the library table, and there was one aggregate retry action plus one row retry action.
+- Mobile browser check at 390px width: the admin detail page kept `Problem syncs` selected, did not show the duplicate attention block, and had no page-level horizontal overflow.
+
+### Outcome
+
+- Admin user diagnostics now avoid repeating the same failure records above the table; the page leads with graphs and a single aggregate retry, then uses the library table for detailed row-level diagnosis and retry actions.
+
 ## 2026-08-29 - Improve Admin Account List Triage
 
 ### Why

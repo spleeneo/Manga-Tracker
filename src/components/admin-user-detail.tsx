@@ -28,7 +28,7 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
   const [tab, setTab] = useState<"library" | "activity" | "family">("library");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [syncFilter, setSyncFilter] = useState("ALL");
+  const [syncFilter, setSyncFilter] = useState(data.issueDetails.length > 0 ? "PROBLEM" : "ALL");
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -42,7 +42,7 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
   const library = useMemo(() => data.library
     .filter((item) => item.title.toLowerCase().includes(query.toLowerCase()))
     .filter((item) => statusFilter === "ALL" || item.status === statusFilter)
-    .filter((item) => syncFilter === "ALL" || item.syncStatus === syncFilter)
+    .filter((item) => syncFilter === "ALL" || (syncFilter === "PROBLEM" ? item.retryable : item.syncStatus === syncFilter))
     .sort((a, b) => Number(b.retryable) - Number(a.retryable)), [data.library, query, statusFilter, syncFilter]);
 
   const act = (request: () => Promise<Response>, success: (body: Record<string, unknown>) => string) => startTransition(async () => {
@@ -78,16 +78,6 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
     if (!confirm(`Unlink ${link.name}? The child policy and title overrides for this relationship will be removed.`)) return;
     act(() => fetch(`/api/admin/users/${data.id}/family-links/${link.id}`, { method: "DELETE" }), () => "Family relationship removed.");
   };
-  const inspectIssue = (issue: IssueDetail) => {
-    if (issue.userMangaId) {
-      setTab("library");
-      setQuery(issue.title);
-      setSyncFilter(issue.kind === "failed_sync" ? "FAILED" : "ALL");
-      return;
-    }
-    setTab("family");
-  };
-
   return (
     <>
       <section className="surface mt-5 rounded-lg p-5 sm:p-6">
@@ -153,38 +143,6 @@ export function AdminUserDetail({ data }: { data: AdminUserDetailData }) {
         </div>
       </section>
 
-      {data.issueDetails.length > 0 && (
-        <section className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/5 p-5">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-            <div>
-              <h2 className="text-lg font-semibold">What needs attention</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Each row is an actionable record with the diagnostic text kept close to its retry action.</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {data.issueDetails.map((issue, index) => (
-              <article key={`${issue.kind}-${issue.title}-${index}`} className={`rounded-md border bg-background p-4 ${issueTone(issue.kind)}`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><Badge>{issueLabel(issue.kind)}</Badge><h3 className="break-words text-base font-semibold">{issue.title}</h3></div>
-                    <p className="mt-2 text-sm font-semibold text-amber-700 dark:text-amber-300">{issue.summary}</p>
-                    <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_12rem]">
-                      <div><dt className="text-xs font-bold uppercase text-muted-foreground">Diagnostic detail</dt><dd className="mt-1 whitespace-pre-wrap break-words text-foreground">{issue.detail}</dd></div>
-                      <div><dt className="text-xs font-bold uppercase text-muted-foreground">Started</dt><dd className="mt-1 text-muted-foreground">{formatDate(issue.startedAt)}</dd></div>
-                    </dl>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button className="ui-button ui-button-secondary" onClick={() => inspectIssue(issue)}>{issue.userMangaId ? "Inspect title" : "Inspect family"}</button>
-                    {issue.userMangaId && <button disabled={pending} className="ui-button ui-button-primary" onClick={() => retry([issue.userMangaId!])}><RefreshCw className="h-4 w-4" /> Retry sync</button>}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
       <section className="surface mt-6 rounded-lg p-5">
         <h2 className="text-lg font-semibold">Account facts</h2>
         <p className="mt-1 text-sm text-muted-foreground">Stored identity and usage totals; no tokens or message contents are exposed.</p>
@@ -226,6 +184,7 @@ function LibraryDiagnostics({ allLibrary, library, pending, query, retry, setQue
           </select>
           <select className="ui-field" aria-label="Filter sync state" value={syncFilter} onChange={(event) => setSyncFilter(event.target.value)}>
             <option value="ALL">All sync states</option>
+            <option value="PROBLEM">Problem syncs</option>
             <option value="FAILED">Failed</option>
             <option value="SYNCING">Syncing</option>
             <option value="UPDATED">Updated</option>
@@ -289,8 +248,6 @@ function ProgressMeter({ label, value, detail }: { label: string; value: number;
 
 function Badge({ children }: { children: React.ReactNode }) { return <span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-muted-foreground">{children}</span>; }
 function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className={`mt-1 break-words font-medium ${mono ? "font-mono text-xs" : ""}`}>{value}</dd></div>; }
-function issueLabel(kind: IssueDetail["kind"]) { return kind === "failed_sync" ? "Failed sync" : kind === "stale_sync" ? "Stale sync" : "Family setup"; }
-function issueTone(kind: IssueDetail["kind"]) { return kind === "family_setup" ? "border-sky-500/40 border-l-4" : "border-amber-500/40 border-l-4"; }
 function syncStatusClass(syncStatus: string, canRetry: boolean) {
   const base = "inline-flex rounded-full px-2 py-1 text-xs font-bold capitalize";
   if (canRetry) return `${base} bg-amber-500/15 text-amber-700 dark:text-amber-300`;
