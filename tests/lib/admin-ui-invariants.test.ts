@@ -12,5 +12,9 @@ describe("admin diagnostics UI invariants", () => {
     expect(detail).toContain("Quick insights");
     expect(detail).toContain("Retry problem syncs");
     expect(detail).toContain("Diagnostic detail");
+    expect(detail).toContain("Sync health");
+    expect(detail).toContain("Issue mix");
+    expect(detail).toContain("Reading load");
+    expect(detail).not.toContain("Retry all affected");
   });
 });
