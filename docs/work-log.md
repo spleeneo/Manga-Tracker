@@ -1,5 +1,40 @@
 # Work Log
 
+## 2026-09-01 - Make Reader Page Reloads Eager
+
+### Why
+
+- A failed individual reader page could show the new `Reload page` action, but clicking it did not reliably load the image until the whole browser page was refreshed.
+- Retried page images should issue an immediate fresh request from the in-place recovery control.
+
+### Plan
+
+- Inspect the reader page image retry path.
+- Make manual and automatic retries remount a cache-busted image and load it eagerly.
+- Strengthen the reader invariant so the retry behavior remains present.
+- Verify with focused checks and the full repository gate.
+
+### Changes
+
+- Reader page retries now render a fresh image element keyed by the retry attempt.
+- Retried page images now switch to eager loading so the page currently being recovered requests immediately instead of depending on lazy-load heuristics.
+- Expanded the reader invariant to cover the retry remount and eager loading behavior.
+
+### Verification
+
+- `npx vitest run tests/lib/reader-routing-invariants.test.ts`: passed (4 tests).
+- `npx eslint src/components/chapter-reader.tsx tests/lib/reader-routing-invariants.test.ts`: passed with the existing reader `no-img-element` warning for provider page images.
+- `npm run verify`: passed; ESLint completed with the existing 8 `no-img-element` warnings, all 286 tests passed, and the production build completed.
+- Browser synthesis of a native image failure was not available from the current tool surface, so the changed in-place recovery path was verified through the focused invariant, lint, full tests, TypeScript, and production build.
+
+### Outcome
+
+- The in-place failed-page reload button now forces a fresh, eager image load, reducing the chance that a user needs to refresh the whole reader route to recover one unloaded page.
+
+### Learnings
+
+- [Reader Page Retries Must Force Fresh Eager Loads](learnings.md#2026-09-01---reader-page-retries-must-force-fresh-eager-loads)
+
 ## 2026-08-30 - Surface Real Admin Sync Failures
 
 ### Why

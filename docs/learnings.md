@@ -1,5 +1,16 @@
 # Learnings Log
 
+## 2026-09-01 - Reader Page Retries Must Force Fresh Eager Loads
+
+Context:
+- Failed reader images showed an in-place reload action, but a manual retry could still leave the page unloaded until the whole browser route was refreshed.
+
+Learning:
+- A resource retry control should change both the request URL and the rendered element identity, and should avoid lazy-loading the retried resource when the user is actively recovering it.
+
+Action:
+- Key retried reader images by retry attempt, cache-bust their URL, and switch retries to eager image loading.
+
 ## 2026-08-30 - Admin Diagnostics Need Shared Job Evidence
 
 Context:

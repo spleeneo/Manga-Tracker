@@ -580,6 +580,8 @@ function ReaderPageImage({ chapterNumber, fitWidth, loading, page }: { chapterNu
 
   const pageLabel = `Chapter ${chapterNumber} page ${page.index + 1}`;
   const imageClassName = fitWidth ? "mx-auto h-auto w-full max-w-full rounded-sm bg-card" : "mx-auto h-auto max-w-none rounded-sm bg-card";
+  const imageSrc = withReaderReloadParam(page.imageUrl, retryNonce);
+  const imageLoading = retryNonce > 0 ? "eager" : loading;
 
   if (failed) {
     const willAutoRetry = autoRetryCount < PAGE_AUTO_RETRY_DELAYS_MS.length;
@@ -604,11 +606,12 @@ function ReaderPageImage({ chapterNumber, fitWidth, loading, page }: { chapterNu
 
   return (
     <img
+      key={retryNonce}
       data-reader-page-index={page.index}
-      src={withReaderReloadParam(page.imageUrl, retryNonce)}
+      src={imageSrc}
       alt={pageLabel}
       className={imageClassName}
-      loading={loading}
+      loading={imageLoading}
       onError={() => setFailed(true)}
       onLoad={() => {
         setFailed(false);

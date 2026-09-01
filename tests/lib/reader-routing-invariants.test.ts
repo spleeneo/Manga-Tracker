@@ -34,6 +34,9 @@ describe("reader routing invariants", () => {
     expect(reader).toContain("ReaderPageImage");
     expect(reader).toContain("Reload page");
     expect(reader).toContain("readerReload=");
+    expect(reader).toContain("key={retryNonce}");
+    expect(reader).toContain("const imageLoading = retryNonce > 0 ? \"eager\" : loading;");
+    expect(reader).toContain("loading={imageLoading}");
     expect(reader).toContain("onError={() => setFailed(true)}");
   });
 });
