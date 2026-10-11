@@ -28,13 +28,13 @@ describe("account diagnostics", () => {
     expect(isRetryableSync({ syncStatus: "SYNCING", syncStartedAt: new Date("2026-07-08T11:55:00Z") }, now)).toBe(false);
   });
 
-  it("does not flag completed manga as retryable account sync problems", () => {
+  it("flags failed and stale imports even for completed manga", () => {
     const completedFailed = { syncStatus: "FAILED", syncStartedAt: null, mangaStatus: "COMPLETED" };
     const completedStale = { syncStatus: "SYNCING", syncStartedAt: new Date("2026-07-08T11:20:00Z"), mangaStatus: "COMPLETED" };
 
-    expect(isRetryableSync(completedFailed, now)).toBe(false);
-    expect(isRetryableSync(completedStale, now)).toBe(false);
-    expect(accountHealth({ library: [completedFailed, completedStale], familyStatuses: [] }, now)).toEqual({ level: "healthy", issues: [] });
+    expect(isRetryableSync(completedFailed, now)).toBe(true);
+    expect(isRetryableSync(completedStale, now)).toBe(true);
+    expect(accountHealth({ library: [completedFailed, completedStale], familyStatuses: [] }, now)).toEqual({ level: "attention", issues: ["Failed synchronization", "Stale synchronization"] });
   });
 
   it("flags a failed latest shared job even when the library row was previously updated", () => {
@@ -78,7 +78,7 @@ describe("account diagnostics", () => {
     ]));
   });
 
-  it("omits completed manga from detailed sync issues", () => {
+  it("includes failed completed imports in detailed sync issues", () => {
     const issues = buildAccountIssues({
       library: [
         { id: "completed", title: "Naruto", syncStatus: "FAILED", syncStartedAt: null, syncError: "Old failure", mangaStatus: "COMPLETED" },
@@ -86,6 +86,6 @@ describe("account diagnostics", () => {
       familyLinks: [],
     }, now);
 
-    expect(issues).toEqual([]);
+    expect(issues).toEqual([expect.objectContaining({ kind: "failed_sync", title: "Naruto" })]);
   });
 });

@@ -81,4 +81,9 @@ describe("source quality scoring", () => {
       missingChapterGaps: 2,
     });
   });
+  it("counts chapter-zero duplicates and scores a zero-only source as populated", () => {
+    expect(countChapterQuality([0, 0, 1])).toEqual({ duplicateChapterNumbers: 1, missingChapterGaps: 0 });
+    const source = { ...probes[0], chapterCount: 1 };
+    expect(scoreProbe({ ...source, latestChapterNumber: 0 }, "tracking")).toBe(scoreProbe({ ...source, latestChapterNumber: 1 }, "tracking"));
+  });
 });

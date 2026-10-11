@@ -101,7 +101,7 @@ describe("enqueueMangaSyncJob", () => {
     }));
   });
 
-  it("excludes completed manga from the daily tracked-manga sweep", async () => {
+  it("excludes imported completed manga but schedules empty completed imports", async () => {
     mangaFindManyMock.mockResolvedValue([{ id: "ongoing-manga" }]);
     syncJobFindManyMock.mockResolvedValue([]);
 
@@ -113,6 +113,7 @@ describe("enqueueMangaSyncJob", () => {
         OR: [
           { status: null },
           { status: { not: "COMPLETED" } },
+          { chapters: { none: {} } },
         ],
       },
       select: { id: true },
@@ -123,7 +124,7 @@ describe("enqueueMangaSyncJob", () => {
     });
   });
 
-  it("excludes completed manga from user library sync queueing", async () => {
+  it("includes empty completed imports in user library sync queueing", async () => {
     userMangaFindManyMock.mockResolvedValue([{ mangaId: "ongoing-manga" }]);
     syncJobFindManyMock.mockResolvedValue([]);
 
@@ -136,6 +137,7 @@ describe("enqueueMangaSyncJob", () => {
           OR: [
             { status: null },
             { status: { not: "COMPLETED" } },
+            { chapters: { none: {} } },
           ],
         },
       },

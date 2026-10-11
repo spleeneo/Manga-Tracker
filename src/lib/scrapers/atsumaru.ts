@@ -1,5 +1,6 @@
 import { MangaMetadata, ReaderChapterInput, ReaderSourceInput, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { fetchWithRetry } from "./http";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 
 const ATSUMARU_BASE = "https://atsu.moe";
 
@@ -63,8 +64,8 @@ function getImageUrl(value?: string | { url?: string }) {
 
 function parseChapterNumber(chapter: AtsumaruChapter): number | null {
   if (typeof chapter.number === "number" && Number.isFinite(chapter.number)) return chapter.number;
-  const match = chapter.title?.match(/(?:chapter|ch\.?|version|punch)?\s*(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
+  const match = chapter.title?.match(/(?:\b(?:chapter|ch\.?|version|punch)\s*|^\s*#?\s*)(\d+(?:\.\d+)?)/i);
+  if (!match) return resolveChapterNumber(null, chapter.title);
   const chapterNumber = Number(match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
 }
@@ -78,10 +79,9 @@ function getReleaseDate(value?: number | string) {
   return undefined;
 }
 
-function mapChapter(mangaId: string, chapter: AtsumaruChapter): ScrapedChapter | null {
+function mapChapter(mangaId: string, chapter: AtsumaruChapter, singleRelease = false): ScrapedChapter | null {
   if (!chapter.id) return null;
-  const chapterNumber = parseChapterNumber(chapter);
-  if (chapterNumber === null) return null;
+  const chapterNumber = requireChapterNumber(resolveChapterNumber(parseChapterNumber(chapter), chapter.title, singleRelease), "Atsumaru");
 
   return {
     providerChapterId: chapter.id,
@@ -151,7 +151,7 @@ export class AtsumaruScraper implements Scraper {
       `${ATSUMARU_BASE}/api/manga/allChapters?mangaId=${encodeURIComponent(ids.mangaId)}`,
     );
     for (const chapter of list.chapters ?? []) {
-      addChapter(mapChapter(ids.mangaId, chapter));
+      addChapter(mapChapter(ids.mangaId, chapter, list.chapters?.length === 1));
     }
 
     if (ids.chapterId) {

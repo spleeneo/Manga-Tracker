@@ -7,18 +7,13 @@ export const STALE_SYNC_MS = 10 * 60_000;
 export type SyncDiagnostic = { syncStatus: string; syncStartedAt: Date | null; mangaStatus?: string | null; latestJobStatus?: string | null };
 export type AccountHealthLevel = "healthy" | "attention";
 
-export function isCompletedManga(sync: Pick<SyncDiagnostic, "mangaStatus">) {
-  return sync.mangaStatus === "COMPLETED";
-}
-
 export function isRetryableSync(sync: SyncDiagnostic, now = new Date()) {
-  if (isCompletedManga(sync)) return false;
   return sync.syncStatus === "FAILED" || sync.latestJobStatus === "FAILED" || (sync.syncStatus === "SYNCING" && Boolean(sync.syncStartedAt && now.getTime() - sync.syncStartedAt.getTime() > STALE_SYNC_MS));
 }
 
 export function accountHealth(input: { library: SyncDiagnostic[]; familyStatuses: string[] }, now = new Date()) {
   const issues: string[] = [];
-  const activeLibrary = input.library.filter((item) => !isCompletedManga(item));
+  const activeLibrary = input.library;
   if (activeLibrary.some((item) => item.syncStatus === "FAILED" || item.latestJobStatus === "FAILED")) issues.push("Failed synchronization");
   if (activeLibrary.some((item) => item.syncStatus === "SYNCING" && isRetryableSync(item, now))) issues.push("Stale synchronization");
   if (input.familyStatuses.some((status) => status !== "ACTIVE")) issues.push("Incomplete family setup");
@@ -32,7 +27,6 @@ export function buildAccountIssues(input: {
   familyLinks: Array<{ label: string; status: string }>;
 }, now = new Date()): AccountIssue[] {
   const syncIssues = input.library.flatMap((item): AccountIssue[] => {
-    if (isCompletedManga(item)) return [];
     const error = item.syncError ?? item.latestJobError;
     if (item.syncStatus === "FAILED" || item.latestJobStatus === "FAILED") return [{ kind: "failed_sync", title: item.title, summary: "Synchronization failed", detail: error || "No error detail was stored for this failure.", startedAt: item.syncStartedAt, userMangaId: item.id }];
     if (item.syncStatus === "SYNCING" && isRetryableSync(item, now)) {

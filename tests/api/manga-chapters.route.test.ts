@@ -64,6 +64,14 @@ describe("GET /api/manga/[slug]/chapters", () => {
     expect(JSON.stringify(body)).not.toContain("Secret Provider");
   });
 
+  it.each([null, 0])("distinguishes unread from read chapter zero at progress %s", async (progress) => {
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", lastReadChapterNumber: progress, disabledSources: [], sourcePreferences: [] });
+    chapterFindManyMock.mockResolvedValue([{ id: "c0", chapterNumber: 0, title: "One-shot", url: "u0", releaseDate: null, sourceId: "s1" }]);
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-piece/chapters") };
+    const res = await GET(req as never, { params: Promise.resolve({ slug: "one-piece" }) });
+    expect((await res.json()).chapters[0].isRead).toBe(progress !== null);
+  });
+
   it("requires ownership before returning chapter pages", async () => {
     userMangaFindUniqueMock.mockResolvedValue(null);
 

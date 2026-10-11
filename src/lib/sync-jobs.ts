@@ -140,6 +140,7 @@ export async function enqueueUserLibrarySyncJobs(userId: string) {
         OR: [
           { status: null },
           { status: { not: "COMPLETED" } },
+          { chapters: { none: {} } },
         ],
       },
     },
@@ -164,6 +165,7 @@ export async function enqueueTrackedMangaSyncJobs() {
       OR: [
         { status: null },
         { status: { not: "COMPLETED" } },
+        { chapters: { none: {} } },
       ],
     },
     select: { id: true },
@@ -277,8 +279,8 @@ async function runClaimedSyncJob(jobId: string) {
     return { id: jobId, status: "skipped" as const };
   }
 
-  // Scheduled sweeps exclude completed works; explicitly queued jobs still need
-  // to import their chapters, including a newly tracked one-shot's chapter 0.
+  // Publication status is independent of import status: every claimed job
+  // must fetch chapters, including a completed one-shot's chapter 0.
   try {
     const result = await updateSingleManga(job.mangaId);
     if ("allSourcesFailed" in result && result.allSourcesFailed) {

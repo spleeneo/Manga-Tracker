@@ -76,21 +76,16 @@ describe("admin user routes", () => {
       { id: "completed", mangaId: "m3", syncStatus: "UPDATED", syncStartedAt: null, manga: { status: "COMPLETED", syncJobs: [{ status: "FAILED" }] } },
       { id: "failed-job", mangaId: "m4", syncStatus: "UPDATED", syncStartedAt: null, manga: { status: "ONGOING", syncJobs: [{ status: "FAILED" }] } },
     ]);
-    mocks.enqueue.mockResolvedValueOnce({ id: "job" }).mockResolvedValueOnce({ id: "job2" });
+    mocks.enqueue.mockResolvedValueOnce({ id: "job" }).mockResolvedValueOnce({ id: "job2" }).mockResolvedValueOnce({ id: "job3" });
     mocks.processJobs.mockResolvedValue({ processed: 2, completed: 2, failed: 0, retrying: 0, skipped: 0, remaining: 0 });
     const response = await retrySyncs(new Request("http://local", { method: "POST", body: "{}" }), context());
-    expect(await response.json()).toEqual({ queued: 2, settledCompleted: 1, skipped: 1, jobs: [{ id: "job" }, { id: "job2" }], processing: { processed: 2, completed: 2, failed: 0, retrying: 0, skipped: 0, remaining: 0 } });
+    expect(await response.json()).toEqual({ queued: 3, settledCompleted: 0, skipped: 1, jobs: [{ id: "job" }, { id: "job2" }, { id: "job3" }], processing: { processed: 2, completed: 2, failed: 0, retrying: 0, skipped: 0, remaining: 0 } });
     expect(mocks.enqueue).toHaveBeenCalledWith("target", "m1");
     expect(mocks.enqueue).toHaveBeenCalledWith("target", "m4");
-    expect(mocks.processJobs).toHaveBeenCalledWith(["job", "job2"], { concurrency: 4 });
-    expect(mocks.libraryUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: "target", id: { in: ["completed"] } },
-      data: expect.objectContaining({ syncStatus: "UPDATED", syncStartedAt: null, syncError: null }),
-    }));
-    expect(mocks.syncJobUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { type: "MANGA_UPDATE", mangaId: { in: ["m3"] }, status: { in: ["QUEUED", "RUNNING"] } },
-      data: expect.objectContaining({ status: "DONE", lockedAt: null, error: null }),
-    }));
+    expect(mocks.enqueue).toHaveBeenCalledWith("target", "m3");
+    expect(mocks.processJobs).toHaveBeenCalledWith(["job", "job2", "job3"], { concurrency: 4 });
+    expect(mocks.libraryUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.syncJobUpdateMany).not.toHaveBeenCalled();
   });
 
   it("unlinks only a relationship involving the target and cleans child controls", async () => {

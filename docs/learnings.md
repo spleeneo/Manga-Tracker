@@ -530,3 +530,9 @@ A completed work still needs its initial chapter import. Apply routine refresh e
 ## 2026-10-11 — Unnumbered releases
 
 MangaDex chapter numbers are nullable; a one-shot may have a real release without a numeric label. Normalize a sole unnumbered feed entry to chapter zero while preserving provider identity. Avoid mapping multiple unnumbered releases to the same number under the current numeric dedup/progress model. A listed chapter may also have zero hosted pages and point to MangaPlus: verify chapter availability separately from in-app reader availability.
+
+## 2026-10-11 — Provider chapter contracts
+
+Test chapter zero and named one-shots through the registry for every registered provider, not just isolated adapters. Dedicated adapters must precede generic domain fallbacks; routing can otherwise make correct provider parsers unreachable. Guard ambiguous releases before numeric deduplication, because provider IDs alone cannot overcome the database's source/chapter-number uniqueness. Surface unsupported numbering explicitly rather than assigning every release zero or returning a falsely empty successful result.
+
+Publication completion is independent of import completion, retry eligibility, and account health. Include completed works with empty imports in recovery scheduling. Match actual chapter routes before requiring a number, ignore navigation/sidebar links, and normalize approved bare/www aliases. Never extract arbitrary title digits (years, awards) as chapter numbers. Keep reader availability distinct from the existence of a chapter entry.

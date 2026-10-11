@@ -1,6 +1,7 @@
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { withProviderClassification } from "@/lib/classification-utils";
 import { fetchWithRetry, ScraperRequestError } from "./http";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderChapterInput, ReaderResult, ReaderSourceInput, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://mangapill.com";
@@ -131,13 +132,17 @@ export class MangaPillScraper implements Scraper {
     const html = await response.text();
     const seen = new Set<string>();
 
-    return Array.from(html.matchAll(/href=["'](\/chapters\/([^"']*?chapter-([\d.]+))[^"']*)["']/gi))
+    const links = Array.from(html.matchAll(/<a\b[^>]*href=["'](\/chapters\/([^"']+))["'][^>]*>([\s\S]*?)<\/a>/gi));
+    const uniqueLinks = Array.from(new Map(links.map((match) => [match[1], match])).values());
+    return uniqueLinks
       .map((match) => {
         const chapterUrl = toAbsoluteUrl(match[1], url);
+        const number = match[1].match(/chapter-([\d.]+)/i)?.[1];
+        const label = stripTags(match[3]);
         return {
           providerChapterId: match[2],
-          chapterNumber: Number(match[3]),
-          title: `Chapter ${match[3]}`,
+          chapterNumber: requireChapterNumber(resolveChapterNumber(number, label, uniqueLinks.length === 1), this.name),
+          title: number ? `Chapter ${number}` : label || "One-shot",
           url: chapterUrl,
         };
       })

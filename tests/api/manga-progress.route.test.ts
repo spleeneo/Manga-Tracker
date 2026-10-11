@@ -79,6 +79,16 @@ describe("POST /api/manga/[slug]/progress", () => {
     expect(userMangaUpdateMock).not.toHaveBeenCalled();
   });
 
+  it.each(["set", "caught-up", "next"])("marks chapter zero read with %s", async (action) => {
+    userMangaFindUniqueMock.mockResolvedValue({ id: "um1", mangaId: "m1", lastReadChapterNumber: null });
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 0 });
+    chapterAggregateMock.mockResolvedValue({ _max: { chapterNumber: 0 } });
+    const req = new Request("http://localhost", { method: "POST", body: JSON.stringify({ action, chapterNumber: 0 }), headers: { "content-type": "application/json" } });
+    const res = await POST(req as never, { params: Promise.resolve({ slug: "one-piece" }) });
+    expect(res.status).toBe(200);
+    expect(userMangaUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ lastReadChapterNumber: 0 }) }));
+  });
+
   it("sets progress to a specific chapter number", async () => {
     chapterFindFirstMock.mockResolvedValue({ chapterNumber: 4 });
     const req = new Request("http://localhost", {

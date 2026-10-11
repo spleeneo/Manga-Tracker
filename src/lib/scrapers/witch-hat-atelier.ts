@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./http";
+import { assertUnambiguousChapterZero, resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderChapterInput, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://witchhatateliermanga.com/";
@@ -35,13 +36,14 @@ function toAbsoluteUrl(url: string): string {
 function parseChapterNumber(value: string): number | null {
   const match = value.match(/witch-hat-atelier-chapter-(\d+)(?:-(\d+))?/i)
     ?? value.match(/chapter\s+(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
+  if (!match) return /\/(?:manga|chapter)\//i.test(value) ? resolveChapterNumber(null, value) : null;
 
   const chapterNumber = Number(match[2] ? `${match[1]}.${match[2]}` : match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
 }
 
 function uniqueByChapterNumber(chapters: ScrapedChapter[]): ScrapedChapter[] {
+  assertUnambiguousChapterZero(chapters);
   const seen = new Set<number>();
   const unique: ScrapedChapter[] = [];
 
@@ -145,7 +147,7 @@ export class WitchHatAtelierScraper implements Scraper {
 
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {
     const html = await this.fetchHtml(url);
-    const linkMatches = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']*\/manga\/witch-hat-atelier-chapter-[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
+    const linkMatches = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']*\/manga\/witch-hat-atelier-(?:chapter-|one-shot|oneshot)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi));
     const chapters = linkMatches.flatMap((match) => {
       const chapterNumber = parseChapterNumber(match[1]) ?? parseChapterNumber(match[2]);
       if (chapterNumber == null) return [];

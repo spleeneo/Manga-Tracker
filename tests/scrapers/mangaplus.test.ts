@@ -57,9 +57,10 @@ describe("MangaPlusScraper", () => {
     const scraper = new MangaPlusScraper();
     const chapters = await scraper.fetchChapters("https://mangaplus.shueisha.co.jp/titles/100009");
 
-    expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([1, 4]);
+    expect(chapters.map((chapter) => chapter.chapterNumber)).toEqual([1, 0, 4]);
     expect(chapters.map((chapter) => chapter.url)).toEqual([
       "https://mangaplus.shueisha.co.jp/viewer/1000303",
+      "https://mangaplus.shueisha.co.jp/viewer/1006664",
       "https://mangaplus.shueisha.co.jp/viewer/1000306",
     ]);
     expect(chapters.some((chapter) => chapter.chapterNumber === 1006664)).toBe(false);

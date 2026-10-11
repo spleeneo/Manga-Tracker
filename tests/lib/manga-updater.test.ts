@@ -82,6 +82,21 @@ describe("checkForUpdates", () => {
     expect(results[0].status).toContain("No sources identified");
   });
 
+  it("imports chapter zero and deduplicates it by provider ID and number", async () => {
+    findManyManga.mockResolvedValue([{ id: "m1", title: "One-shot", status: "COMPLETED", sources: [{ id: "s1", sourceName: "MangaPill", sourceUrl: "https://mangapill.com/manga/1/example" }] }]);
+    scrapeChapters.mockResolvedValue([
+      { providerChapterId: "zero", chapterNumber: 0, title: "One-shot", url: "u0" },
+      { providerChapterId: "zero", chapterNumber: 0, title: "One-shot", url: "u0" },
+    ]);
+    createManyChapter.mockResolvedValue({ count: 1 });
+    await checkForUpdates("m1");
+    expect(createManyChapter).toHaveBeenCalledWith({ data: [expect.objectContaining({ chapterNumber: 0, providerChapterId: "zero" })], skipDuplicates: true });
+    createManyChapter.mockClear();
+    findManyChapter.mockResolvedValue([{ providerChapterId: "zero", chapterNumber: 0 }]);
+    await checkForUpdates("m1");
+    expect(createManyChapter).not.toHaveBeenCalled();
+  });
+
   it("creates only non-existing chapters per source", async () => {
     findManyManga.mockResolvedValue([
       {

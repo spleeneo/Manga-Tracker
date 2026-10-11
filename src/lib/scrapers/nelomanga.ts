@@ -3,10 +3,11 @@ import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "./neloma
 import { fetchWithRetry, ScraperRequestError } from "./http";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { withProviderClassification } from "@/lib/classification-utils";
+import { ChapterNumberError, requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 
 interface NeloChapterApiItem {
     chapter_slug: string;
-    chapter_num: number;
+    chapter_num: number | null;
     chapter_name: string;
     updated_at?: string;
 }
@@ -121,7 +122,7 @@ export class NeloMangaScraper implements Scraper {
                     chapters.push({
                         providerChapterId: ch.chapter_slug,
                         url: `https://www.nelomanga.net/manga/${slug}/${ch.chapter_slug}`,
-                        chapterNumber: ch.chapter_num,
+                        chapterNumber: requireChapterNumber(resolveChapterNumber(ch.chapter_num, ch.chapter_name, offset === 0 && apiChapters.length === 1 && result.data?.pagination?.has_more === false), this.name),
                         title: ch.chapter_name,
                         releaseDate: ch.updated_at ? new Date(ch.updated_at) : new Date(),
                     });
@@ -142,6 +143,7 @@ export class NeloMangaScraper implements Scraper {
 
             return chapters.length > 0 ? chapters : this.fetchChaptersFromHtml(url);
         } catch (e) {
+            if (e instanceof ChapterNumberError) throw e;
             if (e instanceof ScraperRequestError) {
                 console.error(`[NeloManga] API chapters failed (${e.kind})`);
             } else {
@@ -158,20 +160,27 @@ export class NeloMangaScraper implements Scraper {
         const html = await res.text();
 
         const chapters: ScrapedChapter[] = [];
+        const sourceUrl = new URL(url);
         const chapterRegex = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]+?)<\/a>/gi;
         let match;
 
         while ((match = chapterRegex.exec(html)) !== null) {
             const link = match[1];
             const text = match[2].replace(/<[^>]*>?/gm, '').trim();
-
-            if (link.includes('/chapter/') || text.toLowerCase().includes('chapter')) {
-                const numMatch = text.match(/([\d.]+)/);
-                if (numMatch) {
+            const chapterUrl = new URL(link, url);
+            const belongsToManga = chapterUrl.hostname.replace(/^www\./, "") === "nelomanga.net"
+                && sourceUrl.hostname.replace(/^www\./, "") === "nelomanga.net"
+                && chapterUrl.protocol === sourceUrl.protocol && chapterUrl.port === sourceUrl.port
+                && chapterUrl.pathname.startsWith(`${sourceUrl.pathname.replace(/\/$/, "")}/`);
+            if (belongsToManga && /\/(?:chapter[-/]|one-shot|oneshot)/i.test(chapterUrl.pathname)) {
+                const numMatch = text.match(/(?:chapter|ch\.?|#)\s*(\d+(?:\.\d+)?)/i)
+                    ?? link.match(/chapter[-/](\d+(?:\.\d+)?)/i);
+                const number = requireChapterNumber(resolveChapterNumber(numMatch?.[1], `${text} ${chapterUrl.pathname}`), this.name);
+                if (number !== null) {
                     chapters.push({
                         providerChapterId: link,
-                        url: link.startsWith('http') ? link : `https://www.nelomanga.net${link}`,
-                        chapterNumber: parseFloat(numMatch[1]),
+                        url: chapterUrl.toString(),
+                        chapterNumber: number,
                         title: text,
                         releaseDate: new Date(),
                     });

@@ -17,9 +17,9 @@ import { getCanonicalMangaTitle } from "@/lib/manga-aliases";
 import { normalizeSearchTitle, getCanonicalSearchTitle, sameWork } from "@/lib/work-identity";
 import { getPreferredSourceRank } from "@/lib/source-preference";
 import { sourceIdentity } from "@/lib/search-library";
+import { assertUnambiguousChapterZero } from "./chapter-number";
 
 const scrapers: Scraper[] = [
-    new SingleMangaSiteScraper(),
     new WitchHatAtelierScraper(),
     new LandOfTheLustrousScraper(),
     new MangaDexScraper(),
@@ -33,6 +33,7 @@ const scrapers: Scraper[] = [
     new ManganatoScraper(),
     new MangaPillScraper(),
     new AtsumaruScraper(),
+    new SingleMangaSiteScraper(),
 ];
 
 function getQueryMatchRank(query: string, title: string) {
@@ -56,21 +57,30 @@ export function getScraperStatus() {
     }));
 }
 
+function findScraper(url: string) {
+    return scrapers.find((scraper) => scraper.canHandle(url));
+}
+
 export async function scrapeChapters(url: string, source?: ReaderSourceInput): Promise<ScrapedChapter[]> {
-    const scraper = scrapers.find(s => s.canHandle(url));
+    const scraper = findScraper(url);
     if (!scraper) {
         throw new Error(`No scraper found for URL: ${url}`);
     }
-    return scraper.fetchChapters(url, source);
+    const chapters = await scraper.fetchChapters(url, source);
+    if (chapters.some((chapter) => !Number.isFinite(chapter.chapterNumber) || chapter.chapterNumber < 0)) {
+        throw new Error(`${scraper.name} returned an invalid chapter number`);
+    }
+    assertUnambiguousChapterZero(chapters);
+    return chapters;
 }
 
 export function supportsInternalReader(url: string) {
-    const scraper = scrapers.find((candidate) => candidate.canHandle(url));
+    const scraper = findScraper(url);
     return Boolean(scraper?.capabilities?.reader && scraper.fetchReaderPages);
 }
 
 export async function fetchMetadata(url: string): Promise<MangaMetadata> {
-    const scraper = scrapers.find(s => s.canHandle(url));
+    const scraper = findScraper(url);
     if (!scraper) {
         throw new Error(`No scraper found for URL: ${url}`);
     }
@@ -78,7 +88,7 @@ export async function fetchMetadata(url: string): Promise<MangaMetadata> {
 }
 
 export async function fetchReaderPages(chapter: ReaderChapterInput, source: ReaderSourceInput): Promise<ReaderResult> {
-    const scraper = scrapers.find(s => s.canHandle(source.sourceUrl) || s.canHandle(chapter.url));
+    const scraper = findScraper(source.sourceUrl) ?? findScraper(chapter.url);
     if (!scraper?.fetchReaderPages || !scraper.capabilities?.reader) {
         return {
             status: "EXTERNAL_ONLY",

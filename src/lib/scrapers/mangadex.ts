@@ -1,6 +1,7 @@
 import { ScrapedChapter, Scraper, MangaMetadata, SearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
 import { fetchWithRetry, ScraperRequestError } from "./http";
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 
 interface MangaDexRelationship {
     type: string;
@@ -90,10 +91,7 @@ export class MangaDexScraper implements Scraper {
 
             chapters.push(...page.map((item) => ({
                 providerChapterId: item.id,
-                // A single unnumbered release is a one-shot. Do not assign the
-                // same number to multiple unnumbered entries and collapse them.
-                chapterNumber: item.attributes.chapter === null && data.total === 1
-                    ? 0 : parseFloat(item.attributes.chapter ?? ""),
+                chapterNumber: requireChapterNumber(resolveChapterNumber(item.attributes.chapter, item.attributes.title, data.total === 1), this.name),
                 title: item.attributes.title || (item.attributes.chapter === null ? "One-shot" : `Chapter ${item.attributes.chapter}`),
                 url: `https://mangadex.org/chapter/${item.id}`,
                 releaseDate: new Date(item.attributes.publishAt),

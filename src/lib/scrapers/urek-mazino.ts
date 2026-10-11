@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./http";
+import { resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://urekmazino.com";
@@ -37,7 +38,7 @@ function getNuxtConfigValue(html: string, key: string): string | undefined {
 
 function parseChapterNumber(value: string): number | null {
   const match = value.match(/(?:chapter\/|chapter\s+|^)(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
+  if (!match) return /\/chapter\//i.test(value) ? resolveChapterNumber(null, value) : null;
 
   const number = Number(match[1]);
   return Number.isFinite(number) ? number : null;

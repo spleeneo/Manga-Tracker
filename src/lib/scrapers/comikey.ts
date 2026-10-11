@@ -1,6 +1,7 @@
 import { MangaMetadata, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { fetchWithRetry } from "./http";
 import { normalizeMangaStatus } from "@/lib/manga-status";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 
 const COMIKEY_BASE_URL = "https://comikey.com";
 const COMIKEY_GUNDAM_API = "https://gundam.comikey.net";
@@ -225,10 +226,9 @@ export class ComikeyScraper implements Scraper {
 
       const episodes = await this.fetchEpisodes(comicId);
       return episodes.flatMap((episode) => {
-        const chapterNumber = episode.number ?? parseChapterNumber(episode.title);
-        if (chapterNumber == null) return [];
         const releaseDate = parseDate(episode.releasedAt);
         if (releaseDate && releaseDate.getTime() > Date.now()) return [];
+        const chapterNumber = requireChapterNumber(resolveChapterNumber(episode.number ?? parseChapterNumber(episode.title), episode.title, episodes.length === 1), this.name);
 
         const chapterUrl = buildEpisodeUrl(comic, episode, chapterNumber);
         if (!chapterUrl) return [];
@@ -243,7 +243,7 @@ export class ComikeyScraper implements Scraper {
       }).sort((a, b) => b.chapterNumber - a.chapterNumber);
     } catch (error) {
       console.error("Comikey chapters failed:", error);
-      return [];
+      throw error;
     }
   }
 }

@@ -100,7 +100,7 @@ describe("MangaDexScraper", () => {
       { ...chapter("a", "1"), attributes: { ...chapter("a", "1").attributes, chapter: null } },
       { ...chapter("b", "2"), attributes: { ...chapter("b", "2").attributes, chapter: null } },
     ], total: 2, limit: 100 }));
-    expect(await new MangaDexScraper().fetchChapters("https://mangadex.org/title/6eca560a-d5e3-4711-88c4-5676e3cd8364")).toEqual([]);
+    await expect(new MangaDexScraper().fetchChapters("https://mangadex.org/title/6eca560a-d5e3-4711-88c4-5676e3cd8364")).rejects.toThrow("unnumbered release");
   });
 
   it("maps MangaDex AtHome pages for the in-app reader", async () => {

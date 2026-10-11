@@ -1,5 +1,6 @@
 import { MangaMetadata, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { fetchWithRetry } from "./http";
+import { assertUnambiguousChapterZero, resolveChapterNumber } from "./chapter-number";
 
 const VIZ_BASE_URL = "https://www.viz.com";
 const SERIES_INDEX_URL = `${VIZ_BASE_URL}/search/series_titles.js`;
@@ -37,7 +38,7 @@ function extractFirst(html: string, pattern: RegExp): string | undefined {
 
 function parseChapterNumber(text: string): number | null {
   const match = text.match(/(?:chapter|ch\.?|#)\s*(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
+  if (!match) return resolveChapterNumber(null, text);
 
   const chapterNumber = Number(match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
@@ -142,7 +143,7 @@ export class VizScraper implements Scraper {
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {
     try {
       const html = await this.fetchText(url);
-      const chapters = new Map<number, ScrapedChapter>();
+      const chapters: ScrapedChapter[] = [];
       const anchorPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
 
       for (const match of html.matchAll(anchorPattern)) {
@@ -151,19 +152,18 @@ export class VizScraper implements Scraper {
         const chapterNumber = parseChapterNumber(label) ?? parseChapterNumber(href);
 
         if (chapterNumber === null || !href.includes("/read/")) continue;
-        if (!chapters.has(chapterNumber)) {
-          chapters.set(chapterNumber, {
+          chapters.push({
             chapterNumber,
             title: label || `Chapter ${chapterNumber}`,
             url: toAbsoluteVizUrl(href),
           });
-        }
       }
 
-      return Array.from(chapters.values()).sort((a, b) => b.chapterNumber - a.chapterNumber);
+      assertUnambiguousChapterZero(chapters);
+      return Array.from(new Map(chapters.map((chapter) => [chapter.chapterNumber, chapter])).values()).sort((a, b) => b.chapterNumber - a.chapterNumber);
     } catch (error) {
       console.error("VIZ chapters failed:", error);
-      return [];
+      throw error;
     }
   }
 }

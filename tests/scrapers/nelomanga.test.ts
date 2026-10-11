@@ -33,6 +33,14 @@ function textResponse(body: string) {
 }
 
 describe("NeloMangaScraper", () => {
+  it.each(["nelomanga.net", "www.nelomanga.net"])("imports HTML chapter zero from %s while ignoring navigation", async (host) => {
+    fetchWithRetryMock
+      .mockResolvedValueOnce({ json: async () => ({ success: false }) })
+      .mockResolvedValueOnce({ text: async () => '<a href="#chapters">Chapters</a><a href="https://www.nelomanga.net/manga/example/chapter-0">Prologue</a><a href="/manga/unrelated/chapter-0">Chapter 0</a>' });
+    const chapters = await new NeloMangaScraper().fetchChapters(`https://${host}/manga/example`);
+    expect(chapters).toHaveLength(1);
+    expect(chapters[0]).toMatchObject({ chapterNumber: 0, url: "https://www.nelomanga.net/manga/example/chapter-0" });
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

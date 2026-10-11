@@ -1,5 +1,6 @@
 import { Scraper, SearchResult, ScrapedChapter, MangaMetadata } from "./types";
 import { fetchWithRetry, ScraperRequestError } from "./http";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 
 const API_BASE = "https://jumpg-webapi.tokyo-cdn.com/api";
 
@@ -61,7 +62,7 @@ interface MangaPlusNamedTitle extends MangaPlusTitle {
 }
 
 function parseChapterNumber(name?: string): number | null {
-    const match = name?.match(/#?\s*(\d+(?:\.\d+)?)/);
+    const match = name?.match(/^(?:#|chapter\s*|ch\.?\s*|episode\s*)?\s*(\d+(?:\.\d+)?)/i);
     if (!match) return null;
 
     const chapterNumber = Number(match[1]);
@@ -182,16 +183,17 @@ export class MangaPlusScraper implements Scraper {
 
             if (!detail) return [];
 
-            const publicChapters = getPublicWindowChapters(detail.chapterListGroup ?? []);
+            const publicChapters = Array.from(new Map(getPublicWindowChapters(detail.chapterListGroup ?? [])
+                .filter((chapter) => typeof chapter.chapterId === "number")
+                .map((chapter) => [chapter.chapterId, chapter])).values());
 
             return publicChapters
                 .filter((chapter) => typeof chapter.chapterId === "number")
-                .filter((chapter) => parseChapterNumber(chapter.name) !== null)
                 .map((chapter) => {
                     const header = chapter.name || "";
                     const sub = chapter.subTitle || "";
                     const title = header && sub ? `${header}: ${sub}` : header || sub || `Chapter ${chapter.chapterId}`;
-                    const num = parseChapterNumber(header) ?? 0;
+                    const num = requireChapterNumber(resolveChapterNumber(parseChapterNumber(header), `${header} ${sub}`), this.name);
                     const releaseDate = chapter.startTimeStamp
                         ? new Date(chapter.startTimeStamp * 1000)
                         : undefined;
@@ -206,8 +208,7 @@ export class MangaPlusScraper implements Scraper {
                 });
         } catch (e) {
             console.error("MangaPlus chapters failed:", e);
-            if (e instanceof ScraperRequestError) throw e;
-            return [];
+            throw e;
         }
     }
 
@@ -217,8 +218,8 @@ export class MangaPlusScraper implements Scraper {
         try {
             const data = await this.fetchJson(url);
             const chapter = data.success?.mangaViewer?.currentChapter;
-            const chapterNumber = parseChapterNumber(chapter?.name);
-            if (typeof chapter?.chapterId !== "number" || chapterNumber === null) return [];
+            if (typeof chapter?.chapterId !== "number") return [];
+            const chapterNumber = requireChapterNumber(resolveChapterNumber(parseChapterNumber(chapter.name), `${chapter.name ?? ""} ${chapter.subTitle ?? ""}`, true), this.name);
 
             const header = chapter.name || "";
             const sub = chapter.subTitle || "";
@@ -236,8 +237,7 @@ export class MangaPlusScraper implements Scraper {
             }];
         } catch (e) {
             console.error("MangaPlus viewer chapter failed:", e);
-            if (e instanceof ScraperRequestError) throw e;
-            return [];
+            throw e;
         }
     }
 

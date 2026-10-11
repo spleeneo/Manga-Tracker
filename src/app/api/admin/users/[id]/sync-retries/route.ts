@@ -19,25 +19,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   const requested = new Set<string>(body.userMangaIds ?? []);
   if (requested.size && library.length !== requested.size) return NextResponse.json({ error: "One or more library entries were not found for this account" }, { status: 404 });
-  const completedRetryable = library.filter((item) => {
-    const latestJobStatus = item.manga.syncJobs[0]?.status;
-    return item.manga.status === "COMPLETED" && (isRetryableSync(item) || latestJobStatus === "QUEUED" || latestJobStatus === "RUNNING" || latestJobStatus === "FAILED");
-  });
-  if (completedRetryable.length > 0) {
-    const now = new Date();
-    const mangaIds = [...new Set(completedRetryable.map((item) => item.mangaId))];
-    await prisma.userManga.updateMany({
-      where: { userId: id, id: { in: completedRetryable.map((item) => item.id) } },
-      data: { syncStatus: "UPDATED", syncStartedAt: null, syncFinishedAt: now, syncError: null },
-    });
-    await prisma.syncJob.updateMany({
-      where: { type: "MANGA_UPDATE", mangaId: { in: mangaIds }, status: { in: ["QUEUED", "RUNNING"] } },
-      data: { status: "DONE", lockedAt: null, finishedAt: now, error: null },
-    });
-  }
-  const eligible = library.filter((item) => item.manga.status !== "COMPLETED" && isRetryableSync({ ...item, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null }));
+  const eligible = library.filter((item) => isRetryableSync({ ...item, mangaStatus: item.manga.status, latestJobStatus: item.manga.syncJobs[0]?.status ?? null }));
   const jobs = [];
   for (const item of eligible) jobs.push(await enqueueMangaSyncJob(id, item.mangaId));
   const processed = await processSyncJobs(jobs.map((job) => job.id), { concurrency: 4 });
-  return NextResponse.json({ queued: jobs.length, settledCompleted: completedRetryable.length, skipped: library.length - eligible.length - completedRetryable.length, jobs, processing: processed });
+  return NextResponse.json({ queued: jobs.length, settledCompleted: 0, skipped: library.length - eligible.length, jobs, processing: processed });
 }

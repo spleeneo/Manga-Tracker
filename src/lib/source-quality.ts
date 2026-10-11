@@ -71,7 +71,7 @@ function trackingProbeScore(probe: SourceQualityProbe) {
   if (probe.exactTitleMatch) score += 20;
   if (probe.falsePositive) score -= 20;
   score += chapterDepthScore(probe);
-  if ((probe.latestChapterNumber ?? 0) > 0) score += 10;
+  if (probe.latestChapterNumber != null && Number.isFinite(probe.latestChapterNumber) && probe.latestChapterNumber >= 0) score += 10;
   if ((probe.missingChapterGaps ?? 0) === 0 && (probe.chapterCount ?? 0) > 0) score += 5;
   if ((probe.duplicateChapterNumbers ?? 0) > 0) score -= 5;
   if (probe.accessIssue && probe.accessIssue !== "none") score -= 15;
@@ -132,7 +132,7 @@ export function summarizeProviderLane(
 
 export function countChapterQuality(chapterNumbers: number[]) {
   const normalized = chapterNumbers
-    .filter((chapterNumber) => Number.isFinite(chapterNumber) && chapterNumber > 0)
+    .filter((chapterNumber) => Number.isFinite(chapterNumber) && chapterNumber >= 0)
     .map((chapterNumber) => Number(chapterNumber.toFixed(3)));
   const unique = new Set(normalized);
   const integerChapters = [...unique].filter(Number.isInteger).sort((a, b) => a - b);

@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./http";
+import { assertUnambiguousChapterZero, resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderChapterInput, ReaderPage, ReaderResult, ReaderSourceInput, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 export type SingleMangaSiteConfig = {
@@ -200,7 +201,11 @@ function getImageAttribute(tag: string): string | undefined {
 
 function parseChapterNumber(value: string, config: SingleMangaSiteConfig): number | null {
   const match = value.match(config.chapterUrlPattern) ?? (config.chapterTitlePattern ? value.match(config.chapterTitlePattern) : null);
-  if (!match) return null;
+  if (!match) {
+    const numberedUrl = value.replace(/one-shot|oneshot/i, "chapter-0");
+    return numberedUrl !== value && numberedUrl.match(config.chapterUrlPattern)
+      ? resolveChapterNumber(null, value) : null;
+  }
 
   const chapterNumber = Number(match[2] ? `${match[1]}.${match[2]}` : match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
@@ -244,6 +249,7 @@ function buildDiscoveredConfig(baseUrl: string, titleHint: string): SingleMangaS
 }
 
 function uniqueByChapterNumber(chapters: ScrapedChapter[]): ScrapedChapter[] {
+  assertUnambiguousChapterZero(chapters);
   const seen = new Set<number>();
   const unique: ScrapedChapter[] = [];
 

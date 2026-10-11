@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./http";
+import { requireChapterNumber, resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { normalizeMangaStatus } from "@/lib/manga-status";
 import { withProviderClassification } from "@/lib/classification-utils";
@@ -40,7 +41,11 @@ export class ManganatoScraper implements Scraper {
   capabilities = { search: true, metadata: true, chapters: true, reader: true };
 
   canHandle(url: string): boolean {
-    return url.includes("manganato.com") || url.includes("chapmanganato.com");
+    try {
+      return ["manganato.com", "chapmanganato.com", "chapmanganato.to"].includes(new URL(url).hostname.replace(/^www\./, ""));
+    } catch {
+      return false;
+    }
   }
 
   async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
@@ -106,7 +111,7 @@ export class ManganatoScraper implements Scraper {
       const parsedDate = new Date(match[3]);
       return {
         providerChapterId: match[1],
-        chapterNumber: chapterMatch ? Number(chapterMatch[1]) : 0,
+        chapterNumber: requireChapterNumber(resolveChapterNumber(chapterMatch?.[1], match[2], chapterLinks.length === 1), this.name),
         title: match[2].trim(),
         url: match[1],
         releaseDate: Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate,

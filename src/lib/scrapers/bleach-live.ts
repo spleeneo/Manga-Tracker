@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./http";
+import { assertUnambiguousChapterZero, resolveChapterNumber } from "./chapter-number";
 import { MangaMetadata, ReaderChapterInput, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 
 const BASE_URL = "https://w42.bleach.live/";
@@ -31,13 +32,14 @@ function parseChapterNumber(value: string): number | null {
   const match = value.match(/bleach-chapter-(\d+)(?:-(\d+))?/i)
     ?? value.match(/bleach,\s*chapter\s+(\d+(?:\.\d+)?)/i)
     ?? value.match(/bleach\s+chapter\s+(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
+  if (!match) return /\/(?:manga|chapter)\//i.test(value) ? resolveChapterNumber(null, value) : null;
 
   const chapterNumber = Number(match[2] ? `${match[1]}.${match[2]}` : match[1]);
   return Number.isFinite(chapterNumber) ? chapterNumber : null;
 }
 
 function uniqueByChapterNumber(chapters: ScrapedChapter[]): ScrapedChapter[] {
+  assertUnambiguousChapterZero(chapters);
   const seen = new Set<number>();
   const unique: ScrapedChapter[] = [];
 
@@ -137,7 +139,7 @@ export class BleachLiveScraper implements Scraper {
 
   async fetchChapters(url: string): Promise<ScrapedChapter[]> {
     const html = await this.fetchHtml(url);
-    const linkMatches = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']*\/manga\/bleach-chapter-[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
+    const linkMatches = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']*\/manga\/bleach-(?:chapter-|one-shot|oneshot)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi));
     const chapters = linkMatches.flatMap((match) => {
       const chapterNumber = parseChapterNumber(match[1]) ?? parseChapterNumber(match[2]);
       if (chapterNumber == null) return [];

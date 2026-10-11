@@ -53,6 +53,15 @@ describe("GET /api/manga/[slug]/chapter/[chapterId]/next", () => {
     expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ readerStatus: "READABLE" }) }));
     expect(body.chapters[0]).toEqual({ id: "c9", chapterNumber: 9, title: "Nine", url: "/manga/urek/chapter/c9", sourceName: null });
   });
+  it("requests chapters after zero without treating it as missing", async () => {
+    chapterFindFirstMock.mockResolvedValue({ chapterNumber: 0, sourceId: "s1" });
+    chapterFindManyMock.mockResolvedValue([]);
+    const req = { nextUrl: new URL("http://localhost/api/manga/one-shot/chapter/c0/next") };
+    const res = await GET(req as never, { params: Promise.resolve({ slug: "one-shot", chapterId: "c0" }) });
+    expect(res.status).toBe(200);
+    expect(chapterFindManyMock).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ chapterNumber: { gt: 0 } }) }));
+    expect((await res.json()).chapters).toEqual([]);
+  });
 
   it("returns the next same-source chapters for the reader stream", async () => {
     chapterFindManyMock.mockResolvedValue([
