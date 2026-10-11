@@ -111,8 +111,8 @@ export class MangaPillScraper implements Scraper {
     }
   }
 
-  async fetchMetadata(url: string): Promise<MangaMetadata> {
-    const response = await fetchWithRetry(url, { headers: this.getHeaders(url) });
+  async fetchMetadata(url: string, options: { timeoutMs?: number; retries?: number; redirect?: RequestRedirect } = {}): Promise<MangaMetadata> {
+    const response = await fetchWithRetry(url, { headers: this.getHeaders(url), ...options });
     const html = await response.text();
     const title = html.match(/<h1[^>]*>\s*([^<]+)\s*<\/h1>/i)?.[1]?.trim() ?? "Unknown";
     const coverUrl = html.match(/<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]+alt=["'][^"']*["']/i)?.[1]

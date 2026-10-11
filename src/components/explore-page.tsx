@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CoverImage } from "@/components/cover-image";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 import { useToast } from "@/components/toast-provider";
+import { useMangaPillSynopsis } from "@/components/use-mangapill-synopsis";
 import { BROWSE_PROVIDERS, emptyBrowseState, shouldLoadProvider, appendProviderPage, type BrowseLoadMode } from "@/lib/explore/provider-state";
 import { sourceIdentity } from "@/lib/search-library";
 import {
@@ -144,9 +145,11 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
   const [browseState, setBrowseState] = useState(() => emptyBrowseState(""));
   const [trackedSources, setTrackedSources] = useState<Record<string, string>>({});
   const [hideTracked, setHideTracked] = useState(initialFilters.hideTracked === "1");
-  const [preview, setPreview] = useState<ExploreDisplayManga | null>(null);
+  const [selectedPreview, setPreview] = useState<ExploreDisplayManga | null>(null);
   const [searchWarnings, setSearchWarnings] = useState<string[]>([]);
   const controllerRef = useRef<AbortController | null>(null);
+  const synopsis = useMangaPillSynopsis(selectedPreview);
+  const preview = selectedPreview ? synopsis.enrich(selectedPreview) : null;
   const previewRef = useDialogFocus(Boolean(preview), () => setPreview(null));
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -176,7 +179,7 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
   const results = (hasSubmittedSearch ? searchResults : mergeBrowseDisplayResults(...BROWSE_PROVIDERS.map(provider => activeBrowse.providers[provider].results))).map(manga => {
     const librarySlug = manga.sources.map(source => trackedSources[sourceIdentity(source.url)]).find(Boolean);
     return librarySlug ? { ...manga, isTracked: true, librarySlug } : manga;
-  });
+  }).map(synopsis.enrich);
 
   const loadExplore = async (mode: BrowseLoadMode = "initial") => {
     const append = mode !== "initial";
@@ -494,7 +497,7 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
                   </div>
 
                   <p className="mt-2 line-clamp-3 text-xs font-medium leading-5 text-muted-foreground">
-                    {manga.description || "No summary available from this source."}
+                    {manga.description || (manga.sources.some(source => source.name === "MangaPill") ? "Open preview for synopsis." : "No summary available from this source.")}
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Manga tags and sources">
@@ -565,7 +568,8 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
         <div ref={previewRef} role="dialog" aria-modal="true" aria-labelledby="manga-preview-title" tabIndex={-1} className="dialog-panel max-w-2xl max-h-[85vh] overflow-y-auto p-6">
           <div className="flex items-start justify-between gap-4"><h2 id="manga-preview-title" className="text-xl font-bold">{preview.title}</h2><button type="button" aria-label="Close preview" className="ui-icon-button" onClick={() => setPreview(null)}><X className="h-5 w-5" /></button></div>
           <p className="mt-3 text-sm text-muted-foreground">{statusLabel(preview.status)}{preview.year ? ` · ${preview.year}` : ""}</p>
-          <p className="mt-4 whitespace-pre-line text-sm leading-6">{preview.description || "No synopsis available."}</p>
+          {synopsis.status === "error" ? <div role="alert" className="mt-4 text-sm">Could not load the synopsis. <button type="button" className="underline" onClick={synopsis.retry}>Retry synopsis</button></div>
+            : <p role={synopsis.status === "loading" ? "status" : undefined} className="mt-4 whitespace-pre-line text-sm leading-6">{preview.description || (synopsis.status === "loading" ? "Loading synopsis…" : "No synopsis available.")}</p>}
           <div className="mt-4 flex flex-wrap gap-2">{preview.tags.map((tag) => <span key={tag.id} className="rounded-full bg-muted px-3 py-1 text-xs">{tag.name}</span>)}</div>
           <div className="mt-5 flex flex-wrap gap-3">{preview.sources.filter((source) => /^https?:/.test(source.url)).map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="ui-button ui-button-secondary">Open {source.name}<ExternalLink className="h-4 w-4" /></a>)}</div>
           <div className="mt-6">{preview.isTracked ? <Link href={`/manga/${preview.librarySlug || preview.slug}`} className="ui-button ui-button-primary">Open in library</Link> : <button type="button" className="ui-button ui-button-primary" disabled={Boolean(trackingId) || !preview.sources.length} onClick={() => trackManga(preview)}>{trackingId ? "Tracking…" : "Track manga"}</button>}</div>

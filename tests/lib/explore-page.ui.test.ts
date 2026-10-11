@@ -11,6 +11,57 @@ const response = (body: unknown) => ({ ok: true, json: async () => body });
 const manga = (id: string, title: string) => ({ id, title, slug: title.toLowerCase().replaceAll(" ", "-"), tags: [], isTracked: false, source: { name: "MangaPill", url: `https://mangapill.com/manga/${id}` } });
 
 describe("Discovery workflows", () => {
+  it("retries a failed synopsis without claiming it is absent", async () => {
+    let fail = true;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/metadata")) { if (fail) throw new Error("Offline"); return response({ description: "Recovered synopsis" }); }
+      if (url.includes("/tags")) return response({ tags: [] });
+      return response({ results: url.includes("/mangapill") ? [manga("123/title", "Retry Work")] : [], nextOffset: null });
+    }));
+    render(createElement(ExplorePage));
+    fireEvent.click(await screen.findByRole("link", { name: "Preview Retry Work" }));
+    await screen.findByRole("button", { name: "Retry synopsis" });
+    expect(within(screen.getByRole("dialog")).queryByText("No synopsis available.")).toBeNull();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry synopsis" }));
+    await within(screen.getByRole("dialog")).findByText("Recovered synopsis");
+  });
+  it("ignores a closed preview's response even when cancellation is ignored", async () => {
+    let finish!: (value: unknown) => void;
+    const old = new Promise(resolve => { finish = resolve; });
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/metadata")) return url.includes("first") ? old : response({ description: "Second synopsis" });
+      if (url.includes("/tags")) return response({ tags: [] });
+      return response({ results: url.includes("/mangapill") ? [manga("1/first", "First Preview"), manga("2/second", "Second Preview")] : [], nextOffset: null });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(createElement(ExplorePage));
+    fireEvent.click(await screen.findByRole("link", { name: "Preview First Preview" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.includes("/metadata"))).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    fireEvent.click(screen.getByRole("link", { name: "Preview Second Preview" }));
+    await within(screen.getByRole("dialog")).findByText("Second synopsis");
+    await act(async () => finish(response({ description: "Stale synopsis" })));
+    expect(screen.queryByText("Stale synopsis")).toBeNull();
+    expect(within(screen.getByRole("dialog")).getByText("Second synopsis")).toBeTruthy();
+  });
+  it("loads MangaPill synopsis on preview, updates the card, and reuses it on reopening", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/metadata")) return response({ description: "Ikariishi is the strong, silent type." });
+      if (url.includes("/tags")) return response({ tags: [] });
+      return response({ results: url.includes("/mangapill") ? [manga("10387/yankee-juku-e-iku", "Yankee Juku e Iku")] : [], nextOffset: null });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(createElement(ExplorePage));
+    const opener = await screen.findByRole("link", { name: "Preview Yankee Juku e Iku" });
+    expect(fetchMock.mock.calls.some(([url]) => url.includes("/metadata"))).toBe(false);
+    fireEvent.click(opener);
+    await within(screen.getByRole("dialog")).findByText("Ikariishi is the strong, silent type.");
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    expect(screen.getByText("Ikariishi is the strong, silent type.")).toBeTruthy();
+    fireEvent.click(opener);
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("/metadata"))).toHaveLength(1);
+  });
   it("retains a newly tracked badge when another browse page arrives", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "/api/manga") return response({ slug: "tracked-work" });
@@ -21,7 +72,7 @@ describe("Discovery workflows", () => {
     }));
     render(createElement(ExplorePage));
     const title = await screen.findByRole("heading", { name: "First Work" });
-    fireEvent.click(within(title.closest("article")!).getByRole("button", { name: "Track", exact: true }));
+    fireEvent.click(within(title.closest("article")!).getByRole("button", { name: /^Track$/ }));
     await screen.findByRole("button", { name: "In library" });
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByRole("heading", { name: "Second Work" });

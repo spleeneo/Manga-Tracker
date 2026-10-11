@@ -2752,3 +2752,29 @@ User requested addressing all Thermos complaints and repeating the paired review
 - Final npm run verify and delivery results follow below. Deployed browser/cold-start/long-session performance were not remeasured; no paid infrastructure or architecture rewrite.
 - Detailed review history: [Thermos audit and resolution](thermos-review-2026-10-11.md). Lessons: [provider contracts and mutation success](learnings.md#2026-10-11---provider-contracts-and-mutation-success).
 - Final verification passed: npm run verify (73 files / 328 tests, production build, lint with four existing no-img-element warnings and zero errors); focused image/proxy tests and git diff --check passed. Update smoke result above remains applicable; final changes after smoke were library success reconciliation and headerless image validation. Delivering the completed verified repair to main under standing approval.
+
+## 2026-10-11 — Load missing MangaPill Discovery synopses
+
+### Why / plan
+
+User showed Yankee Juku e Iku preview claiming no synopsis despite its MangaPill detail page containing one. Live inspection confirmed the existing metadata scraper extracts the 323-character synopsis, but Discovery consumes listing cards only, which omit descriptions. Add preview-time detail hydration, preserve fast listing loads, test requests/cache/failures/family boundaries, and verify the actual title before delivery.
+
+### Changes
+
+- MangaPill previews with no existing description fetch synopsis metadata on opening; the synopsis enriches the preview and its card and is reused on reopening. Cards say Open preview for synopsis instead of claiming the provider lacks one.
+- Added loading and Retry synopsis states. Closing/changing a preview aborts its request and ignores late transport responses. A failed attempt remains explicit and retryable rather than being cached as an empty synopsis.
+- Authenticated metadata endpoint accepts only canonical HTTPS MangaPill title URLs, rejects credentials/unsupported ports/paths, blocks redirects, and denies child accounts before provider fetch or cache access. Children retain their existing permitted catalog workflow.
+- Server cache holds successful public provider synopses for 30 minutes with a 200-entry limit; no user library state is cached. Existing scraper parsing is reused, with bounded request options for this endpoint and existing caller behavior retained.
+
+### Verification / outcome
+
+- Initial UI regression failed because preview never requested the synopsis; repaired preview now loads the supplied title, updates the card and avoids a second request on reopening.
+- Focused regressions passed for load/reuse, failures/retry, stale responses after closing/switching, successful-only caching, true absent descriptions, authentication/child denial, unsupported URLs and redirects.
+- First broad check caught synchronous state updates in an effect; loading/error state is now derived from cache and failed attempt identity. Corrected a previously added Testing Library role exact option to an anchored name matcher; npx tsc --noEmit passes.
+- Final npm run verify passed: 75 test files / 342 tests, lint with four existing no-img-element warnings and no errors, production build. git diff --check passed.
+- npm run smoke:update passed for Dreamland with zero failed chapter sources; MangaPlus source discovery reported the known upstream 403 while other providers remained usable.
+- Browser: real Yankee Juku e Iku preview displayed the full 323-character synopsis; closing updated the card and restored opener focus. Reopening on mobile 390x844 displayed the synopsis immediately without horizontal overflow. Screenshot saved outside the repository as yankee-synopsis-fixed.png. No library memberships/progress were changed.
+- Thermos correctness/security and maintainability passes both reported no actionable findings; both rechecked the final derived-state hook adjustment and remained clear.
+- Browser failure injection, child-account browser revalidation and deployed production browser checks were not repeated; focused automated regressions cover these request/family boundaries. Detail hydration intentionally occurs when opening a preview, not by fetching every listing title in advance.
+- Lessons: [Listing metadata is not detail metadata](learnings.md#2026-10-11---listing-metadata-is-not-detail-metadata).
+- Delivery: commit/push the verified batch to main under standing approval; CI/CD is the deployment gate.

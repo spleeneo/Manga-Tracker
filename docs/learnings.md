@@ -516,3 +516,9 @@ A destination allowlist test is only part of a provider image contract. Verify a
 When persistent components receive refreshed server data, test request -> refresh -> success as well as request -> refresh -> failure. Guarded rollback prevented stale data restoration, but successful deletion also needed to reconcile the refreshed row and request a current server snapshot.
 
 Keep pagination results, cursor and failure state together per provider. Merge for display after retaining ownership; retries then preserve successful pages. Share one pure work-identity policy across search and browse to avoid drifting alias/author decisions. See [repair review](thermos-review-2026-10-11.md#resolution--repair-and-review-loop).
+
+## 2026-10-11 — Listing metadata is not detail metadata
+
+A provider may omit synopsis text from listings while exposing it on the title page. Test the complete preview workflow with a real reported title; a passing metadata scraper unit test does not show that the UI actually calls it. Load missing details on demand, distinguish loading/failure/true absence, and enrich the existing card after successful hydration. Keep public metadata caching separate from account state, with family authorization before cache reads.
+
+Derive request status from cached data and failed attempt identity when possible, rather than synchronously setting loading state inside an effect. Browser automation and Testing Library have different locator options: use an anchored name regex for exact Testing Library role names. See the [work log](work-log.md).
