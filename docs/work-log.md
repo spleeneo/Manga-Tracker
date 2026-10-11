@@ -2778,3 +2778,14 @@ User showed Yankee Juku e Iku preview claiming no synopsis despite its MangaPill
 - Browser failure injection, child-account browser revalidation and deployed production browser checks were not repeated; focused automated regressions cover these request/family boundaries. Detail hydration intentionally occurs when opening a preview, not by fetching every listing title in advance.
 - Lessons: [Listing metadata is not detail metadata](learnings.md#2026-10-11---listing-metadata-is-not-detail-metadata).
 - Delivery: commit/push the verified batch to main under standing approval; CI/CD is the deployment gate.
+
+## 2026-10-11 — Import chapters for completed titles (Black Santa)
+
+- Report: Black Santa had no chapters despite MangaPill exposing Chapter 0. Live parsing returned chapter zero correctly; the database had no chapters, an unchecked source and a DONE initial sync job.
+- Cause: the worker skipped every COMPLETED title and reported success, including first imports. Removed that skip and its unused relation query. Scheduled and library-wide selectors still exclude completed works; explicit jobs import normally and retain failure retries.
+- TDD: changed targeted-job and completed-import expectations; both failed before the fix. Focused final checks passed 17 tests, including the supplied chapter-zero fixture and failure retries for ongoing/completed titles.
+- Verification: npm run verify passed (75 files / 342 tests before the two additional regressions, four existing image lint warnings, production build). Final added regressions passed separately. npm run smoke:update passed with zero failed chapter sources; known MangaPlus discovery 403 remains. Both Thermos review passes found no actionable issues. git diff --check passed.
+- Recovery: ran one shared sync job for Black Santa only. MangaPill Chapter 0 persisted READABLE; live reader returned 50 pages. Recovery also exposed an existing automatic source-discovery weakness: a different same-title Webtoon was attached. Removed that newly added source and its two newly imported chapters; retained valid MangaPill/Nelo chapter-zero sources. Broader source-discovery identity hardening remains follow-up work; Discovery/search aggregation identity checks do not cover this separate updater helper.
+- Browser limitation: anonymous production browser session returned 404 for the supplied app URL; signed-in rendering was not verified. No reading progress or library membership changed.
+- Lesson: [Completed status is not import completion](learnings.md).
+- Delivery: verified batch committed/pushed to main under standing approval; CI/CD checked separately.

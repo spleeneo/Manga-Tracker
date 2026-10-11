@@ -522,3 +522,7 @@ Keep pagination results, cursor and failure state together per provider. Merge f
 A provider may omit synopsis text from listings while exposing it on the title page. Test the complete preview workflow with a real reported title; a passing metadata scraper unit test does not show that the UI actually calls it. Load missing details on demand, distinguish loading/failure/true absence, and enrich the existing card after successful hydration. Keep public metadata caching separate from account state, with family authorization before cache reads.
 
 Derive request status from cached data and failed attempt identity when possible, rather than synchronously setting loading state inside an effect. Browser automation and Testing Library have different locator options: use an anchored name regex for exact Testing Library role names. See the [work log](work-log.md).
+
+## 2026-10-11 — Completed status is not import completion
+
+A completed work still needs its initial chapter import. Apply routine refresh exclusions when scheduling, not as a blanket worker skip: explicit jobs must execute and surface failures. Include chapter zero in provider fixtures. Search aggregation and updater source discovery are separate identity paths; the updater can still falsely attach same-title works when author metadata is absent, as Black Santa's unrelated Webtoon demonstrated. Inspect all discovered sources during targeted recovery.

@@ -125,6 +125,16 @@ describe("MangaPillScraper", () => {
     ]);
   });
 
+  it("preserves Black Santa's chapter zero", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse('<a href="/chapters/10391-10000000/black-santa-chapter-0" title=" Chapter 0">Chapter 0</a>'));
+    expect(await new MangaPillScraper().fetchChapters("https://mangapill.com/manga/10391/black-santa")).toEqual([{
+      providerChapterId: "10391-10000000/black-santa-chapter-0",
+      chapterNumber: 0,
+      title: "Chapter 0",
+      url: "https://mangapill.com/chapters/10391-10000000/black-santa-chapter-0",
+    }]);
+  });
+
   it("returns proxied public reader images", async () => {
     fetchWithRetryMock.mockResolvedValueOnce(textResponse(`
       <img src="https://cdn.readdetectiveconan.com/file/mangap/2026/23/2/11184000/hash/1.jpeg" />

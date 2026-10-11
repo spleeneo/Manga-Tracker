@@ -204,13 +204,13 @@ describe("enqueueMangaSyncJob", () => {
     }));
   });
 
-  it("keeps a sync job queued for retry when every source fails", async () => {
+  it.each(["ONGOING", "COMPLETED"])("retries %s manga when every source fails", async (status) => {
     syncJobFindUniqueMock.mockResolvedValue({
       id: "job1",
       status: "RUNNING",
       mangaId: "m1",
       attempts: 1,
-      manga: { status: "ONGOING", title: "Out" },
+      manga: { status, title: "Out" },
     });
     updateSingleMangaMock.mockResolvedValue({
       manga: "Out",
@@ -262,10 +262,10 @@ describe("enqueueMangaSyncJob", () => {
 
     expect(result).toEqual({
       processed: 2,
-      completed: 1,
+      completed: 2,
       failed: 0,
       retrying: 0,
-      skipped: 1,
+      skipped: 0,
       remaining: 0,
     });
     expect(syncJobUpdateManyMock).toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe("enqueueMangaSyncJob", () => {
     });
   });
 
-  it("finishes already-queued completed manga jobs without scraping them", async () => {
+  it("imports chapters for explicitly queued completed manga", async () => {
     syncJobFindUniqueMock.mockResolvedValue({
       id: "job1",
       status: "RUNNING",
@@ -290,8 +290,8 @@ describe("enqueueMangaSyncJob", () => {
 
     const result = await processSyncJob("job1");
 
-    expect(result).toEqual({ id: "job1", status: "skipped" });
-    expect(updateSingleMangaMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: "job1", status: "completed" });
+    expect(updateSingleMangaMock).toHaveBeenCalledWith("m1");
     expect(userMangaUpdateManyMock).toHaveBeenLastCalledWith(expect.objectContaining({
       where: {
         mangaId: "m1",

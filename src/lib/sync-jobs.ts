@@ -270,7 +270,6 @@ async function runClaimedSyncJob(jobId: string) {
       status: true,
       mangaId: true,
       attempts: true,
-      manga: { select: { status: true, title: true } },
     },
   });
 
@@ -278,21 +277,8 @@ async function runClaimedSyncJob(jobId: string) {
     return { id: jobId, status: "skipped" as const };
   }
 
-  if (job.manga.status === "COMPLETED") {
-    await markWaitingUsersUpdated(job.mangaId);
-    await prisma.syncJob.update({
-      where: { id: job.id },
-      data: {
-        status: "DONE",
-        finishedAt: new Date(),
-        lockedAt: null,
-        error: null,
-      },
-    });
-
-    return { id: job.id, status: "skipped" as const };
-  }
-
+  // Scheduled sweeps exclude completed works; explicitly queued jobs still need
+  // to import their chapters, including a newly tracked one-shot's chapter 0.
   try {
     const result = await updateSingleManga(job.mangaId);
     if ("allSourcesFailed" in result && result.allSourcesFailed) {
