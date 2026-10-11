@@ -2789,3 +2789,13 @@ User showed Yankee Juku e Iku preview claiming no synopsis despite its MangaPill
 - Browser limitation: anonymous production browser session returned 404 for the supplied app URL; signed-in rendering was not verified. No reading progress or library membership changed.
 - Lesson: [Completed status is not import completion](learnings.md).
 - Delivery: verified batch committed/pushed to main under standing approval; CI/CD checked separately.
+
+## 2026-10-11 — Recover In the name of God's unnumbered one-shot
+
+- Report: supplied MangaDex title still had no chapters. Targeted database check confirmed COMPLETED status, zero chapters, unchecked source and two old DONE jobs from the previously fixed completed-worker skip.
+- Additional cause: MangaDex feed has exactly one English release whose chapter number is null. parseFloat(null) discarded it. Normalize a sole null-numbered feed entry to chapter zero, retaining its provider ID and title. Multiple unnumbered releases remain excluded to avoid collapsing distinct releases under the current numeric progress model.
+- TDD: supplied-title regression failed before fix and passed after. Focused final scraper tests: 6 passed, including multiple-unnumbered guard. npm run verify passed before guard addition (75 files / 345 tests, four existing image warnings, production build); final test-only guard checked separately. npm run smoke:update passed with zero failed chapter sources and known MangaPlus discovery 403. Both Thermos passes reported no actionable findings. git diff --check passed.
+- Recovery: retried only this title's shared job. Initial local worker exited before completion; recovered that known dead job using the targeted stale-job helper and processed successfully. Database now contains Chapter 0 with original title Bronze Award: In the name of God. No library membership or reading progress changed.
+- Provider limitation: MangaDex reports pages=0 and links to https://mangaplus.shueisha.co.jp/viewer/1021798. Live AtHome check returns EXTERNAL_ONLY, no images. This fix restores listing/source navigation, not unavailable in-app page images. Signed-in browser flow was not verified for this backend change.
+- Lesson: [Unnumbered releases](learnings.md).
+- Delivery: commit/push verified batch to main under standing approval; CI/CD gate checked separately.

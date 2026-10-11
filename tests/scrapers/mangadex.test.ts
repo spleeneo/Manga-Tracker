@@ -81,6 +81,28 @@ describe("MangaDexScraper", () => {
     expect(fetchWithRetryMock.mock.calls[1][0]).toContain("limit=100&offset=100");
   });
 
+  it("imports the unnumbered In the name of God one-shot as chapter zero", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({ data: [{
+      id: "0aa19790-09b3-4dee-8c83-711f58e27b2c",
+      attributes: { chapter: null, title: "Bronze Award: In the name of God", publishAt: "2026-01-01T00:00:00Z" },
+    }], total: 1, limit: 100 }));
+    expect(await new MangaDexScraper().fetchChapters("https://mangadex.org/title/6eca560a-d5e3-4711-88c4-5676e3cd8364")).toEqual([{
+      providerChapterId: "0aa19790-09b3-4dee-8c83-711f58e27b2c",
+      chapterNumber: 0,
+      title: "Bronze Award: In the name of God",
+      url: "https://mangadex.org/chapter/0aa19790-09b3-4dee-8c83-711f58e27b2c",
+      releaseDate: new Date("2026-01-01T00:00:00Z"),
+    }]);
+  });
+
+  it("does not collapse multiple unnumbered releases into chapter zero", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({ data: [
+      { ...chapter("a", "1"), attributes: { ...chapter("a", "1").attributes, chapter: null } },
+      { ...chapter("b", "2"), attributes: { ...chapter("b", "2").attributes, chapter: null } },
+    ], total: 2, limit: 100 }));
+    expect(await new MangaDexScraper().fetchChapters("https://mangadex.org/title/6eca560a-d5e3-4711-88c4-5676e3cd8364")).toEqual([]);
+  });
+
   it("maps MangaDex AtHome pages for the in-app reader", async () => {
     fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({
       baseUrl: "https://uploads.mangadex.org",

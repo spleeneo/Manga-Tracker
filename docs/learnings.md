@@ -526,3 +526,7 @@ Derive request status from cached data and failed attempt identity when possible
 ## 2026-10-11 — Completed status is not import completion
 
 A completed work still needs its initial chapter import. Apply routine refresh exclusions when scheduling, not as a blanket worker skip: explicit jobs must execute and surface failures. Include chapter zero in provider fixtures. Search aggregation and updater source discovery are separate identity paths; the updater can still falsely attach same-title works when author metadata is absent, as Black Santa's unrelated Webtoon demonstrated. Inspect all discovered sources during targeted recovery.
+
+## 2026-10-11 — Unnumbered releases
+
+MangaDex chapter numbers are nullable; a one-shot may have a real release without a numeric label. Normalize a sole unnumbered feed entry to chapter zero while preserving provider identity. Avoid mapping multiple unnumbered releases to the same number under the current numeric dedup/progress model. A listed chapter may also have zero hosted pages and point to MangaPlus: verify chapter availability separately from in-app reader availability.

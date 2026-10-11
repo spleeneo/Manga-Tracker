@@ -26,7 +26,7 @@ interface MangaDexTitleItem {
 interface MangaDexChapterItem {
     id: string;
     attributes: {
-        chapter: string;
+        chapter: string | null;
         title?: string;
         publishAt: string;
     };
@@ -90,8 +90,11 @@ export class MangaDexScraper implements Scraper {
 
             chapters.push(...page.map((item) => ({
                 providerChapterId: item.id,
-                chapterNumber: parseFloat(item.attributes.chapter),
-                title: item.attributes.title || `Chapter ${item.attributes.chapter}`,
+                // A single unnumbered release is a one-shot. Do not assign the
+                // same number to multiple unnumbered entries and collapse them.
+                chapterNumber: item.attributes.chapter === null && data.total === 1
+                    ? 0 : parseFloat(item.attributes.chapter ?? ""),
+                title: item.attributes.title || (item.attributes.chapter === null ? "One-shot" : `Chapter ${item.attributes.chapter}`),
                 url: `https://mangadex.org/chapter/${item.id}`,
                 releaseDate: new Date(item.attributes.publishAt),
             })).filter((chapter) => Number.isFinite(chapter.chapterNumber)));
