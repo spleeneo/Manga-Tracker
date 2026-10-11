@@ -489,3 +489,14 @@ Action:
 - Search aggregation must not collapse ambiguous same-title results onto the base title key; use separate identity keys and rank exact title matches above partial matches so distinct same-name manga stay visible.
 - Display grouping and tracking safety are separate concerns: search results may show a same-manga source group, while the tracking route can still apply a stricter source override before saving sources.
 - Source overrides should prefer exact stored slugs over title-only matches. Provider-distinct variants derived from the same title need their own slug and should not auto-discover sources for the protected base title.
+
+## 2026-10-11 - Search Relevance, Aliases, And Partial Failures
+
+- A provider's default ordering is not necessarily search relevance. An exact MangaDex title was seventh in the default response and first with explicit relevance sorting; result limits must be tested alongside ranking.
+- MangaPill card text includes alternate-title elements. Stripping all tags concatenated two names, defeating identity matching; parse primary and alternate titles separately.
+- Provider failures and genuine empty lists are different outcomes. Preserve diagnostics through aggregation and avoid caching incomplete searches as complete; decorate user-library state only after shared-cache lookup.
+- Preserve the last successful library response when refresh fails, and use explicit request identity in addition to cancellation because transports and test doubles can complete aborted requests.
+- Keep dialog trigger elements mounted while the dialog opens. Otherwise focus restoration cannot find the opener after Escape; verify the real trigger, not only dialog controls.
+- Cross-page browse deduplication must use source identity or corroborated metadata, not the display slug. Different provider entries and same-title works need separate cards.
+- Measure compact library summaries and external-provider requests separately. The current 44-title summary query is about 51 ms while uncached search is about 3.5 seconds; changing hosting would not address the dominant provider delay.
+- See the 2026-10-11 improvement entry in [work-log.md](work-log.md).

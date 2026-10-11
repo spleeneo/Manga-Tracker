@@ -1,4 +1,4 @@
-import { MangaMetadata, ReaderChapterInput, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
+import { MangaMetadata, ReaderChapterInput, ReaderSourceInput, ReaderPage, ReaderResult, ScrapedChapter, Scraper, SearchResult } from "./types";
 import { fetchWithRetry } from "./http";
 
 const ATSUMARU_BASE = "https://atsu.moe";
@@ -169,7 +169,8 @@ export class AtsumaruScraper implements Scraper {
     return [];
   }
 
-  async fetchReaderPages(chapter: ReaderChapterInput): Promise<ReaderResult> {
+  async fetchReaderPages(chapter: ReaderChapterInput, source?: ReaderSourceInput): Promise<ReaderResult> {
+    void source;
     const ids = getAtsumaruIds(chapter.url);
     const chapterId = ids?.chapterId ?? chapter.providerChapterId;
     if (!ids?.mangaId || !chapterId) {

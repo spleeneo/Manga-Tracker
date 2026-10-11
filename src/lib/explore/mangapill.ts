@@ -69,6 +69,7 @@ export interface MangaPillExploreQuery {
 }
 
 export interface MangaPillExploreManga {
+  librarySlug?: string;
   id: string;
   title: string;
   slug: string;
@@ -240,12 +241,13 @@ async function decorateTracked(userId: string, mangas: Omit<MangaPillExploreMang
         },
       },
     },
-    select: { sourceUrl: true },
+    select: { sourceUrl: true, manga: { select: { slug: true } } },
   });
   const trackedUrls = new Set(trackedSources.map((source) => source.sourceUrl));
   return mangas.map((manga) => ({
     ...manga,
     isTracked: trackedUrls.has(manga.source.url),
+    librarySlug: trackedSources.find((source) => source.sourceUrl === manga.source.url)?.manga?.slug,
   }));
 }
 

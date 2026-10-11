@@ -14,8 +14,11 @@ interface MangaDexTitleItem {
     id: string;
     attributes: {
         title: Record<string, string>;
+        altTitles?: Array<Record<string, string>>;
         description: Record<string, string>;
         status?: string;
+        contentRating?: string;
+        tags?: Array<{ id: string; attributes: { name: Record<string, string>; group?: string } }>;
     };
     relationships: MangaDexRelationship[];
 }
@@ -181,9 +184,9 @@ export class MangaDexScraper implements Scraper {
         }
     }
 
-    async search(query: string): Promise<SearchResult[]> {
+    async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
         try {
-            const res = await fetchWithRetry(`https://api.mangadex.org/manga?title=${encodeURIComponent(query)}&limit=5&includes[]=cover_art`);
+            const res = await fetchWithRetry(`https://api.mangadex.org/manga?title=${encodeURIComponent(query)}&limit=24&order[relevance]=desc&includes[]=cover_art&includes[]=author`, { signal: options.signal });
             const data = await res.json();
 
             return (data.data as MangaDexTitleItem[]).map((manga) => {
@@ -192,9 +195,15 @@ export class MangaDexScraper implements Scraper {
 
                 return {
                     title: manga.attributes.title.en || Object.values(manga.attributes.title)[0],
+                    alternateTitles: (manga.attributes.altTitles ?? []).flatMap((title) => Object.values(title)),
+                    providerId: manga.id,
+                    author: manga.relationships.filter((r) => r.type === "author").map((r) => r.attributes?.name).filter(Boolean).join(", ") || undefined,
                     description: manga.attributes.description.en?.split('\n')[0],
                     coverUrl: fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : undefined,
                     status: normalizeMangaStatus(manga.attributes.status),
+                    contentRating: manga.attributes.contentRating,
+                    classificationSource: "MANGADEX",
+                    tags: (manga.attributes.tags ?? []).map((tag: { id: string; attributes: { name: Record<string, string>; group?: string } }) => ({ id: tag.id, name: tag.attributes.name.en || Object.values(tag.attributes.name)[0], group: tag.attributes.group })),
                     sourceUrl: `https://mangadex.org/title/${manga.id}`,
                     sourceName: "MangaDex"
                 };
@@ -203,7 +212,7 @@ export class MangaDexScraper implements Scraper {
             if (error instanceof ScraperRequestError) {
                 console.error(`[MangaDex] Search failed (${error.kind})`);
             }
-            return [];
+            throw error;
         }
     }
 }

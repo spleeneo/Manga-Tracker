@@ -43,6 +43,19 @@ describe("MangaDexScraper", () => {
     vi.clearAllMocks();
   });
 
+  it("searches by relevance and retains identity metadata for In the name of God", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse({ data: [{
+      id: "6eca560a-d5e3-4711-88c4-5676e3cd8364",
+      attributes: { title: { en: "In the name of God" }, altTitles: [{ ja: "Alternate title" }], description: {} },
+      relationships: [{ type: "author", attributes: { name: "Author" } }],
+    }] }));
+    const results = await new MangaDexScraper().search("in the name of god");
+    const url = new URL(fetchWithRetryMock.mock.calls[0][0]);
+    expect(url.searchParams.get("order[relevance]")).toBe("desc");
+    expect(url.searchParams.get("limit")).toBe("24");
+    expect(results[0]).toMatchObject({ title: "In the name of God", alternateTitles: ["Alternate title"], author: "Author", providerId: "6eca560a-d5e3-4711-88c4-5676e3cd8364" });
+  });
+
   it("fetches all paginated feed offsets", async () => {
     fetchWithRetryMock
       .mockResolvedValueOnce(jsonResponse({

@@ -16,6 +16,7 @@ import { AtsumaruScraper } from "./atsumaru";
 import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
 import { getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
 import { getPreferredSourceRank } from "@/lib/source-preference";
+import { sourceIdentity } from "@/lib/search-library";
 
 const scrapers: Scraper[] = [
     new SingleMangaSiteScraper(),
@@ -41,7 +42,7 @@ function normalizeSearchTitle(title: string) {
         .toLowerCase()
         .replace(/&/g, " and ")
         .replace(/\bmanga\b/g, " ")
-        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
         .replace(/\s+/g, " ")
         .trim();
 }
@@ -52,15 +53,12 @@ function getCanonicalSearchTitle(title: string) {
 }
 
 function getAuthorParts(value?: string) {
-    const normalized = normalizeSearchTitle(value ?? "");
-    if (!normalized) return [];
-
-    const parts = normalized
+    const parts = (value ?? "")
         .split(/\s+(?:and)\s+|[|/;,]/)
-        .map((part) => part.trim())
+        .map(normalizeSearchTitle)
         .filter((part) => part.length >= 3);
 
-    return parts.length > 0 ? parts : [normalized];
+    return parts;
 }
 
 function getSortedTokens(value: string) {
@@ -81,11 +79,6 @@ function authorsMatch(left?: string, right?: string) {
     )));
 }
 
-function isAmbiguousSearchKey(key: string) {
-    if (getMangaAliasGroup(key)) return false;
-    return key.length <= 6 || !key.includes(" ");
-}
-
 function sourceIsAllowedByOverride(title: string, source: { name: string; url: string }) {
     const override = getMangaSourceOverride({ title });
     return Boolean(override && isAllowedOverrideSource({
@@ -99,7 +92,7 @@ function sourceSharesKnownOverrideIdentity(title: string, source: { name: string
     return normalizedTitle === "noise" && source.url === "https://www.nelomanga.net/manga/noise";
 }
 
-function shouldMergeSearchResult(existing: AggregatedSearchResult, result: SearchResult, key: string) {
+function shouldMergeSearchResult(existing: AggregatedSearchResult, result: SearchResult) {
     const authorMatch = authorsMatch(existing.author, result.author);
     if (authorMatch === false) return false;
     if (authorMatch === true) return true;
@@ -113,7 +106,19 @@ function shouldMergeSearchResult(existing: AggregatedSearchResult, result: Searc
         && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
     if (sharesKnownOverrideIdentity) return true;
 
-    return !isAmbiguousSearchKey(key);
+    return false;
+}
+
+function matchingIdentity(existing: AggregatedSearchResult, result: SearchResult) {
+    if (existing.sources.some((source) => source.name === result.sourceName && sourceIdentity(source.url) !== sourceIdentity(result.sourceUrl))) return false;
+    const left = [existing.title, ...(existing.alternateTitles ?? [])].map(getCanonicalSearchTitle);
+    const right = [result.title, ...(result.alternateTitles ?? [])].map(getCanonicalSearchTitle);
+    const overlap = left.some((title) => right.includes(title));
+    if (!overlap || authorsMatch(existing.author, result.author) === false) return false;
+    return authorsMatch(existing.author, result.author) === true
+        || new Set(left.filter((title) => right.includes(title))).size >= 2
+        || left.some((title) => right.includes(title) && Boolean(getMangaAliasGroup(title)))
+        || shouldMergeSearchResult(existing, result);
 }
 
 function getQueryMatchRank(query: string, title: string) {
@@ -173,7 +178,23 @@ export async function fetchReaderPages(chapter: ReaderChapterInput, source: Read
 }
 
 export async function searchScrapers(query: string): Promise<AggregatedSearchResult[]> {
-    const allResults = await Promise.all(scrapers.map(s => s.search(query).catch(() => [])));
+    return (await searchScrapersDetailed(query)).results;
+}
+
+export async function searchScrapersDetailed(query: string) {
+    const providers = scrapers.filter((s) => s.capabilities?.search !== false);
+    const settled = await Promise.allSettled(providers.map(async (s) => {
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([
+                s.search(query, { signal: controller.signal }),
+                new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("Provider search timed out")); }, 8_000); }),
+            ]);
+        } finally { if (timer) clearTimeout(timer); }
+    }));
+    const failedProviders = settled.flatMap((result, index) => result.status === "rejected" ? [providers[index].name] : []);
+    const allResults = settled.map((result) => result.status === "fulfilled" ? result.value : []);
     const flatResults = allResults.flat();
 
     const aggregated: Map<string, AggregatedSearchResult> = new Map();
@@ -182,30 +203,35 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
 
     for (const result of flatResults) {
         const key = getCanonicalSearchTitle(result.title);
-        const candidateKeys = [key, ...Array.from(aggregated.keys()).filter((candidateKey) => candidateKey.startsWith(`${key}|`))];
+        const candidateKeys = Array.from(aggregated.keys());
         const matchingKey = candidateKeys.find((candidateKey) => {
             const candidate = aggregated.get(candidateKey);
-            return candidate ? shouldMergeSearchResult(candidate, result, key) : false;
+            return candidate ? matchingIdentity(candidate, result) : false;
         });
-        const existingKey = sourceUrlToKey.get(result.sourceUrl) ?? matchingKey ?? (aggregated.has(key) ? `${key}|${result.sourceUrl}` : key);
+        const identity = sourceIdentity(result.sourceUrl);
+        const existingKey = sourceUrlToKey.get(identity) ?? matchingKey ?? (aggregated.has(key) ? `${key}|${result.sourceUrl}` : key);
         const existing = aggregated.get(existingKey);
         const resultRank = getPreferredSourceRank(result.sourceName, result.title);
 
         if (existing) {
+            existing.alternateTitles = Array.from(new Set([...(existing.alternateTitles ?? []), ...(result.alternateTitles ?? []), result.title]));
             // Add source to existing entry if not already present
-            if (!existing.sources.find(s => s.url === result.sourceUrl)) {
+            if (!existing.sources.find(s => sourceIdentity(s.url) === identity)) {
                 existing.sources.push({
+                    ...(result.providerId ? { providerId: result.providerId } : {}),
                     name: result.sourceName,
                     url: result.sourceUrl
                 });
             }
-            sourceUrlToKey.set(result.sourceUrl, existingKey);
+            sourceUrlToKey.set(identity, existingKey);
             const metadataRank = metadataRankByKey.get(existingKey) ?? 0;
             const preferIncomingMetadata = resultRank > metadataRank;
             if ((!existing.description || preferIncomingMetadata) && result.description) existing.description = result.description;
             if ((!existing.coverUrl || preferIncomingMetadata) && result.coverUrl) existing.coverUrl = result.coverUrl;
             if ((!existing.status || preferIncomingMetadata) && result.status) existing.status = result.status;
             if ((!existing.author || preferIncomingMetadata) && result.author) existing.author = result.author;
+            if (result.tags?.length) existing.tags = Array.from(new Map([...(existing.tags ?? []), ...result.tags].map((tag) => [tag.id, tag])).values());
+            if (result.classificationSource === "MANGADEX") { existing.contentRating = result.contentRating; existing.classificationSource = result.classificationSource; }
             if (preferIncomingMetadata) metadataRankByKey.set(existingKey, resultRank);
         } else {
             const canonicalTitle = getCanonicalMangaTitle(result.title);
@@ -215,19 +241,24 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
                 coverUrl: result.coverUrl,
                 status: result.status,
                 author: result.author,
+                tags: result.tags,
+                contentRating: result.contentRating,
+                classificationSource: result.classificationSource,
+                alternateTitles: result.alternateTitles,
                 sources: [{
+                    ...(result.providerId ? { providerId: result.providerId } : {}),
                     name: result.sourceName,
                     url: result.sourceUrl
                 }]
             });
-            sourceUrlToKey.set(result.sourceUrl, existingKey);
+            sourceUrlToKey.set(identity, existingKey);
             metadataRankByKey.set(existingKey, resultRank);
         }
     }
 
-    return Array.from(aggregated.values()).map((result) => {
+    const results = Array.from(aggregated.values()).map((result) => {
         const sources = result.sources
-            .map((source) => ({ name: source.name, url: source.url }))
+            .map((source) => ({ ...source }))
             .sort((a, b) => getPreferredSourceRank(b.name, result.title) - getPreferredSourceRank(a.name, result.title));
 
         return {
@@ -235,11 +266,13 @@ export async function searchScrapers(query: string): Promise<AggregatedSearchRes
             sources,
         };
     }).sort((a, b) => {
-        const matchDelta = getQueryMatchRank(query, b.title) - getQueryMatchRank(query, a.title);
+        const rank = (result: AggregatedSearchResult) => Math.max(...[result.title, ...(result.alternateTitles ?? [])].map((title) => getQueryMatchRank(query, title)));
+        const matchDelta = rank(b) - rank(a);
         if (matchDelta !== 0) return matchDelta;
 
         const aRank = Math.max(0, ...a.sources.map((source) => getPreferredSourceRank(source.name, a.title)));
         const bRank = Math.max(0, ...b.sources.map((source) => getPreferredSourceRank(source.name, b.title)));
         return bRank - aRank;
     });
+    return { results, failedProviders, allFailed: settled.length > 0 && settled.every((result) => result.status === "rejected") };
 }

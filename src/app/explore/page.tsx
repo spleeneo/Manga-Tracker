@@ -13,7 +13,9 @@ import { isAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const initialFilters = Object.fromEntries(Object.entries(params).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   const session = await auth();
   if (!session?.user?.id) {
     notFound();
@@ -38,7 +40,7 @@ export default async function Page() {
       </header>
 
       <main className="page-wrap py-8">
-        <ExplorePage />
+        <ExplorePage initialFilters={initialFilters} />
       </main>
       <LegalFooter />
     </div>

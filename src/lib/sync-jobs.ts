@@ -394,6 +394,7 @@ async function runWithConcurrency<T, R>(
 }
 
 export async function processQueuedSyncJobs(options: ProcessQueuedSyncJobsOptions = {}) {
+  const startedAt = Date.now();
   await recoverStaleRunningSyncJobs();
 
   const limit = options.limit ?? DEFAULT_QUEUE_LIMIT;
@@ -415,5 +416,15 @@ export async function processQueuedSyncJobs(options: ProcessQueuedSyncJobsOption
     retrying: results.filter((result) => result.status === "retrying").length,
     skipped: results.filter((result) => result.status === "skipped").length,
     remaining,
+    durationMs: Date.now() - startedAt,
   };
+}
+
+export async function getSyncQueueMetrics() {
+  const [queued, running, oldest] = await Promise.all([
+    prisma.syncJob.count({ where: { type: SYNC_JOB_TYPE, status: "QUEUED" } }),
+    prisma.syncJob.count({ where: { type: SYNC_JOB_TYPE, status: "RUNNING" } }),
+    prisma.syncJob.findFirst({ where: { type: SYNC_JOB_TYPE, status: "QUEUED" }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
+  ]);
+  return { queued, running, oldestQueuedAgeMs: oldest ? Math.max(0, Date.now() - oldest.createdAt.getTime()) : 0 };
 }

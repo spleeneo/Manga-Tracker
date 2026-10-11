@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { CoverImage } from "@/components/cover-image";
+import { useDialogFocus } from "@/components/use-dialog-focus";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, CalendarClock, CheckCircle2, Loader2, RefreshCw, Trash2, X } from "lucide-react";
@@ -33,19 +35,8 @@ function MangaDeleteButton({
     onDelete: () => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
-
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                setIsOpen(false);
-            }
-        };
-
-        window.addEventListener("keydown", closeOnEscape);
-        return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [isOpen]);
+    const dialogRef = useDialogFocus(isOpen, () => setIsOpen(false));
+    const dialogTitleId = useId();
 
     return (
         <>
@@ -74,13 +65,13 @@ function MangaDeleteButton({
                         className="absolute inset-0"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className="modal-surface relative w-full max-w-sm rounded-lg p-5 shadow-2xl">
+                    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={dialogTitleId} tabIndex={-1} className="modal-surface relative w-full max-w-sm rounded-lg p-5 shadow-2xl">
                         <div className="mb-4 flex items-start gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
                                 <Trash2 className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-lg font-bold">Remove from library?</h2>
+                                <h2 id={dialogTitleId} className="text-lg font-bold">Remove from library?</h2>
                                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                                     {title} will disappear from your list. Shared manga data stays available if you track it again.
                                 </p>
@@ -245,8 +236,8 @@ export function MangaCard({
                 aria-label={`Open ${manga.title} details`}
             >
                 {manga.coverUrl ? (
-                    <img
-                        src={manga.coverUrl.startsWith("/") ? manga.coverUrl : `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                    <CoverImage
+                        url={manga.coverUrl}
                         alt={manga.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -348,8 +339,8 @@ export function MangaCard({
                     aria-label={`Open ${manga.title} details`}
                 >
                     {manga.coverUrl ? (
-                        <img
-                            src={manga.coverUrl.startsWith("/") ? manga.coverUrl : `/api/proxy/image?url=${encodeURIComponent(manga.coverUrl)}`}
+                        <CoverImage
+                            url={manga.coverUrl}
                             alt={manga.title}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />

@@ -48,16 +48,22 @@ export interface MangaMetadata {
 }
 
 export interface SearchResult extends MangaMetadata {
+    alternateTitles?: string[];
+    providerId?: string;
     sourceUrl: string;
     sourceName: string;
 }
 
 export interface SourceInfo {
+    providerId?: string;
     name: string;
     url: string;
 }
 
 export interface AggregatedSearchResult extends MangaMetadata {
+    alternateTitles?: string[];
+    isTracked?: boolean;
+    librarySlug?: string;
     sources: SourceInfo[];
 }
 
@@ -74,6 +80,6 @@ export interface Scraper {
     canHandle(url: string): boolean;
     fetchChapters(url: string, source?: ReaderSourceInput): Promise<ScrapedChapter[]>;
     fetchMetadata(url: string): Promise<MangaMetadata>;
-    search(query: string): Promise<SearchResult[]>;
+    search(query: string, options?: { signal?: AbortSignal }): Promise<SearchResult[]>;
     fetchReaderPages?(chapter: ReaderChapterInput, source: ReaderSourceInput): Promise<ReaderResult>;
 }

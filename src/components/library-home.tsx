@@ -81,7 +81,7 @@ export function LibraryHome() {
     } catch (loadError) {
       console.error(loadError);
       setError("Could not load your library.");
-      setMangas([]);
+      setMangas((current) => current ?? []);
     } finally {
       isLoadingRef.current = false;
     }
@@ -277,9 +277,11 @@ export function LibraryHome() {
   useEffect(() => {
     if (!mangas?.some((manga) => manga.syncStatus === "SYNCING")) return;
     const timer = window.setTimeout(() => {
-      void loadLibrary();
+      if (!document.hidden) void loadLibrary();
     }, 4000);
-    return () => window.clearTimeout(timer);
+    const onVisible = () => { if (!document.hidden) void loadLibrary(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, [loadLibrary, mangas]);
 
   const pullRefreshIndicator = (
@@ -299,7 +301,7 @@ export function LibraryHome() {
     );
   }
 
-  if (error) {
+  if (error && mangas.length === 0) {
     return (
       <>
         {pullRefreshIndicator}
@@ -329,7 +331,8 @@ export function LibraryHome() {
   return (
     <>
       {pullRefreshIndicator}
-      <LibraryDashboard key={mangas.map((manga) => `${manga.id}:${manga.syncStatus}:${manga.lastReadChapterNumber}`).join("|")} mangas={mangas} />
+      {error && <div role="alert" className="surface mb-4 p-4 text-sm">{error} <button type="button" className="underline" onClick={() => void loadLibrary()}>Retry</button></div>}
+      <LibraryDashboard mangas={mangas} />
     </>
   );
 }

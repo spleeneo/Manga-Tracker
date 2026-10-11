@@ -20,14 +20,20 @@ Mangateo is a personal manga library:
 - Avoid nested interactive elements; clickable areas should be keyboard-friendly.
 - Treat desktop and mobile as paired surfaces: every UI change should update and verify both responsive versions.
 
-## Near-Term Improvements
+## Implemented Core Workflows
 
-- Add a continue-reading area on the home page.
-- Add library summary stats: unread count, updated today, caught-up titles.
-- Replace `alert()` with toast feedback for success and failure states.
-- Add loading and empty states for update checks and metadata refreshes.
-- Let users hide/archive/completed titles.
-- Add mobile-specific polishing for the detail page header controls.
+- Continue reading, summary counts, optimistic reading progress, and toast feedback are available.
+- Library search, unread/caught-up filtering, and update/recent-reading/title sorting survive synchronization refreshes. Failed refreshes retain loaded titles with retry.
+- Discovery has provider-independent pagination, conservative deduplication, URL filters, hide-tracked controls, and an accessible preview with tracking/library actions and explicit source links.
+- Search retains successful providers when another fails, distinguishes failures from empty matches, and supports retry. MangaDex uses relevance ordering and 24 results.
+- The reader offers explicit external-source navigation and retryable next-chapter requests. Automatic source popups are removed.
+- Shared background updates use a durable Postgres queue with bounded processing and backlog metrics.
+
+## Near-Term Follow-Up
+
+- Collect concrete unresolved duplicate examples before extending identity rules. Matching titles alone are insufficient evidence; separate works stay separate.
+- Monitor production search latency and queue age before choosing further optimizations. Keep hosting near free.
+- Complete longer real-device reading and production network-failure checks; see [performance-review.md](performance-review.md).
 
 ## Readability Detection
 
@@ -47,6 +53,4 @@ Useful signals could include page count, official API flags, reader error states
 - Source health badges.
 - Manual rescan of one source.
 - Chapter alternative drawer for merged duplicate chapter numbers.
-- Better search result grouping for alternate titles and translations.
-- Import/export library data.
-- Background update queue.
+- Page-level bookmarks, import/export, combined genre filters, and recommendations need separate specifications after the core workflows are verified.

@@ -2676,3 +2676,45 @@ Outcome:
 ### Outcome
 
 - Mature Discover filters now apply to MangaDex/catalog results as well as MangaPill wherever provider semantics support it.
+
+## 2026-10-11 - Improve Search, Discovery, Reading Reliability, And Operational Visibility
+
+### Why
+
+- The overall app review prioritized dependable daily reading and useful Discovery.
+- The exact search `in the name of god` omitted MangaDex title `6eca560a-d5e3-4711-88c4-5676e3cd8364`: a live API check returned it seventh among 48 default-ordered matches, outside the five requested results. Relevance ordering put it first.
+- Search errors were indistinguishable from empty results, and MangaPill concatenated primary and alternate card titles.
+- Failed library refreshes hid loaded content; Discovery could accept stale responses and used a shared pagination offset.
+- Read-only queue inspection found 32 eligible tracked titles, exceeding the daily 20-job ceiling.
+
+### Plan
+
+- Correct provider search and conservative identity aggregation; preserve family-policy paths.
+- Improve Discovery previews, filtering, pagination, tracked-state accuracy, and request lifecycle.
+- Preserve library state and make reader failures recoverable; improve modal keyboard access.
+- Restrict the image proxy, add queue metrics and bounded draining, and replace the stale benchmark with actual summary queries.
+- Run focused regressions, browser acceptance checks, full verification, and update smoke; record measured limitations before committing/pushing.
+
+### Changes
+
+- MangaDex requests 24 relevance-sorted results and carries alternate titles, author names, and provider identity. MangaPill separates alternate titles and keeps up to 24 matches.
+- Search aggregation preserves partial results/provider diagnostics, has an eight-second provider deadline, and does not cache incomplete outcomes. Library decoration happens after the shared search cache so account state stays private.
+- Discovery uses cancellation plus request guards, per-provider offsets, cross-page merging, in-app previews, URL filters, hide-tracked controls, and lazy covers with error fallbacks.
+- Library refresh failures retain loaded data; dashboard filters survive updated props. Hidden-tab polling pauses. Reader next-page failures have an explicit retry, and unavailable readers expose source links without opening popups.
+- Add, preview, and remove dialogs use shared focus management and labelled modal semantics.
+- Image proxy requires reviewed HTTPS destinations and public DNS results, validates redirect destinations and raster image types, and limits streamed image bodies to 15 MiB under an eight-second deadline.
+- Daily queue processing drains batches of four up to 80 jobs or a 180-second between-batch budget, with a 300-second function allowance. Queue age/depth and processing duration are returned/logged.
+- Added opt-in local performance diagnostics; rewrote the benchmark to use current summary queries, existing test-account sessions, and small/large available libraries without printing credentials.
+
+### Verification / Outcome
+
+- Focused checks passed for relevance/aliases/provider failures, tracked-state cache isolation, same-title separation, image destinations/redirects/body limits, bounded queue draining, stale Discovery and dialog retries, pagination deduplication, library refresh recovery/filter preservation, reader retry, and modal focus restoration.
+- Final `npm run verify` passed: 72 test files / 316 tests, lint with four `no-img-element` warnings and no errors, production build. `npx tsc --noEmit` and `git diff --check` passed as additional checks.
+- `npm run smoke:update` passed: Dreamland's NeloManga/MangaDex/MangaPill chapter checks had zero failed sources and no new chapters. MangaPlus source discovery returned upstream 403; successful providers remained usable and the search warning surfaced correctly.
+- Desktop browser: exact reported search -> preview with synopsis/status/tags/provider link -> track -> open library; One Piece -> chapter 1 images -> chapter 2 -> library. Mobile 390x844: search -> tracked preview -> library; One Piece chapter 5 images -> chapter 6 -> library. Final development build confirmed preview metadata and persistent add-dialog trigger focus after Escape. Preview closure at scrollY 846 retained that position, results, and opener focus; no mobile horizontal overflow.
+- Temporary fake-parent fixtures expanded the browser library to 45 titles; all 43 prefixed memberships were removed after measurement. No other user's session or progress was used. Reading actions affected only the fake parent's progress.
+- Production-build baseline: 1-title summaries median 16 ms; 44-title summaries 51 ms; uncached search 3,537 ms; reader discovery 322 ms; first image transfer 87 ms. Browser readiness was 301 ms for two titles and 516 ms for the 45-title mobile fixture; first reader image completed in 716 ms, CLS 0.0294. A short continuous-reading memory smoke observed 11.6-13.1 MB and two/three mounted sections. Method and limits are in [performance-review.md](performance-review.md).
+- Preserved family restrictions through permitted catalog search, policy-aware covers/tracking, opaque child source references, and existing passing family-policy regressions. Child-policy browser revalidation was not repeated in this batch.
+- Remaining verification: deployed cold/warm timings, longer real-device memory profiling, browser network-failure injection (automated UI failure tests passed), and observed daily queue drain duration/Fluid-compute configuration. The queue budget is checked between batches, not a preemptive cancellation.
+- Delivery target is `main` under standing approval; the GitHub Actions verification/deployment pipeline is the release gate. Deferred bookmarks, import/export, combined genres, and recommendations remain out of scope.
+- Lessons: [Search relevance, aliases, partial failures, identity, and dialog triggers](learnings.md#2026-10-11---search-relevance-aliases-and-partial-failures). Product, architecture, security, operations, and audit notes were reconciled with implemented behavior.

@@ -161,7 +161,7 @@ export class MangaPlusScraper implements Scraper {
 
         } catch (e) {
             console.error("MangaPlus search failed:", e);
-            return [];
+            throw e;
         }
     }
 

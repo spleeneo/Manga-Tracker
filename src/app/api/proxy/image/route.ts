@@ -1,58 +1,45 @@
-import { NextRequest } from 'next/server';
+import { NextRequest } from "next/server";
+import { lookup } from "node:dns/promises";
 import { NELOMANGA_COOKIE, NELOMANGA_USER_AGENT, NELOMANGA_BASE } from "@/lib/scrapers/nelomanga-config";
+import { allowedImageUrl, publicImageAddress, readImageBody } from "@/lib/image-proxy-policy";
 
 export async function GET(request: NextRequest) {
-    const url = request.nextUrl.searchParams.get('url');
-    const requestedReferer = request.nextUrl.searchParams.get('referer');
-
-    if (!url) {
-        return new Response('Missing URL parameter', { status: 400 });
+  const value = request.nextUrl.searchParams.get("url");
+  if (!value) return new Response("Missing URL parameter", { status: 400 });
+  let url: URL;
+  try { url = allowedImageUrl(value); } catch { return new Response("Image destination is not allowed", { status: 400 }); }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    for (let redirects = 0; redirects <= 3; redirects++) {
+      const addresses = await lookup(url.hostname, { all: true });
+      if (!addresses.length || addresses.some(({ address }) => !publicImageAddress(address))) throw new Error("Non-public destination");
+      const hostMatches = (domain: string) => url.hostname === domain || url.hostname.endsWith(`.${domain}`);
+      const headers: Record<string, string> = { "User-Agent": url.hostname === "uploads.mangadex.org" ? "Mangateo/1.0" : NELOMANGA_USER_AGENT, Referer: url.origin };
+      if (["nelomanga.net", "2xstorage.com", "waitst.com"].some(hostMatches)) {
+        headers.Referer = `${NELOMANGA_BASE}/`;
+        headers.Cookie = NELOMANGA_COOKIE;
+      } else if (hostMatches("readdetectiveconan.com")) {
+        headers.Referer = "https://mangapill.com/";
+        try {
+          const referer = new URL(request.nextUrl.searchParams.get("referer") ?? headers.Referer);
+          if (referer.protocol === "https:" && (referer.hostname === "mangapill.com" || referer.hostname.endsWith(".mangapill.com"))) headers.Referer = referer.toString();
+        } catch { /* Use the safe default. */ }
+      }
+      const response = await fetch(url.toString(), { headers, signal: controller.signal, redirect: "manual" });
+      if (response.status >= 300 && response.status < 400) {
+        await response.body?.cancel();
+        const location = response.headers.get("location");
+        if (!location || redirects === 3) throw new Error("Invalid image redirect");
+        url = allowedImageUrl(new URL(location, url).toString());
+        continue;
+      }
+      if (!response.ok) { await response.body?.cancel(); throw new Error("Upstream image unavailable"); }
+      const { bytes, contentType } = await readImageBody(response);
+      return new Response(bytes, { headers: { "Content-Type": contentType, "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
     }
-
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-
-    try {
-        const controller = new AbortController();
-        timeout = setTimeout(() => controller.abort(), 8_000);
-        const parsedUrl = new URL(url);
-        const isNelo = url.includes('nelomanga.net') || url.includes('2xstorage.com') || url.includes('waitst.com');
-        const isMangaPillCdn = parsedUrl.hostname.endsWith('readdetectiveconan.com');
-        const isMangaDexUploads = parsedUrl.hostname === 'uploads.mangadex.org';
-        const headers: Record<string, string> = {
-            'User-Agent': isMangaDexUploads ? 'Mangateo/1.0' : NELOMANGA_USER_AGENT,
-        };
-
-        if (isNelo) {
-            headers['Referer'] = `${NELOMANGA_BASE}/`;
-            headers['Cookie'] = NELOMANGA_COOKIE;
-        } else if (isMangaPillCdn) {
-            const referer = requestedReferer ? new URL(requestedReferer) : new URL('https://mangapill.com/');
-            headers['Referer'] = referer.hostname.endsWith('mangapill.com') ? referer.toString() : 'https://mangapill.com/';
-        } else {
-            headers['Referer'] = parsedUrl.origin;
-        }
-
-        const response = await fetch(url, { headers, signal: controller.signal });
-        if (timeout) clearTimeout(timeout);
-
-        if (!response.ok) {
-            console.error(`Proxy failed for ${url}: ${response.status}`);
-            throw new Error(`Failed to fetch image: ${response.status}`);
-        }
-
-        const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
-
-        return new Response(buffer, {
-            headers: {
-                'Content-Type': contentType || 'image/jpeg',
-                'Cache-Control': 'public, max-age=31536000, immutable',
-            },
-        });
-    } catch (error) {
-        console.error('Image proxy error:', error);
-        return new Response('Failed to proxy image', { status: 500 });
-    } finally {
-        if (timeout) clearTimeout(timeout);
-    }
+    throw new Error("Too many redirects");
+  } catch {
+    return new Response("Failed to proxy image", { status: 502 });
+  } finally { clearTimeout(timeout); }
 }

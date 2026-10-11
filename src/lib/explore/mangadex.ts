@@ -22,6 +22,7 @@ export interface ExploreQuery {
 }
 
 export interface ExploreManga {
+  librarySlug?: string;
   id: string;
   title: string;
   slug: string;
@@ -163,7 +164,9 @@ function buildExploreUrl(query: ExploreQuery) {
     search.append("status[]", status);
   }
 
-  if (sort === "updated") {
+  if (query.q?.trim()) {
+    search.set("order[relevance]", "desc");
+  } else if (sort === "updated") {
     search.set("order[latestUploadedChapter]", "desc");
   } else if (sort === "new") {
     search.set("order[createdAt]", "desc");
@@ -215,12 +218,13 @@ async function decorateTracked(userId: string, mangas: Omit<ExploreManga, "isTra
         },
       },
     },
-    select: { sourceUrl: true },
+    select: { sourceUrl: true, manga: { select: { slug: true } } },
   });
   const trackedUrls = new Set(trackedSources.map((source) => source.sourceUrl));
   return mangas.map((manga) => ({
     ...manga,
     isTracked: trackedUrls.has(manga.source.url),
+    librarySlug: trackedSources.find((source) => source.sourceUrl === manga.source.url)?.manga?.slug,
   }));
 }
 

@@ -7,6 +7,9 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 ### `GET /api/manga/search`
 - Returns `200` with `{ results: [] }` when `q` is missing.
 - Returns `200` with aggregated results when scrapers succeed.
+- Returns successful matches plus `failedProviders` when only some providers fail; incomplete results are not cached as complete.
+- Returns `503` when every searchable provider fails. Genuine empty successful searches remain `200`.
+- Decorates cached results with the current user's tracked state; family policy uses a separate permitted catalog path.
 - Returns `500` with `{ error: "Failed to search" }` when registry search throws.
 
 ### `POST /api/manga`
@@ -37,8 +40,8 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 
 ### `GET /api/cron/update`
 - Requires a valid cron secret token.
-- Enqueues every manga tracked by at least one user.
-- Processes a bounded batch of shared update jobs.
+- Enqueues non-completed manga tracked by at least one user.
+- Drains bounded four-job batches within a time/job budget and reports backlog age and processing duration.
 - Returns queue counts such as `enqueued`, `processed`, `completed`, `failed`, and `remaining`.
 - Returns `500` with `{ success: false }` on failure.
 
@@ -59,6 +62,11 @@ This checklist captures expected behavior for core Mangateo flows and doubles as
 - Queue processing claims due jobs atomically before running scraper work.
 
 ## Manual verification checklist
+- Search the reported MangaDex title, preview it, track it, and confirm the library badge.
+- Close previews with Escape and verify focus and scroll restoration; repeat at mobile width.
+- Verify independent provider pagination, partial-results retry, and stale-response protection.
+- Keep library filters through refresh; retain loaded titles after a failed refresh.
+- Read a chapter, advance, and return to library; failed next requests must offer retry and external-only chapters must not open popups.
 - Add manga via search flow and confirm source list and chapter ingestion.
 - Add manga from a provider search result and confirm metadata fallback behavior when a scraper has sparse metadata.
 - Trigger update checks for an existing manga and confirm strict MangaPill matches can add a source automatically.

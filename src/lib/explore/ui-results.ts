@@ -1,3 +1,6 @@
+import { getMangaAliasGroup } from "@/lib/manga-aliases";
+import { sourceIdentity } from "@/lib/search-library";
+
 export interface ExploreSource {
   name: string;
   url: string;
@@ -23,6 +26,8 @@ export interface BrowseCategoryOption {
 }
 
 export interface BrowseExploreResult {
+  author?: string;
+  librarySlug?: string;
   id: string;
   title: string;
   slug: string;
@@ -38,6 +43,11 @@ export interface BrowseExploreResult {
 }
 
 export interface AggregatedExploreSearchResult {
+  tags?: ExploreTagSummary[];
+  contentRating?: string;
+  classificationSource?: "MANGADEX";
+  isTracked?: boolean;
+  librarySlug?: string;
   title: string;
   description?: string;
   coverUrl?: string;
@@ -47,6 +57,8 @@ export interface AggregatedExploreSearchResult {
 }
 
 export interface ExploreDisplayManga {
+  author?: string;
+  librarySlug?: string;
   id: string;
   title: string;
   slug: string;
@@ -98,9 +110,13 @@ export function normalizeSearchExploreResult(manga: AggregatedExploreSearchResul
     description: manga.description,
     coverUrl: manga.coverUrl,
     status: manga.status,
-    tags: [],
+    tags: manga.tags ?? [],
+    author: manga.author,
+    contentRating: manga.contentRating,
+    classificationSource: manga.classificationSource,
     sources,
-    isTracked: false,
+    isTracked: manga.isTracked ?? false,
+    librarySlug: manga.librarySlug,
     resultKind: "search",
   };
 }
@@ -156,13 +172,14 @@ function mergeDisplayManga(existing: ExploreDisplayManga, manga: ExploreDisplayM
     contentRating: existing.contentRating || manga.contentRating,
     classificationSource: existing.classificationSource || manga.classificationSource,
     isTracked: existing.isTracked || manga.isTracked,
+    librarySlug: existing.librarySlug || manga.librarySlug,
     sources,
     tags,
   };
 }
 
 export function mergeBrowseDisplayResults(...resultGroups: ExploreDisplayManga[][]) {
-  const mergedBySlug = new Map<string, ExploreDisplayManga>();
+  const merged: ExploreDisplayManga[] = [];
   const maxLength = Math.max(0, ...resultGroups.map((group) => group.length));
 
   for (let index = 0; index < maxLength; index += 1) {
@@ -170,10 +187,18 @@ export function mergeBrowseDisplayResults(...resultGroups: ExploreDisplayManga[]
       const manga = group[index];
       if (!manga) continue;
 
-      const existing = mergedBySlug.get(manga.slug);
-      mergedBySlug.set(manga.slug, existing ? mergeDisplayManga(existing, manga) : manga);
+      const identityIndex = merged.findIndex((existing) => {
+        if (existing.sources.some((a) => manga.sources.some((b) => sourceIdentity(a.url) === sourceIdentity(b.url)))) return true;
+        if (existing.sources.some((a) => manga.sources.some((b) => a.name === b.name))) return false;
+        if (existing.author && manga.author && existing.author.toLowerCase() !== manga.author.toLowerCase()) return false;
+        const alias = getMangaAliasGroup(existing.title);
+        return Boolean(alias && alias.slug === getMangaAliasGroup(manga.title)?.slug)
+          || Boolean(existing.author && manga.author && existing.author.toLowerCase() === manga.author.toLowerCase() && existing.title.toLowerCase() === manga.title.toLowerCase());
+      });
+      if (identityIndex >= 0) merged[identityIndex] = mergeDisplayManga(merged[identityIndex], manga);
+      else merged.push(manga);
     }
   }
 
-  return Array.from(mergedBySlug.values());
+  return merged;
 }

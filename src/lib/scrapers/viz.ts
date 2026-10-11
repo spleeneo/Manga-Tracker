@@ -115,7 +115,7 @@ export class VizScraper implements Scraper {
         }));
     } catch (error) {
       console.error("VIZ search failed:", error);
-      return [];
+      throw error;
     }
   }
 

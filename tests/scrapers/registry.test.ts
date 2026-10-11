@@ -1,7 +1,40 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getRegisteredScrapers, searchScrapers } from "@/lib/scrapers/registry";
+import { getRegisteredScrapers, searchScrapers, searchScrapersDetailed } from "@/lib/scrapers/registry";
 
 describe("scraper search aggregation", () => {
+  it("does not merge distinct long same-title works without identity evidence", async () => {
+    const providers = getRegisteredScrapers();
+    providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));
+    vi.mocked(providers[0].search).mockResolvedValue([{ title: "The Same Long Title", sourceName: "First", sourceUrl: "https://first.test/1" }]);
+    vi.mocked(providers[1].search).mockResolvedValue([{ title: "The Same Long Title", sourceName: "Second", sourceUrl: "https://second.test/2" }]);
+    expect((await searchScrapersDetailed("same long title")).results).toHaveLength(2);
+  });
+  it("links alternate titles with matching authors and preserves provider failures", async () => {
+    const providers = getRegisteredScrapers();
+    providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));
+    vi.mocked(providers[0].search).mockResolvedValue([{ title: "English Title", alternateTitles: ["Japanese Title"], author: "A Writer", sourceName: "First", sourceUrl: "https://first.test/title" }]);
+    vi.mocked(providers[1].search).mockResolvedValue([{ title: "Japanese Title", author: "A Writer", sourceName: "Second", sourceUrl: "https://second.test/title" }]);
+    vi.mocked(providers[2].search).mockRejectedValue(new Error("unavailable"));
+    const outcome = await searchScrapersDetailed("Japanese Title");
+    expect(outcome.results).toHaveLength(1);
+    expect(outcome.results[0].sources).toHaveLength(2);
+    expect(outcome.failedProviders).toEqual([providers[2].name]);
+    expect(outcome.allFailed).toBe(false);
+  });
+
+  it("keeps distinct provider entries separate even when author and title coincide", async () => {
+    const providers = getRegisteredScrapers();
+    providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));
+    vi.mocked(providers[0].search).mockResolvedValue(["1", "2"].map((providerId) => ({ title: "Same Work", author: "Same Author", sourceName: "First", providerId, sourceUrl: `https://first.test/${providerId}` })));
+    const outcome = await searchScrapersDetailed("Same Work");
+    expect(outcome.results).toHaveLength(2);
+    expect(outcome.results.map((result) => result.sources[0].providerId)).toEqual(["1", "2"]);
+  });
+
+  it("reports all-provider failure instead of a genuine empty result", async () => {
+    getRegisteredScrapers().forEach((provider) => vi.spyOn(provider, "search").mockRejectedValue(new Error("unavailable")));
+    expect((await searchScrapersDetailed("anything")).allFailed).toBe(true);
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -80,12 +113,14 @@ describe("scraper search aggregation", () => {
 
     vi.mocked(mangaDex!.search).mockResolvedValue([{
       title: "One Piece",
+      author: "Eiichiro Oda",
       sourceName: "MangaDex",
       sourceUrl: "https://mangadex.org/title/one-piece",
       coverUrl: "https://uploads.mangadex.org/covers/one-piece.jpg",
     }]);
     vi.mocked(mangaPill!.search).mockResolvedValue([{
       title: "One Piece",
+      author: "Oda Eiichiro",
       sourceName: "MangaPill",
       sourceUrl: "https://mangapill.com/manga/2/one-piece",
       coverUrl: "https://cdn.readdetectiveconan.com/file/mangapill/i/2.webp",

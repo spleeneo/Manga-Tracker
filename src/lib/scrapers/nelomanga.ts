@@ -212,12 +212,12 @@ export class NeloMangaScraper implements Scraper {
         return withProviderClassification(this.name, metadata, html);
     }
 
-    async search(query: string): Promise<SearchResult[]> {
+    async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
         const slug = query.replace(/\s+/g, '_').toLowerCase();
         const searchUrl = `https://www.nelomanga.net/home/search/json?searchword=${encodeURIComponent(slug)}`;
 
         try {
-            const res = await fetchWithRetry(searchUrl, { headers: this.getHeaders() });
+            const res = await fetchWithRetry(searchUrl, { headers: this.getHeaders(), signal: options.signal });
 
             const data = await res.json();
 
@@ -243,7 +243,7 @@ export class NeloMangaScraper implements Scraper {
             } else {
                 console.error("[NeloManga] Search parse error", e);
             }
-            return [];
+            throw e;
         }
     }
 

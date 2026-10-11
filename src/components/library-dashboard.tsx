@@ -34,13 +34,24 @@ function formatNextChapterEstimate(manga?: MangaCardData) {
 
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
+    const [previousMangas, setPreviousMangas] = useState(mangas);
+    const [libraryQuery, setLibraryQuery] = useState("");
+    const [libraryFilter, setLibraryFilter] = useState("all");
+    const [librarySort, setLibrarySort] = useState("updates");
     const [progressAction, setProgressAction] = useState<{ slug: string; action: ProgressAction } | null>(null);
     const [removingSlug, setRemovingSlug] = useState<string | null>(null);
     const [syncingSlug, setSyncingSlug] = useState<string | null>(null);
     const { showToast } = useToast();
 
+    if (mangas !== previousMangas) {
+        setPreviousMangas(mangas);
+        setItems(mangas);
+    }
+
     const sortedItems = useMemo(() => {
-        return [...items].sort((a, b) => {
+        return items.filter((manga) => manga.title.toLowerCase().includes(libraryQuery.trim().toLowerCase()) && (libraryFilter === "all" || (libraryFilter === "unread" ? manga.unreadChapters > 0 : manga.isCaughtUp))).sort((a, b) => {
+            if (librarySort === "title") return a.title.localeCompare(b.title);
+            if (librarySort === "reading") return (b.lastReadAt ? new Date(b.lastReadAt).getTime() : 0) - (a.lastReadAt ? new Date(a.lastReadAt).getTime() : 0) || a.title.localeCompare(b.title);
             const unreadPriority = Number(b.unreadChapters > 0) - Number(a.unreadChapters > 0);
             if (unreadPriority !== 0) return unreadPriority;
 
@@ -50,7 +61,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             if (byUpdate !== 0) return byUpdate;
             return (b.latestChapter?.chapterNumber ?? 0) - (a.latestChapter?.chapterNumber ?? 0);
         });
-    }, [items]);
+    }, [items, libraryQuery, libraryFilter, librarySort]);
 
     const stats = useMemo(() => {
         const unreadTitles = items.filter((manga) => manga.unreadChapters > 0).length;
@@ -202,7 +213,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-library-ready>
             <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
                 <div className="surface overflow-hidden rounded-lg p-4 sm:p-6">
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -295,6 +306,12 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             </section>
 
             <section className="space-y-4">
+                <div className="grid gap-2 sm:grid-cols-3">
+                    <input aria-label="Search your library" placeholder="Search your library" className="ui-field" value={libraryQuery} onChange={(event) => setLibraryQuery(event.target.value)} />
+                    <select aria-label="Filter library" className="ui-field" value={libraryFilter} onChange={(event) => setLibraryFilter(event.target.value)}><option value="all">All titles</option><option value="unread">Unread chapters</option><option value="caught-up">Caught up</option></select>
+                    <select aria-label="Sort library" className="ui-field" value={librarySort} onChange={(event) => setLibrarySort(event.target.value)}><option value="updates">Recent updates</option><option value="reading">Recently read</option><option value="title">Title</option></select>
+                </div>
+                {items.length > 0 && sortedItems.length === 0 && <p className="empty-state">No titles match these filters.</p>}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 className="text-xl font-bold tracking-tight">Library</h2>

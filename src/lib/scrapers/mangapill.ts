@@ -74,9 +74,10 @@ export class MangaPillScraper implements Scraper {
     };
   }
 
-  async search(query: string): Promise<SearchResult[]> {
+  async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
     try {
       const response = await fetchWithRetry(`${BASE_URL}/search?q=${encodeURIComponent(query)}`, {
+        signal: options.signal,
         headers: this.getHeaders(),
       });
       const html = await response.text();
@@ -85,7 +86,9 @@ export class MangaPillScraper implements Scraper {
 
       for (const link of links) {
         const sourceUrl = toAbsoluteUrl(link[1]);
-        const title = stripTags(link[2].replace(/<figure[\s\S]*?<\/figure>/gi, " "));
+        const primaryTitle = link[2].match(/<div[^>]+class=["'][^"']*font-black[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1];
+        const alternateTitle = link[2].match(/<div[^>]+class=["'][^"']*text-secondary[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1];
+        const title = stripTags(primaryTitle ?? link[2].replace(/<figure[\s\S]*?<\/figure>/gi, " "));
         const existing = resultsByUrl.get(sourceUrl);
         const coverMatch = link[2].match(/<img[^>]+(?:data-src|src)=["']([^"']+)["']/i);
 
@@ -93,16 +96,18 @@ export class MangaPillScraper implements Scraper {
           title: title || existing?.title || "",
           sourceUrl,
           sourceName: this.name,
+          providerId: link[1].match(/\/manga\/(\d+)/)?.[1],
+          alternateTitles: alternateTitle ? [stripTags(alternateTitle)] : existing?.alternateTitles,
           coverUrl: existing?.coverUrl ?? (coverMatch?.[1] ? toAbsoluteUrl(coverMatch[1], sourceUrl) : undefined),
         });
       }
 
-      return Array.from(resultsByUrl.values()).filter((result) => result.title).slice(0, 10);
+      return Array.from(resultsByUrl.values()).filter((result) => result.title).slice(0, 24);
     } catch (error) {
       if (error instanceof ScraperRequestError) {
         console.error(`[${this.name}] Search failed (${error.kind})`);
       }
-      return [];
+      throw error;
     }
   }
 

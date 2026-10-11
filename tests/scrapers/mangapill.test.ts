@@ -52,15 +52,24 @@ describe("MangaPillScraper", () => {
         title: "One Piece",
         sourceUrl: "https://mangapill.com/manga/2/one-piece",
         sourceName: "MangaPill",
+        providerId: "2",
+        alternateTitles: undefined,
         coverUrl: "https://cdn.readdetectiveconan.com/file/mangapill/i/2.webp?h=abc",
       },
       {
         title: "Dandadan",
         sourceUrl: "https://mangapill.com/manga/5460/dandadan",
         sourceName: "MangaPill",
+        providerId: "5460",
+        alternateTitles: undefined,
         coverUrl: undefined,
       },
     ]);
+  });
+
+  it("keeps primary and alternate card titles separate", async () => {
+    fetchWithRetryMock.mockResolvedValueOnce(textResponse('<a href="/manga/8086/goblin-slayer-day-in-the-life"><div class="font-black leading-tight">Goblin Slayer: Day in the Life</div><div class="text-xs text-secondary">Goblin Slayer: A Day in the Life</div></a>'));
+    expect((await new MangaPillScraper().search("goblin slayer"))[0]).toMatchObject({ title: "Goblin Slayer: Day in the Life", alternateTitles: ["Goblin Slayer: A Day in the Life"] });
   });
 
   it("extracts metadata from manga pages", async () => {

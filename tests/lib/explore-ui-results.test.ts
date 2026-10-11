@@ -7,6 +7,11 @@ import {
 } from "@/lib/explore/ui-results";
 
 describe("explore UI result normalization", () => {
+  it("preserves same-title works while deduplicating repeated sources across loaded pages", () => {
+    const first = normalizeBrowseExploreResult({ id: "first", title: "Same Title", slug: "same-title", tags: [], isTracked: false, source: { name: "MangaDex", url: "https://mangadex.org/title/first" } });
+    const second = normalizeBrowseExploreResult({ ...first, id: "second", source: { name: "MangaDex", url: "https://mangadex.org/title/second" } });
+    expect(mergeBrowseDisplayResults([first, second, first])).toHaveLength(2);
+  });
   it("normalizes MangaDex browse results into shared card data", () => {
     const result = normalizeBrowseExploreResult({
       id: "md1",
@@ -66,7 +71,7 @@ describe("explore UI result normalization", () => {
       }),
       normalizeBrowseExploreResult({
         id: "mp2",
-        title: "Shared",
+        title: "Shared", author: "Shared Author",
         slug: "shared",
         tags: [{ id: "mangapill:action", name: "Action" }],
         source: { name: "MangaPill", url: "https://mangapill.com/manga/2/shared" },
@@ -84,7 +89,7 @@ describe("explore UI result normalization", () => {
       }),
       normalizeBrowseExploreResult({
         id: "md2",
-        title: "Shared",
+        title: "Shared", author: "Shared Author",
         slug: "shared",
         tags: [{ id: "mangadex:action", name: "Action" }],
         source: { name: "MangaDex", url: "https://mangadex.org/title/shared" },

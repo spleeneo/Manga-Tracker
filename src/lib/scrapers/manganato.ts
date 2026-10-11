@@ -43,11 +43,12 @@ export class ManganatoScraper implements Scraper {
     return url.includes("manganato.com") || url.includes("chapmanganato.com");
   }
 
-  async search(query: string): Promise<SearchResult[]> {
+  async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
     const slug = query.trim().replace(/\s+/g, "_").toLowerCase();
     const searchUrl = `${BASE}/search/story/${encodeURIComponent(slug)}`;
     try {
       const res = await fetchWithRetry(searchUrl, {
+        signal: options.signal,
         headers: { "User-Agent": "Mozilla/5.0" },
       });
       const html = await res.text();
@@ -55,15 +56,15 @@ export class ManganatoScraper implements Scraper {
         html.matchAll(/<a[^>]+class="item-img"[^>]+href="([^"]+)"[^>]*title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"/gi)
       );
 
-      return cards.slice(0, 5).map((match) => ({
+      return cards.slice(0, 24).map((match) => ({
         title: match[2].trim(),
         sourceUrl: match[1],
         sourceName: "Manganato",
         coverUrl: match[3],
         status: "ONGOING",
       }));
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 

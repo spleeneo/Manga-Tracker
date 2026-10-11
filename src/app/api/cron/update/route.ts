@@ -1,7 +1,9 @@
-import { enqueueTrackedMangaSyncJobs, processQueuedSyncJobs } from "@/lib/sync-jobs";
+import { enqueueTrackedMangaSyncJobs, processQueuedSyncJobs, getSyncQueueMetrics } from "@/lib/sync-jobs";
 import { NextRequest, NextResponse } from "next/server";
+import { drainSyncQueue } from "@/lib/sync-queue-drain";
 
 export const dynamic = 'force-dynamic'; // Ensure this isn't cached
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
     try {
@@ -20,11 +22,14 @@ export async function GET(request: NextRequest) {
         }
 
         const enqueued = await enqueueTrackedMangaSyncJobs();
-        const processed = await processQueuedSyncJobs({ limit: 20, concurrency: 4 });
+        const processed = await drainSyncQueue(processQueuedSyncJobs);
+        const queue = await getSyncQueueMetrics();
+        console.info("[sync] Daily queue sweep", { ...processed, queue });
         return NextResponse.json({
             success: true,
             enqueued: enqueued.enqueued,
             ...processed,
+            queue,
         });
     } catch (error) {
         console.error("Cron update failed:", error);

@@ -1,7 +1,7 @@
 # Performance Review
 
 Date: 2026-05-09
-Latest follow-up: 2026-05-09, after moving read progress to `UserManga.lastReadChapterNumber`.
+Latest follow-up: 2026-10-11. The original May review below is historical; use the current baseline at the end for capacity and latency decisions.
 
 ## Summary
 
@@ -129,3 +129,32 @@ Loaded data shape:
 - Existing tests pass: `npm run lint`, `npm run test`, `npm run build`.
 - Add tests for the batch read endpoint before replacing UI calls.
 - Re-run the baseline script and record before/after numbers in this document or a follow-up note.
+
+## 2026-10-11 Production-Build Baseline
+
+Measured with `next build`/`next start` on localhost:3100, configured Neon database, real providers, and the fake development parent session. These are local production-build measurements, not deployed Vercel timings. The updated benchmark samples actual library summary queries and does not print account/session credentials.
+
+| Measurement | Sample | Median | Range |
+| --- | --- | --- | --- |
+| Summary query, small library | 1 title, 1,036-byte payload; 7 runs | 16 ms | 15–19 ms |
+| Summary query, large library | 44 titles, 38,920-byte payload; 7 runs | 51 ms | 49–54 ms |
+| Unauthenticated shell transfer | 5 runs | 38 ms | 34–448 ms |
+| Authenticated library API | 2-title test library; 5 runs | 86 ms | 82–377 ms |
+| Uncached reported-title search | 3 runs | 3,537 ms | 3,461–4,132 ms |
+| Reader page discovery | One Piece; 3 runs | 322 ms | 259–424 ms |
+| First reader image transfer | 3 runs | 87 ms | 40–100 ms |
+
+Browser observations from the opt-in diagnostics output:
+
+- Desktop 2-title library ready in 301 ms after diagnostics mounted; CLS 0.
+- Mobile 390×844, temporary 45-title test-parent library ready in 516 ms; CLS 0. The 43 prefixed fixture memberships were removed afterward. No other account's progress/session was used.
+- First One Piece image completed in 716 ms after diagnostics mounted; natural width 1,200 pixels; initial reader CLS 0.0294.
+- A short continuous-reading session advanced through chapters 1–4 over several minutes. Heap observations were about 11.6–13.1 MB, with two or three mounted chapter sections (46–102 image nodes depending on chapter sizes). This is a smoke baseline, not proof of long-session memory stability.
+
+Readiness is sampled every 100 ms starting after hydration; it excludes time before diagnostics mount. Heap is browser-specific and not forced-GC retained memory. Network/provider caches and cold starts affect transfer samples. No CPU/mobile-network throttling was applied. Measurements preceded the final library-cover lazy-loading change; repeat using the scripts for comparable post-deployment numbers.
+
+Queue inspection found 32 eligible shared titles, four queued jobs, no running jobs, and an oldest queued age of about 47 minutes. The former daily 20-job ceiling was insufficient for one sweep. The new four-job drain is covered with simulated 32-job, budget-exhaustion, and maximum-job checks; real daily drain duration must be observed after deployment. A running batch is not preempted by the three-minute budget.
+
+The evidence supports reducing unnecessary requests, pausing hidden-tab polling, and lazily loading covers before adding infrastructure. Library queries are small relative to provider search latency. MangaPlus returned upstream 403 during live search; partial-result diagnostics keep the successful sources usable.
+
+Remaining measurement work: deployed Vercel cold/warm timings, a 30+ minute real-device reading session with heap snapshots, and browser network-failure injection. The automated UI acceptance regressions cover refresh failures, stale requests, partial provider failures, and next-chapter retry.

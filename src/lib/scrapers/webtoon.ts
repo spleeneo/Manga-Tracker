@@ -77,10 +77,11 @@ export class WebtoonScraper implements Scraper {
     return titleNoMatch ? titleNoMatch[1] : null;
   }
 
-  async search(query: string): Promise<SearchResult[]> {
+  async search(query: string, options: { signal?: AbortSignal } = {}): Promise<SearchResult[]> {
     const searchUrl = `https://www.webtoons.com/en/search?keyword=${encodeURIComponent(query)}`;
     try {
       const res = await fetchWithRetry(searchUrl, {
+        signal: options.signal,
         headers: { "User-Agent": "Mozilla/5.0" },
       });
       const html = await res.text();
@@ -115,8 +116,8 @@ export class WebtoonScraper implements Scraper {
         sourceName: "Webtoon",
         status: "ONGOING",
       }));
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 

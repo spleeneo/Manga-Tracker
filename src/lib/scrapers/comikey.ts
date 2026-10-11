@@ -191,7 +191,7 @@ export class ComikeyScraper implements Scraper {
       }).slice(0, 5);
     } catch (error) {
       console.error("Comikey search failed:", error);
-      return [];
+      throw error;
     }
   }
 

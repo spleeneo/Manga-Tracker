@@ -40,13 +40,14 @@ export async function fetchWithRetry(url: string, options: RetryFetchOptions = {
   let lastError: Error | undefined;
 
   while (attempt <= retries) {
+    requestOptions.signal?.throwIfAborted();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(url, {
         ...requestOptions,
-        signal: controller.signal,
+        signal: requestOptions.signal ? AbortSignal.any([requestOptions.signal, controller.signal]) : controller.signal,
       });
 
       clearTimeout(timeout);
@@ -71,6 +72,7 @@ export async function fetchWithRetry(url: string, options: RetryFetchOptions = {
       return response;
     } catch (error) {
       clearTimeout(timeout);
+      if (requestOptions.signal?.aborted) throw error;
 
       const isAbort = error instanceof Error && error.name === "AbortError";
       const wrapped = isAbort

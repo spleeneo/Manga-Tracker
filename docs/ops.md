@@ -79,7 +79,19 @@ The cron endpoint requires `CRON_SECRET` through one of:
 
 Increase cron frequency only after checking provider rate limits and free-tier usage.
 
-The cron route enqueues all non-completed manga tracked by at least one user and processes a bounded batch of shared manga update jobs. Manga with unknown status remain eligible. Manual single-manga and library update buttons are normal authenticated HTTP requests, so they can run at any time on Vercel Hobby—including for completed manga; they enqueue the same shared jobs and start best-effort processing with `after(...)` without waiting for the next daily cron.
+The cron route enqueues all non-completed manga tracked by at least one user and drains four-job batches with concurrency four. It stops between batches after 80 jobs or three minutes; remaining work stays queued. The function allows 300 seconds, leaving headroom for the last batch and response. This assumes Vercel Fluid compute is enabled, whose Hobby duration supports 300 seconds ([Vercel duration documentation](https://vercel.com/docs/functions/configuring-functions/duration)); confirm that setting in the deployment dashboard. The budget cannot interrupt an already-running batch, so monitor actual durations before increasing these limits.
+
+Responses and structured server logs include processing duration, queue depth, running count, and oldest queued age. The current measured catalog has 32 eligible titles; the previous 20-job sweep could not cover it in one day. Reassess capacity as libraries grow, using backlog age and provider failure rates rather than raising cron frequency blindly.
+
+Manga with unknown status remain eligible. Manual updates can run at any time, including for completed manga; they enqueue shared jobs and start best-effort processing through `after(...)`.
+
+## Performance Baselines
+
+Build with `NEXT_PUBLIC_PERF_DIAGNOSTICS=1` only for local measurement, then run `npm run start -- --port 3100`. The hidden `[data-performance-diagnostics]` output reports client readiness, layout shifts, reader element counts, and available heap measurements. It sends no analytics and is disabled in normal builds.
+
+Run `npx tsx --env-file=.env --env-file=.env.local scripts/perf-baseline.ts` against that local server. The benchmark uses real summary queries and reuses the fake development parent's existing session without printing credentials; set `PERF_COOKIE_NAME=authjs.parent-session-token` when using a parent-role server. Never benchmark by copying another user's session.
+
+For representative browser library size, `scripts/perf-library-fixture.ts seed` adds only test-parent memberships for existing shared titles from the largest available library. Run the same script with `cleanup` immediately after measurement; it removes only its prefixed memberships. See [performance-review.md](performance-review.md) for results and limits.
 
 ## Routine Checks
 

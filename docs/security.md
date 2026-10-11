@@ -44,6 +44,13 @@ If any secret appears in chat, logs, screenshots, or a commit, rotate it in the 
 ## Future Hardening
 
 - Add rate limiting for search, source creation, and manual update endpoints.
-- Add audit-friendly server logs for update runs and provider failures.
-- Validate provider URLs before creating sources.
-- Consider a queue for scraper work to avoid long API requests and duplicate concurrent update jobs.
+- Extend audit-friendly logs beyond the existing queue/provider diagnostics.
+- Review source URL validation and rate limits as provider integrations expand.
+
+## Image Proxy And Search Boundaries
+
+- The image proxy accepts reviewed HTTPS provider/CDN destinations only, denies private DNS destinations, validates every redirect, and rebuilds provider headers per hop.
+- It accepts raster image response types only and caps declared and streamed bodies at 15 MiB. An eight-second request budget remains active while reading the body. Unsupported hosts or upstream failures return an image failure that the cover UI handles.
+- Host additions require review; provider CDN changes can otherwise cause image fallbacks. The proxy checks DNS but does not pin the resolved address, so the reviewed-domain trust boundary remains important.
+- Adult search caches contain shared metadata only. Library membership is decorated after cache retrieval. Child searches and previews retain the permitted catalog path, opaque source references, and policy-aware cover/tracking routes.
+- Durable shared scraper jobs already prevent duplicate active work through atomic claims; queue depth, age, and duration are observable in cron output.

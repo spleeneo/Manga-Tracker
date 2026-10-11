@@ -91,7 +91,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const lastScrollYRef = useRef(0);
   const scrollFrameRef = useRef<number | null>(null);
   const upwardScrollDistanceRef = useRef(0);
-  const sourceRedirectedRef = useRef(false);
+  const [nextChapterError, setNextChapterError] = useState(false);
+  const nextChapterFailedRef = useRef(false);
   const { showToast } = useToast();
 
   const activeIndex = loadedChapters.findIndex((item) => item.chapter.id === activeChapterId);
@@ -249,6 +250,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     const currentQueue = nextChapterQueueRef.current;
     const afterChapterId = currentQueue[currentQueue.length - 1]?.id ?? chapter.id;
     isLoadingNextChaptersRef.current = true;
+    nextChapterFailedRef.current = false;
+    setNextChapterError(false);
 
     try {
       const params = new URLSearchParams({ limit: String(NEXT_CHAPTER_BATCH_SIZE) });
@@ -271,7 +274,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
       return firstNewChapter;
     } catch (error) {
       console.error(error);
-      hasMoreNextChaptersRef.current = false;
+      nextChapterFailedRef.current = true;
+      setNextChapterError(true);
       return null;
     } finally {
       isLoadingNextChaptersRef.current = false;
@@ -308,13 +312,6 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
     return () => window.clearTimeout(timer);
   }, [chapter, loadChapter]);
 
-  useEffect(() => {
-    if (sourceRedirectedRef.current || firstChapterLoading || !firstReader) return;
-    if (firstReader.status === "READABLE") return;
-
-    sourceRedirectedRef.current = true;
-    window.open(firstReader.externalUrl || chapter.url, "_blank", "noopener,noreferrer");
-  }, [chapter.url, firstChapterLoading, firstReader]);
 
   useEffect(() => {
     const updateActiveChapterForScroll = (currentLoadedChapters: LoadedReaderChapter[]) => {
@@ -365,7 +362,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           : false;
         if (immediateNextChapter && !isImmediateNextLoaded) {
           loadChapter(immediateNextChapter);
-        } else if (!immediateNextChapter) {
+        } else if (!immediateNextChapter && !nextChapterFailedRef.current) {
           void loadMoreNextChapters().then((chapterToLoad) => {
             if (chapterToLoad) loadChapter(chapterToLoad);
           });
@@ -551,6 +548,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
             })}
           </div>
         )}
+        {nextChapterError && <div role="alert" className="surface mx-auto mt-6 max-w-3xl p-4 text-sm">Could not load the next chapter. <button type="button" className="ui-button ui-button-secondary" onClick={() => { void loadMoreNextChapters().then((next) => { if (next) loadChapter(next); }); }}>Retry next chapter</button></div>}
       </main>
     </div>
   );
