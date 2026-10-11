@@ -500,3 +500,11 @@ Action:
 - Cross-page browse deduplication must use source identity or corroborated metadata, not the display slug. Different provider entries and same-title works need separate cards.
 - Measure compact library summaries and external-provider requests separately. The current 44-title summary query is about 51 ms while uncached search is about 3.5 seconds; changing hosting would not address the dominant provider delay.
 - See the 2026-10-11 improvement entry in [work-log.md](work-log.md).
+
+## 2026-10-11 — Provider identity and persistent UI rollback
+
+Provider URLs can carry identity in query parameters (Webtoon title_no), so stripping all queries can merge distinct works and assign another work's tracked badge. Normalize with provider-aware identity rules, then share the evidence policy between browse/search and library decoration.
+
+When replacing keyed remounts with persistent components, audit every in-flight optimistic mutation. Restoring an entire captured snapshot can overwrite later server refreshes. Cover request -> refresh -> failure with a focused regression and prefer version-aware, affected-row rollback or pending overlays over a server baseline.
+
+Image destination allowlists need an inventory of real provider output, including exact CDN hosts, with contract fixtures that retain destination restrictions. See [Thermos audit](thermos-review-2026-10-11.md).

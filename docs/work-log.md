@@ -2718,3 +2718,13 @@ Outcome:
 - Remaining verification: deployed cold/warm timings, longer real-device memory profiling, browser network-failure injection (automated UI failure tests passed), and observed daily queue drain duration/Fluid-compute configuration. The queue budget is checked between batches, not a preemptive cancellation.
 - Delivery target is `main` under standing approval; the GitHub Actions verification/deployment pipeline is the release gate. Deferred bookmarks, import/export, combined genres, and recommendations remain out of scope.
 - Lessons: [Search relevance, aliases, partial failures, identity, and dialog triggers](learnings.md#2026-10-11---search-relevance-aliases-and-partial-failures). Product, architecture, security, operations, and audit notes were reconciled with implemented behavior.
+
+## 2026-10-11 — Thermos audit of improvement release
+
+- Why: user requested the upstream Cursor Thermos skill and a release-quality verdict.
+- Plan: install/read its three skills, run parallel correctness and maintainability reviews of b26234c against e2b3c6e, independently validate findings, and preserve the consolidated review.
+- Changes: added [Thermos review](thermos-review-2026-10-11.md); no application code changed. Identified four P2 follow-ups: query-based provider identity, VIZ CDN approval, optimistic rollback after refresh, and Discovery pagination retry state. Shared identity policy is a supporting maintainability improvement.
+- Verification: deterministic tsx reproduction confirmed Webtoon false identity/tracked badge; live VIZ metadata and proxy policy confirmed rejected legitimate CDN. Reviewed library and Discovery state paths; browser failure replay was not performed for this audit. Full verification result is recorded below after completion.
+- Outcome: not a clean review pass; defects remain outstanding. Previous passing checks do not cover these sequences. Installed Codex skills become automatically available on the next turn; Cursor runtime was not installed.
+- Lesson: source identity must preserve provider-specific parameters, and persistent UI components require rollback protection against newer server data.
+- Audit documentation verification: npm run verify passed (72 files / 316 tests, lint with four existing no-img-element warnings and zero errors, production build); git diff --check passed. Update smoke was not repeated because this batch changes only review documentation, not provider or update behavior.
