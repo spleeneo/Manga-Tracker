@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { ExplorePage } from "@/components/explore-page";
@@ -11,6 +11,43 @@ const response = (body: unknown) => ({ ok: true, json: async () => body });
 const manga = (id: string, title: string) => ({ id, title, slug: title.toLowerCase().replaceAll(" ", "-"), tags: [], isTracked: false, source: { name: "MangaPill", url: `https://mangapill.com/manga/${id}` } });
 
 describe("Discovery workflows", () => {
+  it("retains a newly tracked badge when another browse page arrives", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "/api/manga") return response({ slug: "tracked-work" });
+      if (url.includes("/tags")) return response({ tags: [] });
+      if (!url.includes("/mangapill")) return response({ results: [], nextOffset: null });
+      const next = url.includes("offset=24");
+      return response({ results: [manga(next ? "second" : "first", next ? "Second Work" : "First Work")], nextOffset: next ? null : 24 });
+    }));
+    render(createElement(ExplorePage));
+    const title = await screen.findByRole("heading", { name: "First Work" });
+    fireEvent.click(within(title.closest("article")!).getByRole("button", { name: "Track", exact: true }));
+    await screen.findByRole("button", { name: "In library" });
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByRole("heading", { name: "Second Work" });
+    expect((screen.getByRole("button", { name: "In library" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it("retries only a failed provider page while retaining all loaded pages", async () => {
+    let failDexPage = true;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/tags")) return response({ tags: [] });
+      const pill = url.includes("/mangapill");
+      const offset = new URL(url, "http://localhost").searchParams.get("offset");
+      if (!pill && offset === "24" && failDexPage) throw new Error("Temporary outage");
+      return response({ results: [manga(`${pill ? "pill" : "dex"}-${offset}`, `${pill ? "Pill" : "Dex"} ${offset}`)], nextOffset: offset === "0" ? 24 : null });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(createElement(ExplorePage));
+    await screen.findByRole("heading", { name: "Dex 0" });
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByRole("heading", { name: "Pill 24" });
+    failDexPage = false;
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry sources" }));
+    await screen.findByRole("heading", { name: "Dex 24" });
+    for (const title of ["Pill 0", "Dex 0", "Pill 24"]) expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+    expect(fetchMock.mock.calls.slice(before).map(([url]) => url)).toEqual([expect.stringContaining("offset=24")]);
+  });
   it("opens previews without navigation and restores the opener on Escape", async () => {
     vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 10, height: 10 }] as unknown as DOMRectList);
     vi.stubGlobal("fetch", vi.fn(async (url: string) => response(url.includes("/tags") ? { tags: [] } : { results: [{ title: "Preview Manga", sources: [{ name: "MangaDex", url: "https://mangadex.org/title/preview" }] }] })));

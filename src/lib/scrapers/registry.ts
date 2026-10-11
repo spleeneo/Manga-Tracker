@@ -1,4 +1,4 @@
-import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput, SearchResult } from "./types";
+import { Scraper, ScrapedChapter, MangaMetadata, AggregatedSearchResult, ReaderChapterInput, ReaderResult, ReaderSourceInput } from "./types";
 import { MangaDexScraper } from "./mangadex";
 import { NeloMangaScraper } from "./nelomanga";
 import { MangaPlusScraper } from "./mangaplus";
@@ -13,8 +13,8 @@ import { WitchHatAtelierScraper } from "./witch-hat-atelier";
 import { LandOfTheLustrousScraper } from "./land-of-the-lustrous";
 import { SingleMangaSiteScraper } from "./single-manga-sites";
 import { AtsumaruScraper } from "./atsumaru";
-import { getCanonicalMangaTitle, getMangaAliasGroup } from "@/lib/manga-aliases";
-import { getMangaSourceOverride, isAllowedOverrideSource } from "@/lib/source-overrides";
+import { getCanonicalMangaTitle } from "@/lib/manga-aliases";
+import { normalizeSearchTitle, getCanonicalSearchTitle, sameWork } from "@/lib/work-identity";
 import { getPreferredSourceRank } from "@/lib/source-preference";
 import { sourceIdentity } from "@/lib/search-library";
 
@@ -34,92 +34,6 @@ const scrapers: Scraper[] = [
     new MangaPillScraper(),
     new AtsumaruScraper(),
 ];
-
-function normalizeSearchTitle(title: string) {
-    return title
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/&/g, " and ")
-        .replace(/\bmanga\b/g, " ")
-        .replace(/[^\p{L}\p{N}]+/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function getCanonicalSearchTitle(title: string) {
-    const normalized = normalizeSearchTitle(title);
-    return getMangaAliasGroup(normalized)?.slug ?? normalized;
-}
-
-function getAuthorParts(value?: string) {
-    const parts = (value ?? "")
-        .split(/\s+(?:and)\s+|[|/;,]/)
-        .map(normalizeSearchTitle)
-        .filter((part) => part.length >= 3);
-
-    return parts;
-}
-
-function getSortedTokens(value: string) {
-    return value.split(/\s+/).filter(Boolean).sort().join(" ");
-}
-
-function authorsMatch(left?: string, right?: string) {
-    const leftParts = getAuthorParts(left);
-    const rightParts = getAuthorParts(right);
-
-    if (leftParts.length === 0 || rightParts.length === 0) return null;
-
-    return leftParts.some((leftPart) => rightParts.some((rightPart) => (
-        leftPart === rightPart
-        || leftPart.includes(rightPart)
-        || rightPart.includes(leftPart)
-        || getSortedTokens(leftPart) === getSortedTokens(rightPart)
-    )));
-}
-
-function sourceIsAllowedByOverride(title: string, source: { name: string; url: string }) {
-    const override = getMangaSourceOverride({ title });
-    return Boolean(override && isAllowedOverrideSource({
-        sourceName: source.name,
-        sourceUrl: source.url,
-    }, override));
-}
-
-function sourceSharesKnownOverrideIdentity(title: string, source: { name: string; url: string }) {
-    const normalizedTitle = normalizeSearchTitle(title);
-    return normalizedTitle === "noise" && source.url === "https://www.nelomanga.net/manga/noise";
-}
-
-function shouldMergeSearchResult(existing: AggregatedSearchResult, result: SearchResult) {
-    const authorMatch = authorsMatch(existing.author, result.author);
-    if (authorMatch === false) return false;
-    if (authorMatch === true) return true;
-
-    const resultSource = { name: result.sourceName, url: result.sourceUrl };
-    const allSourcesAllowedByOverride = sourceIsAllowedByOverride(existing.title, resultSource)
-        && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
-    if (allSourcesAllowedByOverride) return true;
-
-    const sharesKnownOverrideIdentity = sourceSharesKnownOverrideIdentity(existing.title, resultSource)
-        && existing.sources.some((source) => sourceIsAllowedByOverride(existing.title, source));
-    if (sharesKnownOverrideIdentity) return true;
-
-    return false;
-}
-
-function matchingIdentity(existing: AggregatedSearchResult, result: SearchResult) {
-    if (existing.sources.some((source) => source.name === result.sourceName && sourceIdentity(source.url) !== sourceIdentity(result.sourceUrl))) return false;
-    const left = [existing.title, ...(existing.alternateTitles ?? [])].map(getCanonicalSearchTitle);
-    const right = [result.title, ...(result.alternateTitles ?? [])].map(getCanonicalSearchTitle);
-    const overlap = left.some((title) => right.includes(title));
-    if (!overlap || authorsMatch(existing.author, result.author) === false) return false;
-    return authorsMatch(existing.author, result.author) === true
-        || new Set(left.filter((title) => right.includes(title))).size >= 2
-        || left.some((title) => right.includes(title) && Boolean(getMangaAliasGroup(title)))
-        || shouldMergeSearchResult(existing, result);
-}
 
 function getQueryMatchRank(query: string, title: string) {
     const normalizedQuery = normalizeSearchTitle(query);
@@ -206,7 +120,7 @@ export async function searchScrapersDetailed(query: string) {
         const candidateKeys = Array.from(aggregated.keys());
         const matchingKey = candidateKeys.find((candidateKey) => {
             const candidate = aggregated.get(candidateKey);
-            return candidate ? matchingIdentity(candidate, result) : false;
+            return candidate ? sameWork(candidate, { ...result, sources: [{ name: result.sourceName, url: result.sourceUrl }] }) : false;
         });
         const identity = sourceIdentity(result.sourceUrl);
         const existingKey = sourceUrlToKey.get(identity) ?? matchingKey ?? (aggregated.has(key) ? `${key}|${result.sourceUrl}` : key);

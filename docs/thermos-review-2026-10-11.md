@@ -27,3 +27,15 @@ The identity policies in `src/lib/explore/ui-results.ts:190–196` and `src/lib/
 - All-general-provider outage classification remains a lower-confidence semantic observation: static providers legitimately resolve empty arrays, so `allFailed` can remain false. Failures are still disclosed and retryable; this is not counted as a confirmed hidden-error defect.
 - Unknown dynamically discovered image destinations remain intentionally restricted pending review; no speculative DNS/security finding is included.
 - No application code was changed or findings fixed by this review. Each fix should use focused failing regressions, relevant browser checks, `npm run verify`, and update smoke when provider behavior changes.
+
+## Resolution — repair and review loop
+
+The user requested fixes followed by repeated Thermos review until no actionable complaints remained. The original findings above describe the audited release before repair.
+
+- Provider identity now preserves Webtoon title_no across paths and ignores unrelated tracking parameters. Search and Discovery use one browser-safe work identity policy for author order, aliases and alternate titles, with conservative same-provider separation. Removed substring-only author matching to preserve distinct names such as Ann and Joann.
+- The exact VIZ CDN host is approved. A live proxy check additionally revealed that its JPEG response omits Content-Type; the bounded body reader now recognizes headerless JPEG signatures and rejects headerless HTML and unsupported explicit MIME types. Live local proxy verification returned HTTP 200 image/jpeg.
+- Library rollbacks affect only their own unchanged row and require the same server baseline. The first repair review found a related successful-delete/refresh race; a failing regression reproduced it, and successful deletion now removes only that title and requests a fresh library snapshot.
+- Discovery retains query-keyed results, cursor and failure status per provider. Retry requests only failed providers at their retained cursor; successful pages and tracked badges survive.
+- Thermos correctness and maintainability reviewers rechecked the full improvement release plus repairs. Both final iterations reported no remaining actionable high-confidence findings, including the successful-delete and headerless JPEG follow-ups. This is a scoped review verdict, not proof that the entire application is bug-free.
+- Browser checks: authenticated local desktop Discovery grew from 48 to 96 cards; preview closure retained loaded pages and restored focus. Exact reported search placed In the name of God first with its tracked badge. Mobile 390x844 preview displayed synopsis, genres and Open in library, without horizontal overflow; Escape restored focus and library title filtering worked. No test memberships or reading progress were changed in this browser pass.
+- Request/failure interleavings are covered by automated UI regressions; browser fault injection and deployed production revalidation were not performed in this repair batch. See the work log for final verification and delivery.

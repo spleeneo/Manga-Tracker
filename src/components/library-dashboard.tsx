@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Clock3, Library, Loader2, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MangaCard, type MangaCardData } from "./manga-card";
 import { useToast } from "@/components/toast-provider";
 import { isExternalReaderSource } from "@/lib/external-reader-sources";
@@ -35,6 +35,8 @@ function formatNextChapterEstimate(manga?: MangaCardData) {
 export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
     const [items, setItems] = useState(mangas);
     const [previousMangas, setPreviousMangas] = useState(mangas);
+    const latestMangas = useRef(mangas);
+    useEffect(() => { latestMangas.current = mangas; }, [mangas]);
     const [libraryQuery, setLibraryQuery] = useState("");
     const [libraryFilter, setLibraryFilter] = useState("all");
     const [librarySort, setLibrarySort] = useState("updates");
@@ -88,27 +90,39 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
 
     const sections = useMemo(() => groupLibrarySections(sortedItems), [sortedItems]);
 
-    const updateMangaSummary = (summary: MangaCardData) => {
-        setItems((current) => current.map((manga) => manga.id === summary.id ? summary : manga));
+    // Roll back only this action's row, and only while its server baseline is current.
+    const beginMutation = (slug: string, transform: (manga: MangaCardData) => MangaCardData | null) => {
+        const original = items.find(manga => manga.slug === slug);
+        const baseline = mangas;
+        const optimistic = original ? transform(original) : null;
+        if (original) setItems(current => current.flatMap(manga => manga.slug === slug ? optimistic ? [optimistic] : [] : [manga]));
+        const rollback = () => {
+            if (!original || latestMangas.current !== baseline) return;
+            setItems(current => {
+                const row = current.find(manga => manga.slug === slug);
+                if (!optimistic) return row ? current : [...current, original];
+                return row === optimistic ? current.map(manga => manga === optimistic ? original : manga) : current;
+            });
+        };
+        const complete = (summary: MangaCardData) => {
+            if (latestMangas.current !== baseline) {
+                window.dispatchEvent(new Event("mangateo:library-refresh"));
+                return;
+            }
+            setItems(current => current.map(manga => manga === optimistic ? summary : manga));
+        };
+        return { rollback, complete };
     };
 
     const markProgress = async (slug: string, action: ProgressAction) => {
-        const previousItems = items;
-        const target = items.find((manga) => manga.slug === slug);
-        if (target && action === "caught-up") {
-            setItems((current) => current.map((manga) => (
-                manga.slug === slug
-                    ? {
-                        ...manga,
-                        lastReadChapterNumber: manga.latestChapter?.chapterNumber ?? manga.lastReadChapterNumber,
-                        readChapters: manga.totalChapters,
-                        unreadChapters: 0,
-                        isCaughtUp: manga.totalChapters > 0,
-                        nextUnreadChapter: null,
-                    }
-                    : manga
-            )));
-        }
+        const mutation = beginMutation(slug, manga => action === "caught-up" ? {
+            ...manga,
+            lastReadChapterNumber: manga.latestChapter?.chapterNumber ?? manga.lastReadChapterNumber,
+            readChapters: manga.totalChapters,
+            unreadChapters: 0,
+            isCaughtUp: manga.totalChapters > 0,
+            nextUnreadChapter: null,
+        } : manga);
 
         setProgressAction({ slug, action });
         try {
@@ -120,10 +134,10 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             });
             if (!res.ok) throw new Error(`Progress update failed: ${res.status}`);
             const body = await res.json();
-            updateMangaSummary(body.summary);
+            mutation.complete(body.summary);
         } catch (error) {
             console.error(error);
-            setItems(previousItems);
+            mutation.rollback();
             showToast({
                 type: "error",
                 title: "Progress was not updated",
@@ -136,16 +150,17 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
 
     const deleteManga = async (slug: string) => {
         setRemovingSlug(slug);
-        const previousItems = items;
-        setItems((current) => current.filter((manga) => manga.slug !== slug));
+        const mutation = beginMutation(slug, () => null);
         try {
             const res = await fetch(`/api/manga/${slug}/library`, {
                 method: "DELETE",
             });
             if (!res.ok) throw new Error(`Remove failed: ${res.status}`);
+            setItems(current => current.filter(manga => manga.slug !== slug));
+            window.dispatchEvent(new Event("mangateo:library-refresh"));
         } catch (error) {
             console.error(error);
-            setItems(previousItems);
+            mutation.rollback();
             showToast({
                 type: "error",
                 title: "Manga was not removed",
@@ -158,18 +173,13 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
 
     const syncManga = async (slug: string, title: string) => {
         setSyncingSlug(slug);
-        const previousItems = items;
-        setItems((current) => current.map((manga) => (
-            manga.slug === slug
-                ? {
-                    ...manga,
-                    syncStatus: "SYNCING",
-                    syncStartedAt: new Date(),
-                    syncFinishedAt: null,
-                    syncError: null,
-                }
-                : manga
-        )));
+        const mutation = beginMutation(slug, manga => ({
+            ...manga,
+            syncStatus: "SYNCING",
+            syncStartedAt: new Date(),
+            syncFinishedAt: null,
+            syncError: null,
+        }));
 
         try {
             const res = await fetch(`/api/manga/${slug}/check-updates`, {
@@ -184,7 +194,7 @@ export function LibraryDashboard({ mangas }: { mangas: MangaCardData[] }) {
             window.dispatchEvent(new Event("mangateo:library-refresh"));
         } catch (error) {
             console.error(error);
-            setItems(previousItems);
+            mutation.rollback();
             showToast({
                 type: "error",
                 title: "Manga update was not started",

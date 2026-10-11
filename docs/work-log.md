@@ -2728,3 +2728,27 @@ Outcome:
 - Outcome: not a clean review pass; defects remain outstanding. Previous passing checks do not cover these sequences. Installed Codex skills become automatically available on the next turn; Cursor runtime was not installed.
 - Lesson: source identity must preserve provider-specific parameters, and persistent UI components require rollback protection against newer server data.
 - Audit documentation verification: npm run verify passed (72 files / 316 tests, lint with four existing no-img-element warnings and zero errors, production build); git diff --check passed. Update smoke was not repeated because this batch changes only review documentation, not provider or update behavior.
+
+## 2026-10-11 — Repair Thermos findings and loop reviews
+
+### Why / plan
+
+User requested addressing all Thermos complaints and repeating the paired review until clean. Reproduce the defects with focused failing regressions, fix provider identity and image compatibility, scope library mutation rollback, retain provider-owned Discovery pages, then review the full improvement release plus fixes and verify delivery.
+
+### Changes
+
+- Preserve Webtoon title_no in source identity; share conservative work identity between search and browse. Carry alternate titles through display aggregation and reject substring-only author evidence.
+- Approve only the established VIZ CloudFront host. Live verification exposed missing Content-Type on its JPEG covers; added narrow byte-signature fallback after the existing size checks, with non-image rejection intact.
+- Roll back only the affected unchanged library row against its current server baseline. Preserve newer refreshes and unrelated actions. Reconcile successful deletion after a refresh and request server refresh.
+- Store query-keyed results/cursors/failure status per Discovery provider and retry only failed cursors. Derive displayed results and preserve newly tracked source badges across page loads.
+- Added regression coverage for the four original defects, author-name identity consistency, refresh-before-delete success, missing JPEG headers/non-image rejection, and newly tracked badges across pagination.
+
+### Review / verification
+
+- Initial focused tests failed for source identity, VIZ destination, library refresh/failure and page retry; fixes passed those regressions. Follow-up tests exposed successful deletion during refresh and headerless live VIZ JPEG responses before repair.
+- Thermos iteration 1: maintainability clean; correctness found successful-delete race. Iteration 2 after fix: both clean. A live cover check then prompted the headerless JPEG repair; final paired iteration remained clean with no actionable high-confidence findings across the full release plus fixes.
+- Browser local desktop/mobile: 48 -> 96 browse cards; preview retains loaded cards and restores focus; reported title first with correct tracked state; mobile synopsis/genres/library action, Escape focus, library filter and no horizontal overflow at 390px. No browser fixture memberships/progress were changed. Failure races were checked in automated UI tests rather than browser network injection.
+- Live VIZ proxy returned 200 image/jpeg. Update smoke passed for Hunter x Hunter (Official Colored), zero failed chapter sources; MangaPlus source discovery still returned upstream 403 and did not prevent successful providers.
+- Final npm run verify and delivery results follow below. Deployed browser/cold-start/long-session performance were not remeasured; no paid infrastructure or architecture rewrite.
+- Detailed review history: [Thermos audit and resolution](thermos-review-2026-10-11.md). Lessons: [provider contracts and mutation success](learnings.md#2026-10-11---provider-contracts-and-mutation-success).
+- Final verification passed: npm run verify (73 files / 328 tests, production build, lint with four existing no-img-element warnings and zero errors); focused image/proxy tests and git diff --check passed. Update smoke result above remains applicable; final changes after smoke were library success reconciliation and headerless image validation. Delivering the completed verified repair to main under standing approval.

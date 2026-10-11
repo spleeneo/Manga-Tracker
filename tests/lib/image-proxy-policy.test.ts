@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { allowedImageUrl, MAX_IMAGE_BYTES, publicImageAddress, readImageBody } from "@/lib/image-proxy-policy";
 
 describe("image proxy policy", () => {
+  it("accepts the established VIZ CDN without approving arbitrary CloudFront hosts", () => {
+    expect(allowedImageUrl("https://dw9to29mmj727.cloudfront.net/social/91-OP_600x314.jpg").hostname).toBe("dw9to29mmj727.cloudfront.net");
+    expect(() => allowedImageUrl("https://unreviewed.cloudfront.net/cover.jpg")).toThrow();
+  });
+  it("recognizes headerless JPEG covers but rejects headerless HTML", async () => {
+    const jpeg = new Uint8Array([255, 216, 255, 225, 0, 24]);
+    expect(await readImageBody(new Response(jpeg))).toMatchObject({ contentType: "image/jpeg", bytes: jpeg });
+    await expect(readImageBody(new Response(new TextEncoder().encode("<html>Not an image</html>")))).rejects.toThrow("Unsupported image type");
+  });
   it("requires HTTPS and exact domain boundaries", () => {
     for (const url of ["http://uploads.mangadex.org/a", "https://evilmangadex.org/a", "https://uploads.mangadex.org.evil.test/a", "https://user:pass@uploads.mangadex.org/a", "https://uploads.mangadex.org:8080/a"]) expect(() => allowedImageUrl(url)).toThrow();
     expect(allowedImageUrl("https://uploads.mangadex.org/a").hostname).toBe("uploads.mangadex.org");

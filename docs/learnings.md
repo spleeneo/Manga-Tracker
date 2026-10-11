@@ -508,3 +508,11 @@ Provider URLs can carry identity in query parameters (Webtoon title_no), so stri
 When replacing keyed remounts with persistent components, audit every in-flight optimistic mutation. Restoring an entire captured snapshot can overwrite later server refreshes. Cover request -> refresh -> failure with a focused regression and prefer version-aware, affected-row rollback or pending overlays over a server baseline.
 
 Image destination allowlists need an inventory of real provider output, including exact CDN hosts, with contract fixtures that retain destination restrictions. See [Thermos audit](thermos-review-2026-10-11.md).
+
+## 2026-10-11 — Provider contracts and mutation success
+
+A destination allowlist test is only part of a provider image contract. Verify a real response through the complete proxy: VIZ's approved CDN returned a JPEG without Content-Type. Infer a missing type only from supported bytes under the same streaming limit; keep explicit non-image types rejected.
+
+When persistent components receive refreshed server data, test request -> refresh -> success as well as request -> refresh -> failure. Guarded rollback prevented stale data restoration, but successful deletion also needed to reconcile the refreshed row and request a current server snapshot.
+
+Keep pagination results, cursor and failure state together per provider. Merge for display after retaining ownership; retries then preserve successful pages. Share one pure work-identity policy across search and browse to avoid drifting alias/author decisions. See [repair review](thermos-review-2026-10-11.md#resolution--repair-and-review-loop).

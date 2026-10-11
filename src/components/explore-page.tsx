@@ -6,6 +6,8 @@ import Link from "next/link";
 import { CoverImage } from "@/components/cover-image";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 import { useToast } from "@/components/toast-provider";
+import { BROWSE_PROVIDERS, emptyBrowseState, shouldLoadProvider, appendProviderPage, type BrowseLoadMode } from "@/lib/explore/provider-state";
+import { sourceIdentity } from "@/lib/search-library";
 import {
   type ExploreDisplayManga,
   buildBrowseCategoryOptions,
@@ -138,11 +140,12 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
   const [demographic, setDemographic] = useState(initialFilters.demographic ?? "");
   const [status, setStatus] = useState(initialFilters.status ?? "");
   const [tags, setTags] = useState<ExploreTag[]>([]);
-  const [results, setResults] = useState<ExploreDisplayManga[]>([]);
-  const [offsets, setOffsets] = useState<{ pill: number | null; dex: number | null }>({ pill: 0, dex: 0 });
+  const [searchResults, setSearchResults] = useState<ExploreDisplayManga[]>([]);
+  const [browseState, setBrowseState] = useState(() => emptyBrowseState(""));
+  const [trackedSources, setTrackedSources] = useState<Record<string, string>>({});
   const [hideTracked, setHideTracked] = useState(initialFilters.hideTracked === "1");
   const [preview, setPreview] = useState<ExploreDisplayManga | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [searchWarnings, setSearchWarnings] = useState<string[]>([]);
   const controllerRef = useRef<AbortController | null>(null);
   const previewRef = useDialogFocus(Boolean(preview), () => setPreview(null));
   const [isLoading, setIsLoading] = useState(true);
@@ -167,14 +170,23 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
 
   const selectedCategory = browseCategoryOptions.find((option) => option.value === tagId);
 
-  const loadExplore = async (append = false, retry = false) => {
+  const browseQueryKey = JSON.stringify([sort, tagId, demographic, status, selectedCategory?.mangaPillGenre, selectedCategory?.mangaDexTagId, selectedCategory?.mangaDexContentRatings]);
+  const activeBrowse = browseState.queryKey === browseQueryKey ? browseState : emptyBrowseState(browseQueryKey);
+  const warnings = hasSubmittedSearch ? searchWarnings : BROWSE_PROVIDERS.filter(provider => activeBrowse.providers[provider].failed).map(provider => provider === "pill" ? "MangaPill" : "MangaDex");
+  const results = (hasSubmittedSearch ? searchResults : mergeBrowseDisplayResults(...BROWSE_PROVIDERS.map(provider => activeBrowse.providers[provider].results))).map(manga => {
+    const librarySlug = manga.sources.map(source => trackedSources[sourceIdentity(source.url)]).find(Boolean);
+    return librarySlug ? { ...manga, isTracked: true, librarySlug } : manga;
+  });
+
+  const loadExplore = async (mode: BrowseLoadMode = "initial") => {
+    const append = mode !== "initial";
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
     const current = () => controllerRef.current === controller && !controller.signal.aborted;
     if (append) setIsLoadingMore(true); else { setIsLoading(true); setIsLoadingMore(false); }
     setError(null);
-    setWarnings([]);
+    setSearchWarnings([]);
     const read = async (url: string) => {
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
@@ -184,33 +196,35 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
     try {
       if (hasSubmittedSearch) {
         if (!isSearchMode) throw new Error("Search at least 3 characters to search all sources.");
-        const data = await read(`/api/search/manga?q=${encodeURIComponent(activeSearchQuery)}${retry ? "&retry=1" : ""}`);
+        const data = await read(`/api/search/manga?q=${encodeURIComponent(activeSearchQuery)}${mode === "retry" ? "&retry=1" : ""}`);
         if (!current()) return;
-        setResults((data.results ?? []).map(normalizeSearchExploreResult));
-        setWarnings(data.failedProviders ?? []);
-        setOffsets({ pill: null, dex: null });
+        setSearchResults((data.results ?? []).map(normalizeSearchExploreResult));
+        setSearchWarnings(data.failedProviders ?? []);
         return;
       }
-      const shouldFetchPill = (!selectedCategory || Boolean(selectedCategory.mangaPillGenre)) && (!append || offsets.pill !== null);
-      const shouldFetchDex = (!selectedCategory || Boolean(selectedCategory.mangaDexTagId) || Boolean(selectedCategory.mangaDexContentRatings?.length)) && (!append || offsets.dex !== null);
+      const baseline = mode === "initial" ? emptyBrowseState(browseQueryKey) : activeBrowse;
+      const enabled = {
+        pill: !selectedCategory || Boolean(selectedCategory.mangaPillGenre),
+        dex: !selectedCategory || Boolean(selectedCategory.mangaDexTagId) || Boolean(selectedCategory.mangaDexContentRatings?.length),
+      };
+      if (mode === "initial") setBrowseState(baseline);
+      const requested = BROWSE_PROVIDERS.filter(provider => enabled[provider] && shouldLoadProvider(baseline.providers[provider], mode));
       const dexParams = buildQuery({ sort, q: "", tagId: selectedCategory?.mangaDexTagId ?? "", demographic, status,
-        contentRating: selectedCategory?.mangaDexContentRatings?.join(","), offset: append ? offsets.dex ?? 0 : 0 });
-      const pillParams = new URLSearchParams({ sort, limit: "24", offset: String(append ? offsets.pill ?? 0 : 0),
+        contentRating: selectedCategory?.mangaDexContentRatings?.join(","), offset: baseline.providers.dex.nextOffset ?? 0 });
+      const pillParams = new URLSearchParams({ sort, limit: "24", offset: String(baseline.providers.pill.nextOffset ?? 0),
         ...(selectedCategory?.mangaPillGenre || demographicGenreByValue[demographic] ? { genre: selectedCategory?.mangaPillGenre || demographicGenreByValue[demographic] } : {}), ...(status ? { status } : {}) });
-      const responses = await Promise.allSettled([
-        shouldFetchPill ? read(`/api/explore/mangapill?${pillParams}`) : Promise.resolve(null),
-        shouldFetchDex ? read(`/api/explore?${dexParams}`) : Promise.resolve(null),
-      ]);
+      const responses = await Promise.allSettled(requested.map(provider => read(provider === "pill" ? `/api/explore/mangapill?${pillParams}` : `/api/explore?${dexParams}`)));
       if (!current()) return;
-      const failures = responses.flatMap((result, index) => result.status === "rejected" ? [index === 0 ? "MangaPill" : "MangaDex"] : []);
-      if (responses.every((result) => result.status === "rejected" || !result.value)) throw new Error("Sources could not be loaded. Please retry.");
-      const values = responses.map((result) => result.status === "fulfilled" ? result.value : undefined);
-      const groups = values.map((data) => (data?.results ?? []).map(normalizeBrowseExploreResult));
-      const normalized = mergeBrowseDisplayResults(...groups);
-      setResults((previous) => append ? mergeBrowseDisplayResults([...previous, ...normalized]) : normalized);
-      setWarnings(failures);
-      setOffsets({ pill: values[0] === undefined ? (append ? offsets.pill : 0) : values[0]?.nextOffset ?? null,
-        dex: values[1] === undefined ? (append ? offsets.dex : 0) : values[1]?.nextOffset ?? null });
+      const providers = { ...baseline.providers };
+      for (const provider of BROWSE_PROVIDERS) if (!enabled[provider]) providers[provider] = { results: [], nextOffset: null, failed: false };
+      responses.forEach((response, index) => {
+        const provider = requested[index];
+        providers[provider] = response.status === "rejected"
+          ? { ...providers[provider], failed: true }
+          : appendProviderPage(providers[provider], (response.value.results ?? []).map(normalizeBrowseExploreResult), response.value.nextOffset ?? null);
+      });
+      setBrowseState({ queryKey: browseQueryKey, providers });
+      if (responses.length && responses.every(response => response.status === "rejected")) setError("Sources could not be loaded. Please retry.");
     } catch (loadError) {
       if (!current()) return;
       setError(loadError instanceof Error ? loadError.message : "Could not load results");
@@ -286,7 +300,7 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to track manga");
 
-      setResults((current) => current.map((item) => item.id === manga.id ? { ...item, isTracked: true, librarySlug: data.slug || manga.slug } : item));
+      setTrackedSources(current => ({ ...current, ...Object.fromEntries(manga.sources.map(source => [sourceIdentity(source.url), data.slug || manga.slug])) }));
       setPreview((current) => current?.id === manga.id ? { ...current, isTracked: true, librarySlug: data.slug || manga.slug } : current);
       window.dispatchEvent(new Event("mangateo:library-refresh"));
       updateToast(toastId, {
@@ -417,8 +431,8 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
         {[["Category", selectedCategory?.label], ["Audience", demographic], ["Status", status], ["Search", submittedQuery]].filter(([, value]) => value).map(([label, value]) => <span key={label} className="rounded-full border px-3 py-1 text-xs">{label}: {value}</span>)}
         <button type="button" className="ui-button ui-button-secondary" onClick={() => { clearSearch(); setSort("trending"); setTagId(""); setDemographic(""); setStatus(""); setHideTracked(false); }}>Reset</button>
       </div>
-      {warnings.length > 0 && <div role="status" className="surface p-3 text-sm">Some sources are unavailable: {warnings.join(", ")}. Results may be incomplete. <button type="button" className="underline" onClick={() => loadExplore(false, true)}>Retry sources</button></div>}
-      {error && results.length > 0 && <div role="alert" className="surface p-3 text-sm">{error} <button type="button" className="underline" onClick={() => loadExplore(false, true)}>Retry</button></div>}
+      {warnings.length > 0 && <div role="status" className="surface p-3 text-sm">Some sources are unavailable: {warnings.join(", ")}. Results may be incomplete. <button type="button" className="underline" onClick={() => loadExplore("retry")}>Retry sources</button></div>}
+      {error && results.length > 0 && <div role="alert" className="surface p-3 text-sm">{error} <button type="button" className="underline" onClick={() => loadExplore("retry")}>Retry</button></div>}
       {!isLoading && hideTracked && results.length > 0 && results.every((manga) => manga.isTracked) && <p className="empty-state">All loaded titles are already in your library. Turn off the filter or load more.</p>}
       {isLoading && results.length > 0 && <p role="status" className="text-sm text-muted-foreground">Loading results…</p>}
       {isLoading && results.length === 0 ? (
@@ -427,7 +441,7 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
         <div className="empty-state">
           <h2 className="text-xl font-semibold">Explore did not load</h2>
           <p className="mt-2 max-w-lg text-muted-foreground">{error}</p>
-          <button type="button" className="ui-button ui-button-primary mt-4" onClick={() => loadExplore(false, true)}>
+          <button type="button" className="ui-button ui-button-primary mt-4" onClick={() => loadExplore("retry")}>
             Try again
           </button>
         </div>
@@ -532,12 +546,12 @@ export function ExplorePage({ initialFilters = {} }: { initialFilters?: Record<s
             })}
           </div>
 
-          {!hasSubmittedSearch && (offsets.pill !== null || offsets.dex !== null) && (
+          {!hasSubmittedSearch && (activeBrowse.providers.pill.nextOffset !== null || activeBrowse.providers.dex.nextOffset !== null) && (
             <div className="flex justify-center pt-2">
               <button
                 type="button"
                 className="ui-button ui-button-secondary min-w-40"
-                onClick={() => loadExplore(true)}
+                onClick={() => loadExplore("more")}
                 disabled={isLoadingMore}
               >
                 {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}

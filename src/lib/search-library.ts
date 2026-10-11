@@ -3,8 +3,10 @@ import type { AggregatedSearchResult } from "@/lib/scrapers/types";
 export function sourceIdentity(url: string) {
     try {
         const parsed = new URL(url);
+        const host = parsed.hostname.replace(/^www\./, "");
+        if (host === "webtoons.com" && parsed.searchParams.has("title_no")) return `webtoons:${parsed.searchParams.get("title_no")}`;
         const mangaDexId = parsed.hostname === "mangadex.org" ? parsed.pathname.match(/^\/title\/([^/]+)/)?.[1] : null;
-        return mangaDexId ? `mangadex:${mangaDexId}` : `${parsed.hostname.replace(/^www\./, "")}${parsed.pathname.replace(/\/$/, "")}`;
+        return mangaDexId ? `mangadex:${mangaDexId}` : `${host}${parsed.pathname.replace(/\/$/, "")}`;
     } catch { return url; }
 }
 
