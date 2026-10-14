@@ -536,3 +536,9 @@ MangaDex chapter numbers are nullable; a one-shot may have a real release withou
 Test chapter zero and named one-shots through the registry for every registered provider, not just isolated adapters. Dedicated adapters must precede generic domain fallbacks; routing can otherwise make correct provider parsers unreachable. Guard ambiguous releases before numeric deduplication, because provider IDs alone cannot overcome the database's source/chapter-number uniqueness. Surface unsupported numbering explicitly rather than assigning every release zero or returning a falsely empty successful result.
 
 Publication completion is independent of import completion, retry eligibility, and account health. Include completed works with empty imports in recovery scheduling. Match actual chapter routes before requiring a number, ignore navigation/sidebar links, and normalize approved bare/www aliases. Never extract arbitrary title digits (years, awards) as chapter numbers. Keep reader availability distinct from the existence of a chapter entry.
+
+## 2026-10-14 - Preserve Source Order in Reader Spreads
+
+- Right-to-left spreads should reverse visual layout with flex direction, while retaining source image order in the DOM. Reader completion checks depend on the last source image.
+- Pair adjacent pages explicitly: a wide image can already contain an entire spread, and dimensions alone cannot identify two separate images that belong together.
+- Check phone widths and preserve the action's scroll position when grouping changes image heights.

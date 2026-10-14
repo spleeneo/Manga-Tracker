@@ -1,5 +1,30 @@
 # Work Log
 
+## 2026-10-14 - Manually Pair Chapter Pages Into Spreads
+
+### Why and plan
+
+- Some double-page artwork arrives as two separate images. Add selective adjacent-page pairing, reversible unpairing, and a reading-direction control without pairing the whole chapter.
+- Cover grouping edge cases and the reader interaction, then check desktop/mobile layout and the full verification gate.
+
+### Changes
+
+- Added per-page `Pair with next page` and `Unpair` actions. Paired pages share a gapless row and always fit the available width.
+- Added right-to-left (default) and left-to-right spread order; source/DOM order remains stable for progress tracking.
+- Existing wide images remain single full-width rows. Pairing choices are scoped to the current reader session and source page set, and reset on reload/navigation away.
+- Kept the clicked control in view when pairing changes the page heights.
+
+### Verification and outcome
+
+- Focused grouping and reader UI checks passed (6 tests), including overlapping/final-page selections, pairing/unpairing, and direction changes.
+- Browser fixture checks passed for desktop pairing, both reading directions, mobile pairing/unpairing at 390px width, and a single landscape image. Paired images shared the same vertical position; mobile document width did not exceed viewport width.
+- Used temporary synthetic images with the real reader component; the fixture was removed. Live provider-backed chapter rendering and production deployment were not manually verified.
+- `npm run verify`: passed (78 test files, 409 tests, production build; lint completed with 4 existing image-element warnings and no errors).
+
+### Learning
+
+- [Preserve Source Order in Reader Spreads](learnings.md#2026-10-14---preserve-source-order-in-reader-spreads)
+
 ## 2026-09-01 - Make Reader Page Reloads Eager
 
 ### Why

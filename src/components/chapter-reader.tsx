@@ -7,6 +7,7 @@ import { BrandLink } from "@/components/brand-link";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
 import { isReaderChapterCompleted } from "@/lib/reader-progress";
+import { groupReaderPages } from "@/lib/reader-spreads";
 
 type ReaderStatus = "READABLE" | "EXTERNAL_ONLY" | "PAYWALLED" | "BLOCKED" | "UNSUPPORTED" | "ERROR";
 
@@ -73,6 +74,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   }]);
   const [activeChapterId, setActiveChapterId] = useState(chapter.id);
   const [fitWidth, setFitWidth] = useState(true);
+  const [readingDirection, setReadingDirection] = useState<"rtl" | "ltr">("rtl");
+  const [pairedPages, setPairedPages] = useState<Record<string, number[]>>({});
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   const markedReadRef = useRef(new Set<number>());
@@ -455,6 +458,13 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <label className="ui-button ui-button-secondary">
+              Spread order
+              <select aria-label="Spread reading direction" className="bg-background text-foreground" value={readingDirection} onChange={(event) => setReadingDirection(event.target.value as "rtl" | "ltr")}>
+                <option value="rtl">Right to left</option>
+                <option value="ltr">Left to right</option>
+              </select>
+            </label>
             {previousNavChapter && (
               <Link href={`/manga/${slug}/chapter/${previousNavChapter.id}`} className="ui-button ui-button-secondary">
                 <ArrowLeft className="h-4 w-4" />
@@ -493,6 +503,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
               const chapterDisplay = chapterReader?.chapter ?? loadedChapter.chapter;
               const chapterSource = chapterDisplay.sourceName ?? "Source";
               const fallbackUrl = chapterReader?.externalUrl || loadedChapter.chapter.url;
+              const spreadKey = `${loadedChapter.chapter.id}:${chapterReader?.pages[0]?.imageUrl ?? ""}`;
+              const pairedStarts = pairedPages[spreadKey] ?? [];
+              const pageGroups = groupReaderPages(chapterReader?.pages ?? [], pairedStarts);
 
               return (
                 <section
@@ -521,15 +534,49 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                           The original source could not open in Mangateo, so this reader is using {chapterSource} for the same chapter.
                         </div>
                       )}
-                      {chapterReader.pages.map((page) => (
-                        <ReaderPageImage
-                          key={`${loadedChapter.chapter.id}-${page.index}-${page.imageUrl}`}
-                          page={page}
-                          chapterNumber={chapterDisplay.chapterNumber}
-                          fitWidth={fitWidth}
-                          loading={chapterIndex === 0 && page.index < 2 ? "eager" : "lazy"}
-                        />
-                      ))}
+                      {pageGroups.map((group, groupIndex) => {
+                        const paired = group.length === 2;
+                        const canPair = !paired && pageGroups[groupIndex + 1]?.length === 1;
+                        const firstPage = group[0];
+                        return (
+                          <div key={`${spreadKey}-${firstPage.index}`}>
+                            <div className={`flex items-start ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
+                              {group.map((page) => (
+                                <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0" : "w-full"}>
+                                  <ReaderPageImage
+                                    page={page}
+                                    chapterNumber={chapterDisplay.chapterNumber}
+                                    fitWidth={paired || fitWidth}
+                                    loading={chapterIndex === 0 && page.index < 2 ? "eager" : "lazy"}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            {(paired || canPair) && (
+                              <div className="flex justify-end py-1">
+                                <button
+                                  type="button"
+                                  className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                                  aria-label={paired ? `Unpair pages ${firstPage.index + 1} and ${group[1].index + 1}` : `Pair page ${firstPage.index + 1} with next page`}
+                                  onClick={(event) => {
+                                    const button = event.currentTarget;
+                                    const previousTop = button.getBoundingClientRect().top;
+                                    setPairedPages((current) => {
+                                      const starts = current[spreadKey] ?? [];
+                                      return { ...current, [spreadKey]: paired ? starts.filter((index) => index !== firstPage.index) : [...starts, firstPage.index] };
+                                    });
+                                    window.requestAnimationFrame(() => {
+                                      if (button.isConnected) window.scrollBy(0, button.getBoundingClientRect().top - previousTop);
+                                    });
+                                  }}
+                                >
+                                  {paired ? "Unpair" : "Pair with next page"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="empty-state">
