@@ -1,5 +1,12 @@
 # Work Log
 
+## 2026-10-14 - Place Spread Icons Beside the Page Corner
+
+- Why: the overlay button obscured white artwork; the user intended a control beside the corner.
+- Plan/change: move controls 8px outside the right edge near the bottom, reserve a narrow responsive horizontal gutter, and use the reader background for the button. Keep page rows vertically gapless.
+- Verification: focused reader UI/grouping checks passed (11 tests). A temporary white-page browser fixture confirmed the 8px separation on desktop and original-size pages, working manual unpairing, zero vertical row gap, and no horizontal overflow at 390px in Fit mode. Fixture and generated development validator removed afterward.
+- `npm run verify`: passed (78 test files, 414 tests, production build; lint had 4 existing image-element warnings and no errors). Live-provider and production rendering were not manually verified.
+
 ## 2026-10-14 - Overlay Reader Pairing Icons Without Page Gaps
 
 ### Why and plan

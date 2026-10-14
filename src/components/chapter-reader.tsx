@@ -540,7 +540,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                       ))}
                     </div>
                   ) : chapterReader?.status === "READABLE" && chapterReader.pages.length > 0 ? (
-                    <div>
+                    <div className="pr-12 sm:pr-10">
                       {chapterReader.usedAlternative && (
                         <div className="surface mx-auto mb-3 max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
                           The original source could not open in Mangateo, so this reader is using {chapterSource} for the same chapter.
@@ -568,7 +568,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                             {(paired || canPair) && (
                                 <button
                                   type="button"
-                                  className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-8 sm:w-8"
+                                  className="absolute bottom-2 left-full ml-2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-8 sm:w-8"
                                   title={paired ? "Unpair pages" : "Pair with next page"}
                                   aria-label={paired ? `Unpair pages ${firstPage.index + 1} and ${group[1].index + 1}` : `Pair page ${firstPage.index + 1} with next page`}
                                   onClick={(event) => {
