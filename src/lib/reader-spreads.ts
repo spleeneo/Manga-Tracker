@@ -19,6 +19,11 @@ export function groupReaderPages<T extends { index: number; width?: number; heig
   return groups;
 }
 
+export function isLandscapePage(page: { width?: number; height?: number }) {
+  const { width, height } = page;
+  return Boolean(width && height && Number.isFinite(width) && Number.isFinite(height) && height > 0 && width > height);
+}
+
 function isPortraitPage(page: { width?: number; height?: number }) {
   const { width, height } = page;
   // Very tall images are usually vertical scrolling strips rather than printed pages.

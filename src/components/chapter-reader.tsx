@@ -7,7 +7,7 @@ import { BrandLink } from "@/components/brand-link";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
 import { isReaderChapterCompleted } from "@/lib/reader-progress";
-import { groupReaderPages } from "@/lib/reader-spreads";
+import { groupReaderPages, isLandscapePage } from "@/lib/reader-spreads";
 
 type ReaderStatus = "READABLE" | "EXTERNAL_ONLY" | "PAYWALLED" | "BLOCKED" | "UNSUPPORTED" | "ERROR";
 
@@ -508,7 +508,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
             ))}
           </div>
         ) : (
-          <div className={`mx-auto space-y-8 ${fitWidth ? "max-w-4xl" : "max-w-none overflow-x-auto"}`}>
+          <div className={`mx-auto max-w-none space-y-8 ${fitWidth ? "" : "overflow-x-auto"}`}>
             {loadedChapters.map((loadedChapter, chapterIndex) => {
               const chapterReader = loadedChapter.reader;
               const chapterDisplay = chapterReader?.chapter ?? loadedChapter.chapter;
@@ -548,10 +548,12 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                       )}
                       {pageGroups.map((group, groupIndex) => {
                         const paired = group.length === 2;
-                        const canPair = !paired && pageGroups[groupIndex + 1]?.length === 1;
                         const firstPage = group[0];
+                        const landscape = !paired && isLandscapePage(firstPage);
+                        const nextGroup = pageGroups[groupIndex + 1];
+                        const canPair = !paired && !landscape && nextGroup?.length === 1 && !isLandscapePage(nextGroup[0]);
                         return (
-                          <div key={`${spreadKey}-${firstPage.index}`} className={`relative ${!paired && !fitWidth ? "mx-auto w-fit" : ""}`}>
+                          <div key={`${spreadKey}-${firstPage.index}`} className={`relative mx-auto ${!paired && !fitWidth ? "w-fit" : paired || landscape ? "max-w-7xl" : "max-w-[53.5rem]"}`}>
                             <div className={`flex items-start ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
                               {group.map((page) => (
                                 <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0" : "w-full"}>

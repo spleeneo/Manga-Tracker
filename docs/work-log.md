@@ -1,5 +1,12 @@
 # Work Log
 
+## 2026-10-14 - Give Double-Page Spreads More Reading Width
+
+- Why: an existing landscape spread was constrained to classic-page width and showed an unnecessary pairing control.
+- Changes: keep classic pages capped at their existing 856px desktop width, allow landscape images and paired spreads up to 1280px within available screen space, and hide pairing controls on landscape images and on pages immediately before them. Detection uses provider dimensions or natural image measurements, independently of Auto spread.
+- Verification: first added a failing reader interaction test for landscape pairing controls; focused reader/grouping checks then passed (12 tests). Browser fixture without provider dimensions showed normal pages at 856px and the landscape spread at 1198px, no pairing controls, gapless row boundaries, and no horizontal overflow at 390px. Temporary fixture/generated validator removed after checks.
+- `npm run verify`: passed (78 test files, 415 tests, production build; lint had 4 existing image-element warnings and no errors). The user's specific live chapter and production rendering were not manually verified.
+
 ## 2026-10-14 - Place Spread Icons Beside the Page Corner
 
 - Why: the overlay button obscured white artwork; the user intended a control beside the corner.
