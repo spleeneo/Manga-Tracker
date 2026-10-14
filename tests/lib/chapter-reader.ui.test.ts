@@ -10,6 +10,34 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const chapter = (number: number) => ({ id: `c${number}`, chapterNumber: number, title: null, url: `https://mangadex.org/chapter/c${number}`, sourceName: "MangaDex" });
 
 describe("reader recovery", () => {
+  it("automatically pairs loaded portraits, leaves landscape pages alone, and keeps manual corrections", async () => {
+    vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ status: "READABLE", pages: [0, 1, 2, 3, 4].map((index) => ({ index, imageUrl: `https://example.com/${index}.png` })) }) }));
+    render(createElement(ChapterReader, { slug: "sample", mangaTitle: "Sample", chapter: chapter(1), previousChapter: null, nextChapters: [] }));
+    await screen.findByRole("img", { name: "Chapter 1 page 1" });
+    fireEvent.click(screen.getByRole("button", { name: "Auto spread: Off" }));
+    expect(screen.getByRole("button", { name: "Auto spread: On" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("button", { name: /Unpair/ })).toBeNull();
+    for (let index = 0; index < 5; index++) {
+      const image = screen.getByRole("img", { name: `Chapter 1 page ${index + 1}` });
+      Object.defineProperties(image, { naturalWidth: { value: index === 2 ? 1600 : 800, configurable: true }, naturalHeight: { value: 1200, configurable: true } });
+      fireEvent.load(image);
+    }
+    expect(screen.getByRole("button", { name: "Unpair pages 1 and 2" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Unpair pages 4 and 5" })).toBeTruthy();
+    const wide = screen.getByRole("img", { name: "Chapter 1 page 3" });
+    expect(wide.parentElement!.parentElement!.querySelectorAll("img")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Unpair pages 1 and 2" }));
+    expect(screen.queryByRole("button", { name: "Unpair pages 1 and 2" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Auto spread: On" }));
+    expect(screen.queryByRole("button", { name: /Unpair/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Auto spread: Off" }));
+    expect(screen.queryByRole("button", { name: "Unpair pages 1 and 2" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Unpair pages 4 and 5" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pair page 1 with next page" }));
+    expect(screen.getByRole("button", { name: "Unpair pages 1 and 2" })).toBeTruthy();
+  });
+
   it("pairs and unpairs selected pages while preserving source order and selectable spread direction", async () => {
     vi.spyOn(window, "scrollBy").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ status: "READABLE", pages: [0, 1, 2].map((index) => ({ index, imageUrl: `https://example.com/${index}.png` })) }) }));

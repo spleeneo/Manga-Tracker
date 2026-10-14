@@ -1,5 +1,31 @@
 # Work Log
 
+## 2026-10-14 - Optional Automatic Reader Spreads
+
+### Why and plan
+
+- Add the requested automatic layout alongside manual pairing. Pair consecutive printed portrait pages, leave wide images alone, and retain manual corrections.
+- Test grouping rules and dimension discovery, check the reader at desktop/phone widths, and run the repository verification gate.
+
+### Changes
+
+- Added an `Auto spread: Off/On` toggle, off by default. Portrait pages pair using provider dimensions or natural image dimensions discovered on load.
+- Unknown sizes remain single until measured; landscape/square images and strips taller than 2.5 times their width stay on their own row.
+- Manual pairs take priority, and unpairing excludes both pages from automatic pairing. Corrections survive toggling Auto spread within the current session.
+- Retained reading direction, source order, and image retries. Settings and corrections reset when leaving/reloading the reader.
+
+### Verification and outcome
+
+- Focused grouping and reader interaction checks passed (11 tests): mixed portrait/landscape chapters, odd page counts, unavailable dimensions, tall strips, manual precedence, and toggle/correction behavior.
+- Browser check using the real reader and temporary synthetic images without provider dimensions: automatic pairing around a landscape image, manual unpairing, toggling, and correcting back to a pair passed. At 390px, paired pages shared a row and document width stayed within the viewport.
+- The first full check passed lint/tests but failed type checking because a generated development validator still imported the removed browser fixture. Removed that stale generated file and reran the full gate.
+- `npm run verify`: passed (78 test files, 414 tests, production build; lint completed with 4 existing image-element warnings and no errors).
+- Live provider-backed chapters and production rendering were not manually checked.
+
+### Learning
+
+- [Automatic Spreads Need Image Dimensions and Manual Overrides](learnings.md#2026-10-14---automatic-spreads-need-image-dimensions-and-manual-overrides)
+
 ## 2026-10-14 - Manually Pair Chapter Pages Into Spreads
 
 ### Why and plan

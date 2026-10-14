@@ -76,6 +76,14 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const [fitWidth, setFitWidth] = useState(true);
   const [readingDirection, setReadingDirection] = useState<"rtl" | "ltr">("rtl");
   const [pairedPages, setPairedPages] = useState<Record<string, number[]>>({});
+  const [autoSpread, setAutoSpread] = useState(false);
+  const [singlePages, setSinglePages] = useState<Record<string, number[]>>({});
+  const [pageDimensions, setPageDimensions] = useState<Record<string, { width: number; height: number }>>({});
+  const recordPageDimensions = useCallback((imageUrl: string, width: number, height: number) => {
+    if (width <= 0 || height <= 0) return;
+    setPageDimensions((current) => current[imageUrl]?.width === width && current[imageUrl]?.height === height
+      ? current : { ...current, [imageUrl]: { width, height } });
+  }, []);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   const markedReadRef = useRef(new Set<number>());
@@ -458,6 +466,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <button type="button" className="ui-button ui-button-secondary" aria-pressed={autoSpread} onClick={() => setAutoSpread((value) => !value)}>
+              Auto spread: {autoSpread ? "On" : "Off"}
+            </button>
             <label className="ui-button ui-button-secondary">
               Spread order
               <select aria-label="Spread reading direction" className="bg-background text-foreground" value={readingDirection} onChange={(event) => setReadingDirection(event.target.value as "rtl" | "ltr")}>
@@ -505,7 +516,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
               const fallbackUrl = chapterReader?.externalUrl || loadedChapter.chapter.url;
               const spreadKey = `${loadedChapter.chapter.id}:${chapterReader?.pages[0]?.imageUrl ?? ""}`;
               const pairedStarts = pairedPages[spreadKey] ?? [];
-              const pageGroups = groupReaderPages(chapterReader?.pages ?? [], pairedStarts);
+              const measuredPages = (chapterReader?.pages ?? []).map((page) => ({ ...page, ...pageDimensions[page.imageUrl] }));
+              const pageGroups = groupReaderPages(measuredPages, pairedStarts, { auto: autoSpread, singlePages: singlePages[spreadKey] });
 
               return (
                 <section
@@ -547,6 +559,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                                     page={page}
                                     chapterNumber={chapterDisplay.chapterNumber}
                                     fitWidth={paired || fitWidth}
+                                    onDimensions={recordPageDimensions}
                                     loading={chapterIndex === 0 && page.index < 2 ? "eager" : "lazy"}
                                   />
                                 </div>
@@ -565,6 +578,12 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                                       const starts = current[spreadKey] ?? [];
                                       return { ...current, [spreadKey]: paired ? starts.filter((index) => index !== firstPage.index) : [...starts, firstPage.index] };
                                     });
+                                    setSinglePages((current) => ({
+                                      ...current,
+                                      [spreadKey]: paired
+                                        ? [...new Set([...(current[spreadKey] ?? []), ...group.map((page) => page.index)])]
+                                        : (current[spreadKey] ?? []).filter((index) => index !== firstPage.index && index !== pageGroups[groupIndex + 1][0].index),
+                                    }));
                                     window.requestAnimationFrame(() => {
                                       if (button.isConnected) window.scrollBy(0, button.getBoundingClientRect().top - previousTop);
                                     });
@@ -601,7 +620,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   );
 }
 
-function ReaderPageImage({ chapterNumber, fitWidth, loading, page }: { chapterNumber: number; fitWidth: boolean; loading: "eager" | "lazy"; page: ReaderPage }) {
+function ReaderPageImage({ chapterNumber, fitWidth, loading, page, onDimensions }: { chapterNumber: number; fitWidth: boolean; loading: "eager" | "lazy"; page: ReaderPage; onDimensions: (imageUrl: string, width: number, height: number) => void }) {
   const [failed, setFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [autoRetryCount, setAutoRetryCount] = useState(0);
@@ -658,9 +677,10 @@ function ReaderPageImage({ chapterNumber, fitWidth, loading, page }: { chapterNu
       className={imageClassName}
       loading={imageLoading}
       onError={() => setFailed(true)}
-      onLoad={() => {
+      onLoad={(event) => {
         setFailed(false);
         setAutoRetryCount(0);
+        onDimensions(page.imageUrl, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight);
       }}
     />
   );

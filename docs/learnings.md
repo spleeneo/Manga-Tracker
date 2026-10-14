@@ -542,3 +542,9 @@ Publication completion is independent of import completion, retry eligibility, a
 - Right-to-left spreads should reverse visual layout with flex direction, while retaining source image order in the DOM. Reader completion checks depend on the last source image.
 - Pair adjacent pages explicitly: a wide image can already contain an entire spread, and dimensions alone cannot identify two separate images that belong together.
 - Check phone widths and preserve the action's scroll position when grouping changes image heights.
+
+## 2026-10-14 - Automatic Spreads Need Image Dimensions and Manual Overrides
+
+- Many providers omit page dimensions. Discover natural dimensions on image load, cache by source URL, and skip unchanged measurements to prevent repeat load/regroup loops.
+- Keep unpaired pages explicitly excluded from automatic grouping, and reserve manual pair starts before forming automatic pairs. Otherwise a correction can be immediately undone or consumed by an earlier automatic pair.
+- Treat very tall portrait images as scrolling strips; automatic adjacency is a layout heuristic, not evidence that two pages form continuous artwork.
