@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Columns2, ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, Square } from "lucide-react";
 import { BrandLink } from "@/components/brand-link";
 import { useToast } from "@/components/toast-provider";
 import { prefetchReaderChapter, prefetchReaderPages, scheduleReaderPrefetch } from "@/lib/reader-prefetch";
@@ -540,9 +540,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                       ))}
                     </div>
                   ) : chapterReader?.status === "READABLE" && chapterReader.pages.length > 0 ? (
-                    <div className="space-y-3">
+                    <div>
                       {chapterReader.usedAlternative && (
-                        <div className="surface mx-auto max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
+                        <div className="surface mx-auto mb-3 max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
                           The original source could not open in Mangateo, so this reader is using {chapterSource} for the same chapter.
                         </div>
                       )}
@@ -551,7 +551,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                         const canPair = !paired && pageGroups[groupIndex + 1]?.length === 1;
                         const firstPage = group[0];
                         return (
-                          <div key={`${spreadKey}-${firstPage.index}`}>
+                          <div key={`${spreadKey}-${firstPage.index}`} className={`relative ${!paired && !fitWidth ? "mx-auto w-fit" : ""}`}>
                             <div className={`flex items-start ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
                               {group.map((page) => (
                                 <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0" : "w-full"}>
@@ -566,10 +566,10 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                               ))}
                             </div>
                             {(paired || canPair) && (
-                              <div className="flex justify-end py-1">
                                 <button
                                   type="button"
-                                  className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                                  className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-8 sm:w-8"
+                                  title={paired ? "Unpair pages" : "Pair with next page"}
                                   aria-label={paired ? `Unpair pages ${firstPage.index + 1} and ${group[1].index + 1}` : `Pair page ${firstPage.index + 1} with next page`}
                                   onClick={(event) => {
                                     const button = event.currentTarget;
@@ -589,9 +589,8 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                                     });
                                   }}
                                 >
-                                  {paired ? "Unpair" : "Pair with next page"}
+                                  {paired ? <Square className="h-4 w-4" aria-hidden="true" /> : <Columns2 className="h-4 w-4" aria-hidden="true" />}
                                 </button>
-                              </div>
                             )}
                           </div>
                         );

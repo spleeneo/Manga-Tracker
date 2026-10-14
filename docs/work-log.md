@@ -1,5 +1,25 @@
 # Work Log
 
+## 2026-10-14 - Overlay Reader Pairing Icons Without Page Gaps
+
+### Why and plan
+
+- The pairing text controls created extra space below images. Replace them with small bottom-right overlay icons and remove spacing between page rows.
+- Check existing reader behavior, browser layout at desktop/phone widths, and the full repository gate.
+
+### Changes
+
+- Pairing uses a two-column icon; unpairing uses a single-page icon. Both retain descriptive accessible labels, hover tooltips, visible keyboard focus, and a larger phone hit area.
+- Positioned controls over the page/spread instead of in a separate row. Removed inter-page margins and retained spacing for the source-fallback notice.
+- Original-size single pages keep their control anchored to the actual image width.
+
+### Verification and outcome
+
+- Focused reader UI, grouping, and routing checks passed (15 tests).
+- Browser fixture checks passed: pair/unpair actions, tooltip/accessible names, desktop and original-size icon placement, and phone pairing at 390px with no horizontal overflow. The next image's top matched the preceding image/spread's bottom, confirming no layout gap.
+- Temporary synthetic-image fixture removed after browser checks. Live provider chapters and production rendering were not manually checked.
+- `npm run verify`: passed (78 test files, 414 tests, production build; lint completed with 4 existing image-element warnings and no errors).
+
 ## 2026-10-14 - Optional Automatic Reader Spreads
 
 ### Why and plan
