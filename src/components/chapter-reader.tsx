@@ -467,7 +467,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="ui-button ui-button-secondary sm:hidden" aria-pressed={showMobilePageControls} onClick={() => setShowMobilePageControls((value) => !value)}>
+            <button type="button" className="ui-button ui-button-secondary lg:hidden" aria-pressed={showMobilePageControls} onClick={() => setShowMobilePageControls((value) => !value)}>
               Page controls: {showMobilePageControls ? "On" : "Off"}
             </button>
             <button type="button" className="ui-button ui-button-secondary" aria-pressed={autoSpread} onClick={() => setAutoSpread((value) => !value)}>
@@ -504,7 +504,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
         </div>
       </header>
 
-      <main className="page-wrap !px-1 py-4 sm:!px-4 md:py-6">
+      <main className="page-wrap !px-0 py-4 max-lg:!max-w-none lg:!px-4 md:py-6">
         {firstChapterLoading && !firstReader ? (
           <div className="mx-auto max-w-3xl space-y-4">
             {Array.from({ length: 3 }).map((_, index) => (
@@ -544,7 +544,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                       ))}
                     </div>
                   ) : chapterReader?.status === "READABLE" && chapterReader.pages.length > 0 ? (
-                    <div className={`${showMobilePageControls ? "pr-9" : "pr-0"} sm:pr-10`}>
+                    <div className="pr-0 lg:pr-10">
                       {chapterReader.usedAlternative && (
                         <div className="surface mx-auto mb-3 max-w-3xl px-4 py-3 text-sm font-semibold text-muted-foreground">
                           The original source could not open in Mangateo, so this reader is using {chapterSource} for the same chapter.
@@ -557,7 +557,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                         const nextGroup = pageGroups[groupIndex + 1];
                         const canPair = !paired && !landscape && nextGroup?.length === 1 && !isLandscapePage(nextGroup[0]);
                         return (
-                          <div key={`${spreadKey}-${firstPage.index}`} className={`relative mx-auto ${!paired && !fitWidth ? "w-fit" : paired || landscape ? "max-w-7xl" : "max-w-[53.5rem]"}`}>
+                          <div key={`${spreadKey}-${firstPage.index}`} className={`relative mx-auto max-lg:max-w-none ${!paired && !fitWidth ? "w-fit" : paired || landscape ? "max-w-7xl" : "max-w-[53.5rem]"}`}>
                             <div className={`flex items-start max-sm:portrait:flex-col ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
                               {group.map((page) => (
                                 <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0 max-sm:portrait:w-full" : "w-full"}>
@@ -574,7 +574,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                             {(paired || canPair) && (
                                 <button
                                   type="button"
-                                  className={`absolute bottom-2 left-full ml-1 ${showMobilePageControls ? "flex" : "hidden"} h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:ml-2 sm:flex`}
+                                  className={`absolute bottom-2 right-2 ${showMobilePageControls ? "flex" : "hidden"} h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:right-auto lg:left-full lg:ml-2 lg:flex`}
                                   title={paired ? "Unpair pages" : "Pair with next page"}
                                   aria-label={paired ? `Unpair pages ${firstPage.index + 1} and ${group[1].index + 1}` : `Pair page ${firstPage.index + 1} with next page`}
                                   onClick={(event) => {

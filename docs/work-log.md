@@ -1,5 +1,11 @@
 # Work Log
 
+## 2026-10-22 - Remove Mobile Reader Side Strips
+
+- Why: the user still saw an unwanted dark strip next to chapter images.
+- Change: remove reader padding, container-width caps, and reserved control space below 1024px. Fit images fill the viewport in portrait and landscape. Optional mobile page controls float only when enabled and never shrink the artwork; desktop controls remain beside the image.
+- Verification: `npm run verify` passed (78 test files, 415 tests, production build; lint had 4 existing image-element warnings). Confirmed the compiled CSS includes the below-1024px container-width override. Browser appearance remains unverified because the localhost browser security block from this session prevents visual inspection.
+
 ## 2026-10-22 - Recover Mobile Reader Width
 
 ### Why and changes
