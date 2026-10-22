@@ -1,5 +1,23 @@
 # Work Log
 
+## 2026-10-22 - Recover Mobile Reader Width
+
+### Why and changes
+
+- The desktop-oriented spread layout left a permanent 48px control gutter on phones, in addition to page margins. Paired images also became half-width on narrow portrait screens.
+- Phone pages now use 4px outer margins and no control gutter by default. A mobile-only `Page controls` toggle reveals a narrower 36px rail with the icons outside the artwork, retaining gapless page rows.
+- Paired images stack in source order below 640px in portrait orientation, using full page width. Desktop and landscape-phone paired layouts retain side-by-side reading; existing wide images remain a single image.
+
+### Verification
+
+- Focused reader UI/grouping/routing checks passed (16 tests).
+- `npm run verify`: passed (78 test files, 415 tests, production build; lint had 4 existing image-element warnings and no errors). Inspected compiled CSS to confirm the portrait stacking media rules and mobile/desktop padding overrides were emitted.
+- Browser visual verification was blocked by the browser URL security policy when acquiring the existing localhost tab. No alternative browser surface was used to bypass the block. Mobile appearance and the live chapter remain visually unverified.
+
+### Learning
+
+- [Mobile Reader Checks Must Include Usable Page Width](learnings.md#2026-10-22---mobile-reader-checks-must-include-usable-page-width)
+
 ## 2026-10-14 - Give Double-Page Spreads More Reading Width
 
 - Why: an existing landscape spread was constrained to classic-page width and showed an unnecessary pairing control.

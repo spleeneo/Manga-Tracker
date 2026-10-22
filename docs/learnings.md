@@ -1,5 +1,10 @@
 # Learnings Log
 
+## 2026-10-22 - Mobile Reader Checks Must Include Usable Page Width
+
+- A reader can have no horizontal overflow and still be uncomfortable to read: a permanent control rail reduces the artwork width, and side-by-side portraits halve it again.
+- Prefer full-width stacked pages on narrow portrait screens, make external page controls optional there, and check readability as well as overflow when validating mobile layouts.
+
 ## 2026-09-01 - Reader Page Retries Must Force Fresh Eager Loads
 
 Context:
