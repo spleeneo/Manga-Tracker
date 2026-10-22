@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChapterReader } from "@/components/chapter-reader";
 
@@ -10,6 +10,29 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const chapter = (number: number) => ({ id: `c${number}`, chapterNumber: number, title: null, url: `https://mangadex.org/chapter/c${number}`, sourceName: "MangaDex" });
 
 describe("reader recovery", () => {
+  it("keeps automatic pairs off on portrait phones but allows an explicit pair and unpair", async () => {
+    let portrait = true;
+    let viewportChanged = () => {};
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ get matches() { return portrait; }, addEventListener: (_event: string, callback: () => void) => { viewportChanged = callback; }, removeEventListener: vi.fn() })));
+    vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ status: "READABLE", pages: [0, 1, 2, 3].map((index) => ({ index, imageUrl: `https://example.com/${index}.png`, width: 800, height: 1200 })) }) }));
+    render(createElement(ChapterReader, { slug: "sample", mangaTitle: "Sample", chapter: chapter(1), previousChapter: null, nextChapters: [] }));
+    await screen.findByRole("img", { name: "Chapter 1 page 1" });
+    fireEvent.click(screen.getByRole("button", { name: "Page controls: Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Auto spread: Off" }));
+    expect(screen.queryByRole("button", { name: /Unpair/ })).toBeNull();
+    expect(screen.getByText(/Automatic pairing is paused/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pair page 1 with next page" }));
+    expect(screen.getByRole("button", { name: "Unpair pages 1 and 2" })).toBeTruthy();
+    act(() => { portrait = false; viewportChanged(); });
+    expect(screen.getByRole("button", { name: "Unpair pages 3 and 4" })).toBeTruthy();
+    act(() => { portrait = true; viewportChanged(); });
+    expect(screen.queryByRole("button", { name: "Unpair pages 3 and 4" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Unpair pages 1 and 2" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Unpair pages 1 and 2" }));
+    expect(screen.getByRole("button", { name: "Pair page 1 with next page" })).toBeTruthy();
+  });
+
   it("does not offer pairing a landscape spread with another page", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ status: "READABLE", pages: [0, 1, 2].map((index) => ({ index, imageUrl: `https://example.com/${index}.png`, width: index === 1 ? 1600 : 800, height: 1200 })) }) }));
     render(createElement(ChapterReader, { slug: "sample", mangaTitle: "Sample", chapter: chapter(1), previousChapter: null, nextChapters: [] }));

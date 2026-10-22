@@ -1,5 +1,14 @@
 # Work Log
 
+## 2026-10-22 - Make Mobile Pairing Effective and Explain Auto Spread
+
+- Why: manual page controls appeared ineffective on portrait phones because a responsive CSS rule stacked every pair, including pairs explicitly selected by the reader. The corner control was too prominent, and Auto spread was unclear.
+- Plan/change: pause automatic grouping on narrow portrait viewports using a subscribed media query, let explicit manual pairs render side by side on every viewport, and preserve manual choices through rotation. Added reader help explaining consecutive-page pairing and its limitations, plus a visible status when Auto spread is paused.
+- Made the control glyph 12px and faint at rest, removed its border, and retained a small translucent backing with a 44px mobile tap target and visible focus/press states. Pages retain their full width.
+- Verification: added a failing phone interaction regression before the fix. Focused UI/grouping/routing checks passed (17 tests), including enabling mobile controls, manual pair/unpair, and orientation changes while preserving manual corrections. `npm run verify` passed (78 test files, 416 tests, production build; lint had 4 existing image-element warnings and no errors).
+- Browser visual verification remains unavailable following the localhost browser security block in this session. The actual mobile appearance and live chapter were not visually verified.
+- Learning: [Manual Pairing Must Override Mobile Defaults](learnings.md#2026-10-22---manual-pairing-must-override-mobile-defaults).
+
 ## 2026-10-22 - Remove Mobile Reader Side Strips
 
 - Why: the user still saw an unwanted dark strip next to chapter images.

@@ -1,5 +1,10 @@
 # Learnings Log
 
+## 2026-10-22 - Manual Pairing Must Override Mobile Defaults
+
+- A blanket responsive rule that stacks paired images makes an explicit Pair action appear broken. Apply the readable single-page default to automatic grouping; honor manual spreads even on narrow phones.
+- Subscribe to viewport changes and test rotation with existing manual corrections. Explain automatic adjacency pairing in the UI: it does not recognize continuous artwork, and a paused automatic mode needs a visible explanation.
+
 ## 2026-10-22 - Mobile Reader Checks Must Include Usable Page Width
 
 - A reader can have no horizontal overflow and still be uncomfortable to read: a permanent control rail reduces the artwork width, and side-by-side portraits halve it again.

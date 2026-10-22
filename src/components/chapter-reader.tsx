@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Columns2, ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, Square } from "lucide-react";
 import { BrandLink } from "@/components/brand-link";
@@ -18,6 +18,17 @@ const READER_WINDOW_BEFORE = 1;
 const READER_WINDOW_AFTER = 1;
 const READER_PAGE_PREFETCH_LIMIT = 3;
 const PAGE_AUTO_RETRY_DELAYS_MS = [1500, 4000, 8000];
+
+const NARROW_PORTRAIT_QUERY = "(max-width: 639px) and (orientation: portrait)";
+function subscribeReaderViewport(onChange: () => void) {
+  const media = window.matchMedia?.(NARROW_PORTRAIT_QUERY);
+  media?.addEventListener("change", onChange);
+  return () => media?.removeEventListener("change", onChange);
+}
+function isNarrowPortraitViewport() {
+  return window.matchMedia?.(NARROW_PORTRAIT_QUERY).matches ?? false;
+}
+function serverPortraitViewport() { return false; }
 
 interface ReaderPage {
   index: number;
@@ -77,6 +88,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
   const [readingDirection, setReadingDirection] = useState<"rtl" | "ltr">("rtl");
   const [pairedPages, setPairedPages] = useState<Record<string, number[]>>({});
   const [autoSpread, setAutoSpread] = useState(false);
+  const isNarrowPortrait = useSyncExternalStore(subscribeReaderViewport, isNarrowPortraitViewport, serverPortraitViewport);
   const [showMobilePageControls, setShowMobilePageControls] = useState(false);
   const [singlePages, setSinglePages] = useState<Record<string, number[]>>({});
   const [pageDimensions, setPageDimensions] = useState<Record<string, { width: number; height: number }>>({});
@@ -470,7 +482,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
             <button type="button" className="ui-button ui-button-secondary lg:hidden" aria-pressed={showMobilePageControls} onClick={() => setShowMobilePageControls((value) => !value)}>
               Page controls: {showMobilePageControls ? "On" : "Off"}
             </button>
-            <button type="button" className="ui-button ui-button-secondary" aria-pressed={autoSpread} onClick={() => setAutoSpread((value) => !value)}>
+            <button type="button" className="ui-button ui-button-secondary" aria-describedby="reader-spread-help" aria-pressed={autoSpread} onClick={() => setAutoSpread((value) => !value)}>
               Auto spread: {autoSpread ? "On" : "Off"}
             </button>
             <label className="ui-button ui-button-secondary">
@@ -502,6 +514,16 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
             </button>
           </div>
         </div>
+        <div className="page-wrap pb-2 text-xs text-muted-foreground">
+          <details>
+            <summary className="w-fit cursor-pointer">How page pairing works</summary>
+            <p id="reader-spread-help" className="mt-2 max-w-2xl">
+              Auto spread places consecutive portrait pages side by side on wider screens. It cannot tell whether two pages form one drawing. Wide images already containing both pages stay separate.
+              {" "}On a portrait phone, use Page controls and tap a page’s corner icon to pair it with the next page; tap the icon again to unpair. Automatic pairing pauses on narrow portrait screens so normal pages stay readable.
+            </p>
+          </details>
+          {autoSpread && isNarrowPortrait && <p role="status" className="mt-1">Automatic pairing is paused on this narrow portrait screen. Use Page controls to pair a specific spread.</p>}
+        </div>
       </header>
 
       <main className="page-wrap !px-0 py-4 max-lg:!max-w-none lg:!px-4 md:py-6">
@@ -521,7 +543,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
               const spreadKey = `${loadedChapter.chapter.id}:${chapterReader?.pages[0]?.imageUrl ?? ""}`;
               const pairedStarts = pairedPages[spreadKey] ?? [];
               const measuredPages = (chapterReader?.pages ?? []).map((page) => ({ ...page, ...pageDimensions[page.imageUrl] }));
-              const pageGroups = groupReaderPages(measuredPages, pairedStarts, { auto: autoSpread, singlePages: singlePages[spreadKey] });
+              const pageGroups = groupReaderPages(measuredPages, pairedStarts, { auto: autoSpread && !isNarrowPortrait, singlePages: singlePages[spreadKey] });
 
               return (
                 <section
@@ -558,9 +580,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                         const canPair = !paired && !landscape && nextGroup?.length === 1 && !isLandscapePage(nextGroup[0]);
                         return (
                           <div key={`${spreadKey}-${firstPage.index}`} className={`relative mx-auto max-lg:max-w-none ${!paired && !fitWidth ? "w-fit" : paired || landscape ? "max-w-7xl" : "max-w-[53.5rem]"}`}>
-                            <div className={`flex items-start max-sm:portrait:flex-col ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
+                            <div className={`flex items-start ${paired && readingDirection === "rtl" ? "flex-row-reverse" : "flex-row"}`}>
                               {group.map((page) => (
-                                <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0 max-sm:portrait:w-full" : "w-full"}>
+                                <div key={`${page.index}-${page.imageUrl}`} className={paired ? "w-1/2 min-w-0" : "w-full"}>
                                   <ReaderPageImage
                                     page={page}
                                     chapterNumber={chapterDisplay.chapterNumber}
@@ -574,7 +596,7 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                             {(paired || canPair) && (
                                 <button
                                   type="button"
-                                  className={`absolute bottom-2 right-2 ${showMobilePageControls ? "flex" : "hidden"} h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:right-auto lg:left-full lg:ml-2 lg:flex`}
+                                  className={`absolute bottom-0 right-0 ${showMobilePageControls ? "flex" : "hidden"} h-11 w-11 touch-manipulation items-center justify-center rounded-full text-muted-foreground opacity-30 transition-opacity hover:opacity-80 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:opacity-100 lg:right-auto lg:left-full lg:flex lg:h-10 lg:w-10`}
                                   title={paired ? "Unpair pages" : "Pair with next page"}
                                   aria-label={paired ? `Unpair pages ${firstPage.index + 1} and ${group[1].index + 1}` : `Pair page ${firstPage.index + 1} with next page`}
                                   onClick={(event) => {
@@ -595,7 +617,9 @@ export function ChapterReader({ slug, mangaTitle, chapter, previousChapter, next
                                     });
                                   }}
                                 >
-                                  {paired ? <Square className="h-4 w-4" aria-hidden="true" /> : <Columns2 className="h-4 w-4" aria-hidden="true" />}
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-background/70">
+                                    {paired ? <Square className="h-3 w-3" aria-hidden="true" /> : <Columns2 className="h-3 w-3" aria-hidden="true" />}
+                                  </span>
                                 </button>
                             )}
                           </div>
