@@ -2930,3 +2930,11 @@ User showed Yankee Juku e Iku preview claiming no synopsis despite its MangaPill
 - Verification: final npm run verify passed (77 files / 405 tests, four existing image lint warnings, production build). Final npm run smoke:update passed with zero failed chapter sources; known upstream MangaPlus discovery 403 remained. git diff --check passed. Signed-in browser workflows and live one-shots on all 14 providers were not checked; deterministic provider fixtures and API acceptance tests cover the changed paths.
 - Lessons: [Provider chapter contracts](learnings.md).
 - Delivery: commit/push verified batch to main under standing approval, then check CI/CD.
+
+## 2026-11-06 — Investigate Re:Zero search
+
+- Report: user searched for Re:Zero using `zero` and suspected search was broken.
+- Plan: inspect the shared search endpoint and both search interfaces, query live providers, and run focused search acceptance checks before changing behavior.
+- Findings: live registry search for `zero` returned 75 results, including nine Re:Zero-related entries from MangaPill and NeloManga. Exact titles named Zero rank ahead of longer substring matches. MangaPlus returned upstream 403; other providers remained usable. A control One Piece search returned 74 results. No confirmed code defect or code change in this investigation.
+- Verification: focused API, Discovery UI and result normalization tests passed (3 files, 21 tests). Authenticated browser verification could not be completed: local Explore returned the existing unauthenticated 404, and the development test-account sign-in did not establish a session. Production/account-specific behavior remains unverified.
+- Outcome: report the reproducible results and request the user's failing screen/behavior if the issue persists. Full npm run verify and smoke:update were not run because no application/provider code changed; focused checks cover the investigated path.
