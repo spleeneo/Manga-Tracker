@@ -233,6 +233,7 @@ export class NeloMangaScraper implements Scraper {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const results = data.map((manga: any) => ({
                 title: manga.name || "Unknown",
+                author: typeof manga.author === "string" ? manga.author.trim() || undefined : undefined,
                 sourceUrl: manga.url || `${NELOMANGA_BASE}/manga/${manga.slug || manga.id}`,
                 coverUrl: manga.thumb,
                 sourceName: "NeloManga",

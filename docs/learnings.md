@@ -562,4 +562,4 @@ Publication completion is independent of import completion, retry eligibility, a
 ## Franchise search identity
 
 - Pokémon search can return the same edition, spin-offs, fan works and publisher franchise pages with overlapping titles. Title-only merging would attach unrelated sources.
-- When a confirmed matching edition lacks author metadata, scope equivalence to exact source identities and retain author-conflict guards. Do not introduce a franchise-wide alias just to remove duplicate cards. Provider search availability and catalogue coverage are separate from aggregation correctness.
+- Inspect the raw provider response before adding exceptions: NeloManga search already supplies author evidence, but the adapter discarded it. Preserve that metadata so the shared title/author matcher works for every title; the initial Pokémon-specific source equivalence was removed. Retain author-conflict guards and avoid franchise-wide aliases. Provider search availability and catalogue coverage are separate from aggregation correctness.

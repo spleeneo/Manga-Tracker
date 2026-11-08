@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getRegisteredScrapers, searchScrapers, searchScrapersDetailed } from "@/lib/scrapers/registry";
 
 describe("scraper search aggregation", () => {
-  it("combines the verified Pokemon editions without absorbing franchise pages or spinoffs", async () => {
+  it("combines Pokemon editions by author without absorbing franchise pages or spinoffs", async () => {
     const providers = getRegisteredScrapers();
     providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));
     vi.mocked(providers.find(p => p.name === "MangaDex")!.search).mockResolvedValue([
@@ -10,14 +10,33 @@ describe("scraper search aggregation", () => {
       { title: "Pokémon - Pixiv Oneshots", alternateTitles: ["Pokémon"], sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/other" },
     ]);
     vi.mocked(providers.find(p => p.name === "NeloManga")!.search).mockResolvedValue([
-      { title: "Pokémon", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/pokemon" },
+      { title: "Pokémon", author: "Nintendo, Tajiri Satoshi, Anakubo Kousaku", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/pokemon" },
     ]);
     vi.mocked(providers.find(p => p.name === "VIZ")!.search).mockResolvedValue([
       { title: "Pokémon", sourceName: "VIZ", sourceUrl: "https://www.viz.com/pokemon" },
     ]);
     const { results } = await searchScrapersDetailed("pokemon");
     expect(results).toHaveLength(3);
-    expect(results.find(r => r.author === "Anakubo Kousaku")!.sources.map(s => s.name).sort()).toEqual(["MangaDex", "NeloManga"]);
+    expect(results.find(r => r.sources.some(s => s.name === "NeloManga"))!.sources.map(s => s.name).sort()).toEqual(["MangaDex", "NeloManga"]);
+  });
+  it.each([
+    ["Pokémon", "Pokemon", "Anakubo Kousaku", "Nintendo, Tajiri Satoshi, Anakubo Kousaku"],
+    ["A Completely New Series", "A Completely New Series", "Jane Writer", "Writer Jane"],
+    ["Another Manga", "Another Manga", "Hidenori Kusaka", "Satoshi Yamamoto, Hidenori Kusaka"],
+  ])("merges %s through the real Nelo search adapter and shared aggregator", async (title, neloTitle, author, neloAuthor) => {
+    const providers = getRegisteredScrapers();
+    providers.filter(p => p.name !== "NeloManga").forEach(p => vi.spyOn(p, "search").mockResolvedValue([]));
+    vi.mocked(providers.find(p => p.name === "MangaDex")!.search).mockResolvedValue([
+      { title, author, sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/arbitrary-id" },
+    ]);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json([
+      { name: neloTitle, author: neloAuthor, url: "https://www.nelomanga.net/manga/arbitrary-slug" },
+      { name: neloTitle, author: "Different Creator", url: "https://www.nelomanga.net/manga/distinct-edition" },
+    ]));
+    const { results } = await searchScrapersDetailed(title);
+    expect(results).toHaveLength(2);
+    expect(results.find(r => r.sources.some(s => s.name === "MangaDex"))!.sources).toHaveLength(2);
+    expect(results.find(r => r.author === "Different Creator")!.sources).toHaveLength(1);
   });
   it("does not merge distinct long same-title works without identity evidence", async () => {
     const providers = getRegisteredScrapers();

@@ -33,6 +33,23 @@ function textResponse(body: string) {
 }
 
 describe("NeloMangaScraper", () => {
+  it.each([
+    ["Pokémon", "Nintendo, Tajiri Satoshi, Anakubo Kousaku"],
+    ["A Completely New Series", "Jane Writer"],
+    ["Another Manga", "Satoshi Yamamoto, Hidenori Kusaka"],
+  ])("preserves search author evidence for %s", async (title, author) => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse([
+      { name: title, author, url: "https://www.nelomanga.net/manga/any-title" },
+    ]));
+    expect(await new NeloMangaScraper().search(title)).toEqual([
+      expect.objectContaining({ title, author }),
+    ]);
+  });
+
+  it.each([undefined, null, "", "   ", ["not a string"]])("ignores unusable search authors: %j", async (author) => {
+    fetchWithRetryMock.mockResolvedValueOnce(jsonResponse([{ name: "Unknown Author", author }]));
+    expect((await new NeloMangaScraper().search("Unknown Author"))[0].author).toBeUndefined();
+  });
   it.each(["nelomanga.net", "www.nelomanga.net"])("imports HTML chapter zero from %s while ignoring navigation", async (host) => {
     fetchWithRetryMock
       .mockResolvedValueOnce({ json: async () => ({ success: false }) })
