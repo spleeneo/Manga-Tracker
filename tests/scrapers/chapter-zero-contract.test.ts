@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }));
 vi.mock("@/lib/scrapers/http", () => ({ fetchWithRetry: fetchMock, ScraperRequestError: class extends Error {} }));
 import { getRegisteredScrapers, scrapeChapters } from "@/lib/scrapers/registry";
+import { mangaPlusResponseType } from "@/lib/scrapers/mangaplus-protocol";
 
-function response(body: string | object) {
+function response(body: string | object, providerName?: string) {
+  if (providerName === "MangaPlus" && typeof body === "object") {
+    return new Response(mangaPlusResponseType.encode(body).finish(), { headers: { "Content-Type": "application/x-protobuf" } });
+  }
   return { ok: true, text: async () => typeof body === "string" ? body : JSON.stringify(body), json: async () => body };
 }
 const date = "2024-01-01T00:00:00Z";
@@ -59,14 +63,14 @@ describe("all registered providers preserve chapter zero", () => {
   it("keeps the matrix complete as providers are added", () => {
     expect(cases.map((entry) => entry.name).sort()).toEqual(getRegisteredScrapers().map((scraper) => scraper.name).sort());
   });
-  it.each(cases)("$name imports chapter zero through the registry", async ({ url, bodies }) => {
-    bodies.forEach((body) => fetchMock.mockResolvedValueOnce(response(body)));
+  it.each(cases)("$name imports chapter zero through the registry", async ({ name, url, bodies }) => {
+    bodies.forEach((body) => fetchMock.mockResolvedValueOnce(response(body, name)));
     const chapters = await scrapeChapters(url);
     expect(chapters).toHaveLength(1);
     expect(chapters[0]).toMatchObject({ chapterNumber: 0, url: expect.any(String) });
   });
-  it.each(cases)("$name imports a named one-shot through the registry", async ({ url, oneShotBodies, oneShotNumber }) => {
-    oneShotBodies.forEach((body) => fetchMock.mockResolvedValueOnce(response(body)));
+  it.each(cases)("$name imports a named one-shot through the registry", async ({ name, url, oneShotBodies, oneShotNumber }) => {
+    oneShotBodies.forEach((body) => fetchMock.mockResolvedValueOnce(response(body, name)));
     const chapters = await scrapeChapters(url);
     expect(chapters).toHaveLength(1);
     expect(chapters[0].chapterNumber).toBe(oneShotNumber ?? 0);

@@ -563,3 +563,8 @@ Publication completion is independent of import completion, retry eligibility, a
 
 - Pokémon search can return the same edition, spin-offs, fan works and publisher franchise pages with overlapping titles. Title-only merging would attach unrelated sources.
 - Inspect the raw provider response before adding exceptions: NeloManga search already supplies author evidence, but the adapter discarded it. Preserve that metadata so the shared title/author matcher works for every title; the initial Pokémon-specific source equivalence was removed. Retain author-conflict guards and avoid franchise-wide aliases. Provider search availability and catalogue coverage are separate from aggregation correctness.
+
+## Provider transport contracts
+
+- Provider mocks must reflect the real wire format and anonymous-session requirements. MangaPlus JSON-only fixtures concealed rejected format=json requests, missing public-session headers and a nonexistent viewer currentChapter field.
+- Inspect the official client and verify live catalogue, title and single-viewer paths. Keep a fixed wire fixture independent of the production encoder. Preserve one-shot/public-window regression checks when changing transport; a successful response can still omit chapters if an endpoint's schema changed. Reuse the normal anonymous session, and surface real upstream blocks without rotating sessions to evade them.
