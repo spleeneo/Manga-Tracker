@@ -558,3 +558,8 @@ Publication completion is independent of import completion, retry eligibility, a
 - Many providers omit page dimensions. Discover natural dimensions on image load, cache by source URL, and skip unchanged measurements to prevent repeat load/regroup loops.
 - Keep unpaired pages explicitly excluded from automatic grouping, and reserve manual pair starts before forming automatic pairs. Otherwise a correction can be immediately undone or consumed by an earlier automatic pair.
 - Treat very tall portrait images as scrolling strips; automatic adjacency is a layout heuristic, not evidence that two pages form continuous artwork.
+
+## Franchise search identity
+
+- Pokémon search can return the same edition, spin-offs, fan works and publisher franchise pages with overlapping titles. Title-only merging would attach unrelated sources.
+- When a confirmed matching edition lacks author metadata, scope equivalence to exact source identities and retain author-conflict guards. Do not introduce a franchise-wide alias just to remove duplicate cards. Provider search availability and catalogue coverage are separate from aggregation correctness.

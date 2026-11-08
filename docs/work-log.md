@@ -2938,3 +2938,13 @@ User showed Yankee Juku e Iku preview claiming no synopsis despite its MangaPill
 - Findings: live registry search for `zero` returned 75 results, including nine Re:Zero-related entries from MangaPill and NeloManga. Exact titles named Zero rank ahead of longer substring matches. MangaPlus returned upstream 403; other providers remained usable. A control One Piece search returned 74 results. No confirmed code defect or code change in this investigation.
 - Verification: focused API, Discovery UI and result normalization tests passed (3 files, 21 tests). Authenticated browser verification could not be completed: local Explore returned the existing unauthenticated 404, and the development test-account sign-in did not establish a session. Production/account-specific behavior remains unverified.
 - Outcome: report the reproducible results and request the user's failing screen/behavior if the issue persists. Full npm run verify and smoke:update were not run because no application/provider code changed; focused checks cover the investigated path.
+
+## 2026-11-08 — Pokémon search duplicates
+
+- Report: Add New Manga showed separate Pokémon cards and apparently missing providers.
+- Plan: reproduce live provider search, preserve conservative identity checks, add a failing aggregation regression, then verify delivery.
+- Findings: all enabled search providers are queried. Live Pokémon results included NeloManga, MangaDex, MangaPill, Webtoon and VIZ; MangaPlus rejected requests with upstream 403. Not every provider carries every work. VIZ's Pokémon hit is a franchise landing page, not the Anakubo manga edition.
+- Change: add an explicit source-identity equivalence for the screenshot's matching NeloManga Pokémon and MangaDex edition. This deliberately fixes this confirmed pair rather than relaxing title-only merging across all manga. Shared identity also serves Discovery. Preserve author-conflict and same-provider guards; do not merge franchise pages or spin-offs.
+- Verification: regression failed before the fix; focused identity/registry checks passed. Live search now returns one card with both NeloManga and MangaDex sources. Update smoke passed with zero failed chapter sources; MangaPlus discovery still returned 403. Full verify results recorded below. No UI code changed; authenticated browser rendering was not verified. Nelo metadata detail fetch was also blocked with 403 during investigation.
+- Lesson: see “Franchise search identity” in [learnings.md](learnings.md).
+- Final verification: npm run verify passed (78 files, 418 tests, production build; four existing image lint warnings). git diff --check passed. Delivered by commit/push to main; CI/CD status checked after push.

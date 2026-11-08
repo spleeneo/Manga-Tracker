@@ -4,6 +4,15 @@ import { mergeBrowseDisplayResults, normalizeBrowseExploreResult } from "@/lib/e
 
 const work = (title: string, author: string | undefined, provider: string, alternateTitles?: string[]): WorkIdentity => ({ title, author, alternateTitles, sources: [{ name: provider, url: `https://${provider}.test/${title}` }] });
 describe("shared work identity", () => {
+  it("recognizes verified Pokemon sources in either order but respects author conflicts", () => {
+    const a = work("Pokémon", "Anakubo Kousaku", "MangaDex");
+    a.sources[0].url = "https://mangadex.org/title/eba9285c-8314-4f14-898d-a9476b83a394/slug";
+    const b = work("Pokemon", undefined, "NeloManga");
+    b.sources[0].url = "https://www.nelomanga.net/manga/pokemon/";
+    expect(sameWork(a, b)).toBe(true);
+    expect(sameWork(b, a)).toBe(true);
+    expect(sameWork(a, { ...b, author: "Another Writer" })).toBe(false);
+  });
   it("recognizes reordered full author names in browse and search policy", () => {
     const a = work("One Piece", "Oda Eiichiro", "MangaPill");
     const b = work("One Piece", "Eiichiro Oda", "MangaDex");

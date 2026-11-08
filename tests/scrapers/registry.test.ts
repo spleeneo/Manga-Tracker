@@ -2,6 +2,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getRegisteredScrapers, searchScrapers, searchScrapersDetailed } from "@/lib/scrapers/registry";
 
 describe("scraper search aggregation", () => {
+  it("combines the verified Pokemon editions without absorbing franchise pages or spinoffs", async () => {
+    const providers = getRegisteredScrapers();
+    providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));
+    vi.mocked(providers.find(p => p.name === "MangaDex")!.search).mockResolvedValue([
+      { title: "Pokémon", sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/eba9285c-8314-4f14-898d-a9476b83a394", author: "Anakubo Kousaku" },
+      { title: "Pokémon - Pixiv Oneshots", alternateTitles: ["Pokémon"], sourceName: "MangaDex", sourceUrl: "https://mangadex.org/title/other" },
+    ]);
+    vi.mocked(providers.find(p => p.name === "NeloManga")!.search).mockResolvedValue([
+      { title: "Pokémon", sourceName: "NeloManga", sourceUrl: "https://www.nelomanga.net/manga/pokemon" },
+    ]);
+    vi.mocked(providers.find(p => p.name === "VIZ")!.search).mockResolvedValue([
+      { title: "Pokémon", sourceName: "VIZ", sourceUrl: "https://www.viz.com/pokemon" },
+    ]);
+    const { results } = await searchScrapersDetailed("pokemon");
+    expect(results).toHaveLength(3);
+    expect(results.find(r => r.author === "Anakubo Kousaku")!.sources.map(s => s.name).sort()).toEqual(["MangaDex", "NeloManga"]);
+  });
   it("does not merge distinct long same-title works without identity evidence", async () => {
     const providers = getRegisteredScrapers();
     providers.forEach((provider) => vi.spyOn(provider, "search").mockResolvedValue([]));

@@ -59,6 +59,16 @@ function sourceSharesKnownOverrideIdentity(title: string, source: { name: string
 
 export interface WorkIdentity { title: string; alternateTitles?: string[]; author?: string; sources: Array<{ name: string; url: string }> }
 
+// Confirmed matching editions where search metadata lacks author evidence.
+// Use source identities, never a franchise-wide title alias (which would also
+// absorb unrelated Pokémon works and VIZ's franchise landing page).
+const VERIFIED_WORK_SOURCES = [
+    new Set([
+        "mangadex:eba9285c-8314-4f14-898d-a9476b83a394",
+        "nelomanga.net/manga/pokemon",
+    ]),
+];
+
 export function sameWork(existing: WorkIdentity, result: WorkIdentity) {
     if (existing.sources.some(a => result.sources.some(b => sourceIdentity(a.url) === sourceIdentity(b.url)))) return true;
     if (existing.sources.some(a => result.sources.some(b => a.name === b.name))) return false;
@@ -67,7 +77,9 @@ export function sameWork(existing: WorkIdentity, result: WorkIdentity) {
     const overlap = left.filter(title => right.includes(title));
     const authorMatch = authorsMatch(existing.author, result.author);
     if (!overlap.length || authorMatch === false) return false;
-    return authorMatch === true || new Set(overlap).size >= 2
+    return VERIFIED_WORK_SOURCES.some(group => existing.sources.some(source => group.has(sourceIdentity(source.url)))
+        && result.sources.some(source => group.has(sourceIdentity(source.url))))
+        || authorMatch === true || new Set(overlap).size >= 2
         || overlap.some(title => Boolean(getMangaAliasGroup(title)))
         || result.sources.some(source => (sourceIsAllowedByOverride(existing.title, source) || sourceSharesKnownOverrideIdentity(existing.title, source)) && existing.sources.some(candidate => sourceIsAllowedByOverride(existing.title, candidate)));
 }
